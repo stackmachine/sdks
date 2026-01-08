@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<904d3b9b7c586fbe801a7ca8092e0b47>>
+ * @generated SignedSource<<ede1edb10667d4e14b254e44ad1c3af6>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,33 +10,17 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
-export type HTTPRedirectType = "PERMANENT_MOVED" | "PERMANENT_REDIRECT" | "TEMPORARY_FOUND" | "TEMPORARY_REDIRECT" | "%future added value";
-export type UpsertAppDomainInput = {
-  appId: string;
-  clientMutationId?: string | null | undefined;
-  id?: string | null | undefined;
-  name: string;
-  redirection?: AppDomainRedirectRules | null | undefined;
-  wait?: boolean | null | undefined;
+export type srcGetAppAliasesQuery$variables = {
+  ids: ReadonlyArray<string>;
 };
-export type AppDomainRedirectRules = {
-  httpCode: HTTPRedirectType;
-  to: string;
+export type srcGetAppAliasesQuery$data = {
+  readonly nodes: ReadonlyArray<{
+    readonly " $fragmentSpreads": FragmentRefs<"srcAppAlias">;
+  } | null | undefined> | null | undefined;
 };
-export type srcUpsertAppDomainMutation$variables = {
-  input: UpsertAppDomainInput;
-};
-export type srcUpsertAppDomainMutation$data = {
-  readonly upsertAppDomain: {
-    readonly domains: ReadonlyArray<{
-      readonly " $fragmentSpreads": FragmentRefs<"srcAppAlias">;
-    } | null | undefined> | null | undefined;
-    readonly success: boolean;
-  } | null | undefined;
-};
-export type srcUpsertAppDomainMutation = {
-  response: srcUpsertAppDomainMutation$data;
-  variables: srcUpsertAppDomainMutation$variables;
+export type srcGetAppAliasesQuery = {
+  response: srcGetAppAliasesQuery$data;
+  variables: srcGetAppAliasesQuery$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -44,96 +28,78 @@ var v0 = [
   {
     "defaultValue": null,
     "kind": "LocalArgument",
-    "name": "input"
+    "name": "ids"
   }
 ],
 v1 = [
   {
     "kind": "Variable",
-    "name": "input",
-    "variableName": "input"
+    "name": "ids",
+    "variableName": "ids"
   }
 ],
 v2 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "success",
-  "storageKey": null
-},
-v3 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
   "name": "id",
   "storageKey": null
 },
-v4 = [
-  (v3/*: any*/)
+v3 = [
+  (v2/*: any*/)
 ];
 return {
   "fragment": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "srcUpsertAppDomainMutation",
+    "name": "srcGetAppAliasesQuery",
     "selections": [
       {
         "alias": null,
         "args": (v1/*: any*/),
-        "concreteType": "UpsertAppDomainPayload",
+        "concreteType": null,
         "kind": "LinkedField",
-        "name": "upsertAppDomain",
-        "plural": false,
+        "name": "nodes",
+        "plural": true,
         "selections": [
-          (v2/*: any*/),
           {
-            "alias": null,
             "args": null,
-            "concreteType": "AppAlias",
-            "kind": "LinkedField",
-            "name": "domains",
-            "plural": true,
-            "selections": [
-              {
-                "args": null,
-                "kind": "FragmentSpread",
-                "name": "srcAppAlias"
-              }
-            ],
-            "storageKey": null
+            "kind": "FragmentSpread",
+            "name": "srcAppAlias"
           }
         ],
         "storageKey": null
       }
     ],
-    "type": "Mutation",
+    "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "srcUpsertAppDomainMutation",
+    "name": "srcGetAppAliasesQuery",
     "selections": [
       {
         "alias": null,
         "args": (v1/*: any*/),
-        "concreteType": "UpsertAppDomainPayload",
+        "concreteType": null,
         "kind": "LinkedField",
-        "name": "upsertAppDomain",
-        "plural": false,
+        "name": "nodes",
+        "plural": true,
         "selections": [
-          (v2/*: any*/),
           {
             "alias": null,
             "args": null,
-            "concreteType": "AppAlias",
-            "kind": "LinkedField",
-            "name": "domains",
-            "plural": true,
+            "kind": "ScalarField",
+            "name": "__typename",
+            "storageKey": null
+          },
+          (v2/*: any*/),
+          {
+            "kind": "InlineFragment",
             "selections": [
-              (v3/*: any*/),
               {
                 "alias": null,
                 "args": null,
@@ -169,7 +135,7 @@ return {
                 "kind": "LinkedField",
                 "name": "redirectsFrom",
                 "plural": true,
-                "selections": (v4/*: any*/),
+                "selections": (v3/*: any*/),
                 "storageKey": null
               },
               {
@@ -179,7 +145,7 @@ return {
                 "kind": "LinkedField",
                 "name": "redirectsTo",
                 "plural": false,
-                "selections": (v4/*: any*/),
+                "selections": (v3/*: any*/),
                 "storageKey": null
               },
               {
@@ -243,7 +209,8 @@ return {
                 "storageKey": null
               }
             ],
-            "storageKey": null
+            "type": "AppAlias",
+            "abstractKey": null
           }
         ],
         "storageKey": null
@@ -251,16 +218,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "905eb834528d66ff0b25e485061ea330",
+    "cacheID": "96ca05c5eaeb8c57d2dd9e4c798b6f62",
     "id": null,
     "metadata": {},
-    "name": "srcUpsertAppDomainMutation",
-    "operationKind": "mutation",
-    "text": "mutation srcUpsertAppDomainMutation(\n  $input: UpsertAppDomainInput!\n) {\n  upsertAppDomain(input: $input) {\n    success\n    domains {\n      ...srcAppAlias\n      id\n    }\n  }\n}\n\nfragment srcAppAlias on AppAlias {\n  id\n  hostname\n  url\n  state\n  redirectionHttpCode\n  redirectsFrom {\n    id\n  }\n  redirectsTo {\n    id\n  }\n  expectedDnsRecords {\n    host\n    recordType\n    value\n  }\n  firstCheckedAt\n  lastCheckedAt\n  updatedAt\n  createdAt\n}\n"
+    "name": "srcGetAppAliasesQuery",
+    "operationKind": "query",
+    "text": "query srcGetAppAliasesQuery(\n  $ids: [ID!]!\n) {\n  nodes(ids: $ids) {\n    __typename\n    ...srcAppAlias\n    id\n  }\n}\n\nfragment srcAppAlias on AppAlias {\n  id\n  hostname\n  url\n  state\n  redirectionHttpCode\n  redirectsFrom {\n    id\n  }\n  redirectsTo {\n    id\n  }\n  expectedDnsRecords {\n    host\n    recordType\n    value\n  }\n  firstCheckedAt\n  lastCheckedAt\n  updatedAt\n  createdAt\n}\n"
   }
 };
 })();
 
-(node as any).hash = "223cc103d16763d5021a83d46f70610b";
+(node as any).hash = "e1c3d626f758a8d26d602e3090c896cb";
 
 export default node;

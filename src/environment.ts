@@ -77,6 +77,8 @@ export async function networkFetch(
     });
   }
 
+  // console.log(body);
+
   const resp = await fetch(endpoint, {
     method: "POST",
     headers: requestHeaders,

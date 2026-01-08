@@ -29,6 +29,8 @@ import nodeAppAlias, { srcAppAlias$data } from "__generated__/srcAppAlias.graphq
 import { srcUpsertAppDomainMutation } from "__generated__/srcUpsertAppDomainMutation.graphql";
 import { srcGetAppLogsQuery } from "__generated__/srcGetAppLogsQuery.graphql";
 import { srcDeleteAppDomainMutation } from "__generated__/srcDeleteAppDomainMutation.graphql";
+import { srcGetAppAliasesQuery } from "__generated__/srcGetAppAliasesQuery.graphql";
+import { srcVerifyAppDomainMutation } from "__generated__/srcVerifyAppDomainMutation.graphql";
 const {
   graphql,
   fetchQuery,
@@ -108,11 +110,9 @@ class AppAlias {
       redirectionHttpCode
       redirectsFrom {
         id
-        url
       }
       redirectsTo {
         id
-        url
       }
       expectedDnsRecords {
         host
@@ -129,8 +129,37 @@ class AppAlias {
   url: string;
   state: AppAliasVerificationStates;
   redirectionHttpCode: HTTPRedirectType;
-  redirectsFrom: { id: string; url: string } | null;
-  redirectsTo: { id: string; url: string } | null;
+  redirectsFromIds: string[];
+  redirectsToId: string | undefined;
+  async retrieveMany(ids: string[]): Promise<AppAlias[]> {
+    let env = environment();
+    let query = await fetchQuery<srcGetAppAliasesQuery>(env,
+      graphql`
+        query srcGetAppAliasesQuery($ids: [ID!]!) {
+          nodes(ids: $ids) {
+            ...srcAppAlias
+          }
+        }
+      `,
+      {
+        ids: ids,
+      },
+    ).toPromise();
+    return query?.nodes?.map((node: any) => new AppAlias(getFragmentData<srcAppAlias$data>(env, nodeAppAlias, node))) || [];
+  }
+  async retrieve(id: string): Promise<AppAlias | undefined> {
+    let aliases = await this.retrieveMany([id]);
+    return aliases[0];
+  }
+  get redirectsFrom(): Promise<AppAlias[]> {
+    return this.retrieveMany(this.redirectsFromIds);
+  }
+  get redirectsTo(): Promise<AppAlias | undefined> {
+    if (!this.redirectsToId) {
+      return Promise.resolve(undefined);
+    }
+    return this.retrieve(this.redirectsToId);
+  }
   expectedDnsRecords: { host: string; recordType: string; value: string }[];
   firstCheckedAt: Date;
   lastCheckedAt: Date;
@@ -141,13 +170,45 @@ class AppAlias {
       this.url = data.url;
       this.state = AppAliasVerificationStates[data.state as "UNVERIFIED" | "VERIFIED" | "APEX_WITHOUT_REDIRECTION"];
       this.redirectionHttpCode = HTTPRedirectType[data.redirectionHttpCode as "PERMANENT" | "TEMPORARY"];
-      this.redirectsFrom = data.redirectsFrom || null as any;
-      this.redirectsTo = data.redirectsTo || null;
+      this.redirectsFromIds = data.redirectsFrom?.map((redirect) => redirect?.id!) || [];
+      this.redirectsToId = data.redirectsTo?.id;
       this.expectedDnsRecords = data.expectedDnsRecords as any;
       this.firstCheckedAt = data.firstCheckedAt;
       this.lastCheckedAt = data.lastCheckedAt;
       this.updatedAt = data.updatedAt;
       this.createdAt = data.createdAt;
+  }
+  verify(): Promise<boolean> {
+    const env = environment();
+    return new Promise((resolve, reject) => {
+      commitMutation<srcVerifyAppDomainMutation>(env, {
+        mutation: graphql`
+          mutation srcVerifyAppDomainMutation($input: VerifyAppDomainInput!) {
+            verifyAppDomain(input: $input) {
+              verified
+            }
+          }
+        `,
+        onCompleted: (response, errors) => {
+          if (errors && errors.length > 0) {
+            reject(errors[0].message.toString());
+          }
+          if (response.verifyAppDomain) {
+            resolve(response.verifyAppDomain.verified);
+          } else {
+            reject(new Error("Failed to verify domain, mutation was not successful."));
+          }
+        },
+        onError: (error) => {
+          reject(error.message.toString());
+        },
+        variables: {
+          input: {
+            domainId: this.id,
+          },
+        },
+      });
+    });
   }
   delete(): Promise<void> {
     const env = environment();

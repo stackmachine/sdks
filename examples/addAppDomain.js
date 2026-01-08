@@ -10,5 +10,13 @@ const app = await client.getApp({
     id: "da_XYZ"
 });
 
-const domain = await app.upsertDomain("www.mydomainspecial.com");
+const domain = await app.upsertDomain("mydomainspecial5.com");
 console.log(domain);
+
+if (domain.redirectsToId) {
+    let redirectsTo = await domain.redirectsTo;
+    console.log("Redirects to:", redirectsTo);
+}
+console.log("Waiting for domain to be verified...");
+const verified = await domain.verify();
+console.log("Domain verified: ", verified);

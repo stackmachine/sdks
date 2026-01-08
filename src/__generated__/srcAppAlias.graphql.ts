@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e3a9ab5151db61907ac2d944ca4a6586>>
+ * @generated SignedSource<<287799b8515619c0fd0c0a5c4d1c55ab>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -26,11 +26,9 @@ export type srcAppAlias$data = {
   readonly redirectionHttpCode: HTTPRedirectType | null | undefined;
   readonly redirectsFrom: ReadonlyArray<{
     readonly id: string;
-    readonly url: string;
   } | null | undefined> | null | undefined;
   readonly redirectsTo: {
     readonly id: string;
-    readonly url: string;
   } | null | undefined;
   readonly state: AppAliasVerificationStates;
   readonly updatedAt: any;
@@ -50,16 +48,8 @@ var v0 = {
   "name": "id",
   "storageKey": null
 },
-v1 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "url",
-  "storageKey": null
-},
-v2 = [
-  (v0/*: any*/),
-  (v1/*: any*/)
+v1 = [
+  (v0/*: any*/)
 ];
 return {
   "argumentDefinitions": [],
@@ -75,7 +65,13 @@ return {
       "name": "hostname",
       "storageKey": null
     },
-    (v1/*: any*/),
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "url",
+      "storageKey": null
+    },
     {
       "alias": null,
       "args": null,
@@ -97,7 +93,7 @@ return {
       "kind": "LinkedField",
       "name": "redirectsFrom",
       "plural": true,
-      "selections": (v2/*: any*/),
+      "selections": (v1/*: any*/),
       "storageKey": null
     },
     {
@@ -107,7 +103,7 @@ return {
       "kind": "LinkedField",
       "name": "redirectsTo",
       "plural": false,
-      "selections": (v2/*: any*/),
+      "selections": (v1/*: any*/),
       "storageKey": null
     },
     {
@@ -176,6 +172,6 @@ return {
 };
 })();
 
-(node as any).hash = "9c7a9bdf1bc678fa649dce79715f388f";
+(node as any).hash = "57f85c5c062ebaa360a145ba7400f694";
 
 export default node;

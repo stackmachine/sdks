@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<655440b6ef8176b0d87f57ba4b9a8607>>
+ * @generated SignedSource<<877a14e8501e29aba15413080085d7f6>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -64,8 +64,7 @@ v3 = {
   "storageKey": null
 },
 v4 = [
-  (v2/*: any*/),
-  (v3/*: any*/)
+  (v2/*: any*/)
 ];
 return {
   "fragment": {
@@ -274,9 +273,7 @@ return {
             "kind": "LinkedField",
             "name": "activeVersion",
             "plural": false,
-            "selections": [
-              (v2/*: any*/)
-            ],
+            "selections": (v4/*: any*/),
             "storageKey": null
           },
           {
@@ -299,12 +296,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "612c9449f91b1c4372c70bf7e578cd55",
+    "cacheID": "ce63f29feed8f9beea860e520bb07045",
     "id": null,
     "metadata": {},
     "name": "srcGetAppByNameQuery",
     "operationKind": "query",
-    "text": "query srcGetAppByNameQuery(\n  $name: String!\n  $owner: String\n) {\n  app: getDeployApp(name: $name, owner: $owner) {\n    ...srcDeployAppData\n    id\n  }\n}\n\nfragment srcAppAlias on AppAlias {\n  id\n  hostname\n  url\n  state\n  redirectionHttpCode\n  redirectsFrom {\n    id\n    url\n  }\n  redirectsTo {\n    id\n    url\n  }\n  expectedDnsRecords {\n    host\n    recordType\n    value\n  }\n  firstCheckedAt\n  lastCheckedAt\n  updatedAt\n  createdAt\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  name\n  url\n  adminUrl\n  domains {\n    edges {\n      node {\n        ...srcAppAlias\n        id\n      }\n    }\n  }\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n"
+    "text": "query srcGetAppByNameQuery(\n  $name: String!\n  $owner: String\n) {\n  app: getDeployApp(name: $name, owner: $owner) {\n    ...srcDeployAppData\n    id\n  }\n}\n\nfragment srcAppAlias on AppAlias {\n  id\n  hostname\n  url\n  state\n  redirectionHttpCode\n  redirectsFrom {\n    id\n  }\n  redirectsTo {\n    id\n  }\n  expectedDnsRecords {\n    host\n    recordType\n    value\n  }\n  firstCheckedAt\n  lastCheckedAt\n  updatedAt\n  createdAt\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  name\n  url\n  adminUrl\n  domains {\n    edges {\n      node {\n        ...srcAppAlias\n        id\n      }\n    }\n  }\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n"
   }
 };
 })();

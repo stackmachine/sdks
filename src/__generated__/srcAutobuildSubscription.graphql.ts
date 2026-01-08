@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<8018c4aed4bc661260a64b19c0d0c2e4>>
+ * @generated SignedSource<<e9fd702a8d90160a948a330bdd3e4950>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -89,8 +89,7 @@ v7 = {
   "storageKey": null
 },
 v8 = [
-  (v6/*: any*/),
-  (v7/*: any*/)
+  (v6/*: any*/)
 ];
 return {
   "fragment": {
@@ -331,9 +330,7 @@ return {
                     "kind": "LinkedField",
                     "name": "activeVersion",
                     "plural": false,
-                    "selections": [
-                      (v6/*: any*/)
-                    ],
+                    "selections": (v8/*: any*/),
                     "storageKey": null
                   },
                   {
@@ -366,12 +363,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "f84bda9e210ce85aa0927a022f37bd0e",
+    "cacheID": "cbde75cc80e8fe78fff9789f0c3706fe",
     "id": null,
     "metadata": {},
     "name": "srcAutobuildSubscription",
     "operationKind": "subscription",
-    "text": "subscription srcAutobuildSubscription(\n  $buildId: UUID!\n) {\n  autobuildDeployment(buildId: $buildId) {\n    appVersion {\n      ...srcDeployAppVersionData\n      id\n    }\n    kind\n    datetime\n    stream\n    message\n  }\n}\n\nfragment srcAppAlias on AppAlias {\n  id\n  hostname\n  url\n  state\n  redirectionHttpCode\n  redirectsFrom {\n    id\n    url\n  }\n  redirectsTo {\n    id\n    url\n  }\n  expectedDnsRecords {\n    host\n    recordType\n    value\n  }\n  firstCheckedAt\n  lastCheckedAt\n  updatedAt\n  createdAt\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  name\n  url\n  adminUrl\n  domains {\n    edges {\n      node {\n        ...srcAppAlias\n        id\n      }\n    }\n  }\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n\nfragment srcDeployAppVersionData on DeployAppVersion {\n  id\n  app {\n    ...srcDeployAppData\n    id\n  }\n}\n"
+    "text": "subscription srcAutobuildSubscription(\n  $buildId: UUID!\n) {\n  autobuildDeployment(buildId: $buildId) {\n    appVersion {\n      ...srcDeployAppVersionData\n      id\n    }\n    kind\n    datetime\n    stream\n    message\n  }\n}\n\nfragment srcAppAlias on AppAlias {\n  id\n  hostname\n  url\n  state\n  redirectionHttpCode\n  redirectsFrom {\n    id\n  }\n  redirectsTo {\n    id\n  }\n  expectedDnsRecords {\n    host\n    recordType\n    value\n  }\n  firstCheckedAt\n  lastCheckedAt\n  updatedAt\n  createdAt\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  name\n  url\n  adminUrl\n  domains {\n    edges {\n      node {\n        ...srcAppAlias\n        id\n      }\n    }\n  }\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n\nfragment srcDeployAppVersionData on DeployAppVersion {\n  id\n  app {\n    ...srcDeployAppData\n    id\n  }\n}\n"
   }
 };
 })();
