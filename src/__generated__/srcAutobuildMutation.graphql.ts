@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3b15f5a8114480d48b66ca55cc542aa1>>
+ * @generated SignedSource<<1abc9734e21a17a87a1d590c40c091c6>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,10 +10,10 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 export type DeployViaAutobuildInput = {
+  afterDeployCmd?: string | null | undefined;
   allowExistingApp?: boolean | null | undefined;
   appId?: string | null | undefined;
   appName?: string | null | undefined;
-  basePath?: string | null | undefined;
   branch?: string | null | undefined;
   buildCmd?: string | null | undefined;
   clientMutationId?: string | null | undefined;
@@ -26,9 +26,13 @@ export type DeployViaAutobuildInput = {
   managed?: boolean | null | undefined;
   owner?: string | null | undefined;
   params?: AutobuildDeploymentExtraData | null | undefined;
+  perishAt?: string | null | undefined;
+  presetName?: string | null | undefined;
   region?: string | null | undefined;
   repoUrl?: string | null | undefined;
+  rootDir?: string | null | undefined;
   secrets?: ReadonlyArray<SecretInput | null | undefined> | null | undefined;
+  startCmd?: string | null | undefined;
   uploadUrl?: string | null | undefined;
   waitForScreenshotGeneration?: boolean | null | undefined;
 };

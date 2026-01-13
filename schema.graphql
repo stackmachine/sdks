@@ -176,17 +176,6 @@ type AddSshAuthorizedKeyPayload {
   clientMutationId: String
 }
 
-input AddWebhookInput {
-  clientMutationId: String
-  url: String!
-}
-
-"""Add webhook to user"""
-type AddWebhookPayload {
-  clientMutationId: String
-  webhook: Webhook!
-}
-
 type AggregateMetrics {
   cpuTime: String!
   egress: String!
@@ -414,19 +403,21 @@ type AppTemplate implements Node {
   completionTimeInSeconds: Int!
   createdAt: DateTime!
   defaultImage: String
+  defaultRepositoryCloneName: String
   demoUrl: String!
   description: String!
-  framework: String!
+  framework: String
   highlighted: Boolean!
 
   """The ID of the object"""
   id: ID!
   isPublic: Boolean!
-  language: String!
+  language: String
   name: String!
   readme: String!
   repoLicense: String!
   repoUrl: String!
+  rootDir: String
   slug: String!
   templateFramework: TemplateFramework
   templateLanguage: TemplateLanguage
@@ -589,15 +580,18 @@ enum AutoBuildDeployAppLogKind {
 }
 
 input AutobuildConfigForRepoInput {
-  """The path to build from"""
-  basePath: String
-
   """The branch to use"""
   branch: String
   clientMutationId: String
 
+  """The preset to use"""
+  presetName: String
+
   """The repo URL"""
   repoUrl: String!
+
+  """The root directory to build from"""
+  rootDir: String
 }
 
 """Get the autobuild config for a given repo"""
@@ -607,11 +601,14 @@ type AutobuildConfigForRepoPayload {
   clientMutationId: String
 
   """List of apps deployed with this repo."""
-  deployedApps: [DeployApp]
+  deployedApps: [DeployApp] @deprecated(reason: "This field is not used anymore")
 }
 
 input AutobuildConfigForZipUploadInput {
   clientMutationId: String
+
+  """The preset to use"""
+  presetName: String
 
   """The Zip upload URL"""
   uploadUrl: String!
@@ -624,7 +621,7 @@ type AutobuildConfigForZipUploadPayload {
   clientMutationId: String
 
   """List of apps deployed with this repo."""
-  deployedApps: [DeployApp]
+  deployedApps: [DeployApp] @deprecated(reason: "This field is not used anymore")
 }
 
 input AutobuildDeploymentExtraData {
@@ -849,41 +846,45 @@ input BlogPostsFilter {
 
 """The Build Configuration for a given repo"""
 type BuildConfig {
+  afterDeployCmd: String
   appName: String!
   branch: String
-  buildCmd: String!
-  canDeployWithoutRepo: Boolean!
+  buildCmd: String
+  canDeployWithoutRepo: Boolean! @deprecated(reason: "This field is not used anymore")
   completionTimeInSeconds: Int!
-  installCmd: String!
+  installCmd: String
   presetName: String!
   setupDb: Boolean!
+  startCmd: String
 }
 
 type BuildConfiguration implements Node {
-  buildCmd: String!
-  canDeployWithoutRepo: Boolean!
-  completionTimeInSeconds: Int!
+  buildCmd: String
+  completionTimeInSeconds: Int! @deprecated(reason: "This field is deprecated and return null always.")
 
   """The ID of the object"""
   id: ID!
-  installCmd: String!
+  installCmd: String
   kind: BuildKind
-  name: String!
-  repo: String!
-  repoName: String!
-  repoNamespace: String!
-  setupDb: Boolean!
+  name: String
+  repo: String @deprecated(reason: "This field is deprecated and return null always.")
+  repoName: String @deprecated(reason: "This field is deprecated and return null always.")
+  repoNamespace: String @deprecated(reason: "This field is deprecated and return null always.")
+  setupDb: Boolean! @deprecated(reason: "This field is deprecated and return null always.")
+  startCmd: String
 }
 
 type BuildKind implements Node {
-  buildCmd: String!
-  canDeployWithoutRepo: Boolean!
+  buildCmd: String @deprecated(reason: "This field is deprecated and return null always.")
+  config: JSONString!
 
   """The ID of the object"""
   id: ID!
-  installCmd: String!
+  installCmd: String @deprecated(reason: "This field is deprecated and return null always.")
   name: String!
-  setupDb: Boolean!
+  provider: String!
+  setupDb: Boolean @deprecated(reason: "This field is deprecated and return null always.")
+  startCmd: String @deprecated(reason: "This field is deprecated and return null always.")
 }
 
 type BuildKindConnection {
@@ -1200,6 +1201,26 @@ type Command {
 input Configuration {
   deployment: AppConfigV1
   yamlConfig: String
+}
+
+input ConnectGithubRepoToAppInput {
+  """The ID of the App"""
+  appId: ID!
+  clientMutationId: String
+
+  """The branch to deploy from"""
+  deployBranch: String
+
+  """The ID of the Github app repository installation"""
+  installationRepoId: ID!
+}
+
+"""Connect a github repo to an app."""
+type ConnectGithubRepoToAppPayload {
+  app: DeployApp!
+  clientMutationId: String
+  githubRepoConnection: GithubRepoConnection!
+  success: Boolean!
 }
 
 enum CountComparison {
@@ -1524,11 +1545,12 @@ type DeployApp implements Node & Owner {
   createdBy: User!
   databases(after: String, before: String, first: Int, last: Int, offset: Int): AppDatabaseConnection!
   deleted: Boolean!
-  deployments(after: String, before: String, first: Int, last: Int): DeploymentConnection
+  deployments(after: String, before: String, first: Int, last: Int): DeploymentConnection @deprecated(reason: "Use rollouts instead")
   description: String
   domains(after: String, before: String, first: Int, last: Int, offset: Int, sortBy: AppAliasSortBy! = NEWEST): AppAliasConnection!
   favicon: URL
   forceHttps: Boolean!
+  githubRepoConnection: GithubRepoConnection
   globalId: ID!
   globalName: String!
 
@@ -1541,6 +1563,7 @@ type DeployApp implements Node & Owner {
   name: String!
   owner: Owner!
   permalink: String!
+  rollouts(after: String, before: String, first: Int, last: Int): RolloutConnection
   s3Credentials: S3Credentials
   s3Url: URL
   screenshot(appearance: AppScreenshotAppearance, viewportSize: AppScreenshotViewportSize): URL
@@ -1604,7 +1627,7 @@ type DeployAppVersion implements Node {
   disabledPermanently: Boolean!
   disabledReason: String
   favicon: URL
-  gitSource: AutobuildRepository
+  gitSource: AutobuildRepository @deprecated(reason: "This field is deprecated and return null always.")
 
   """The ID of the object"""
   id: ID!
@@ -1640,6 +1663,7 @@ type DeployAppVersion implements Node {
   manifest: String!
   permalink: String!
   publishedBy: User!
+  rolloutSource: Rollout
   screenshot(appearance: AppScreenshotAppearance, viewportSize: AppScreenshotViewportSize): URL
   signature: String
   sourcePackage: Package!
@@ -1710,13 +1734,12 @@ enum DeploySecretLogActionChoices {
 }
 
 input DeployViaAutobuildInput {
+  afterDeployCmd: String
+
   """If set, allows deploying a new version of an existing app."""
   allowExistingApp: Boolean = false
   appId: ID
   appName: String
-
-  """The path to build from (defaults to /)"""
-  basePath: String
 
   """
   Branch to deploy from. If no branch is specified, the default branch is used.
@@ -1740,10 +1763,18 @@ input DeployViaAutobuildInput {
   owner: String
   params: AutobuildDeploymentExtraData
 
+  """When the app should be perished"""
+  perishAt: String
+  presetName: String
+
   """Region to deploy the app"""
   region: String
   repoUrl: String
+
+  """The root directory to build from (defaults to /)"""
+  rootDir: String
   secrets: [SecretInput]
+  startCmd: String
   uploadUrl: String
 
   """If set, the screenshot is waited for."""
@@ -1857,6 +1888,19 @@ input DisableAppInput {
 type DisableAppPayload {
   app: DeployApp!
   clientMutationId: String
+}
+
+input DisconnectGithubRepoFromAppInput {
+  """The ID of the App"""
+  appId: ID!
+  clientMutationId: String
+}
+
+"""Disconnect a github repo from an app."""
+type DisconnectGithubRepoFromAppPayload {
+  app: DeployApp!
+  clientMutationId: String
+  success: Boolean!
 }
 
 """An enumeration."""
@@ -2040,12 +2084,14 @@ input GenerateUploadUrlInput {
   clientMutationId: String
   expiresAfterSeconds: Int = 60
   filename: String
+  method: String
   name: String
   version: String = "latest"
 }
 
 type GenerateUploadUrlPayload {
   clientMutationId: String
+  method: String!
   signedUrl: SignedUrl!
 }
 
@@ -2061,10 +2107,56 @@ type GetPasswordResetToken {
   valid: Boolean!
 }
 
-type GithubRepository {
+type GitHubRollout implements Node {
+  authorEmail: String
+  authorLogin: String
+  authorName: String
+  branch: String
+  commitHash: String
+  commitMessage: String
+  commitUrl: String
+  createdAt: DateTime!
+  deletedAt: DateTime
+  externalId: String
+
+  """The ID of the object"""
+  id: ID!
+  prevCommitHash: String
+  repoUrl: String!
+  rollout: Rollout!
+  updatedAt: DateTime!
+}
+
+type GithubAppInstallation implements Node {
+  githubConfigureUrl: String!
+
+  """The ID of the object"""
+  id: ID!
+  repositories(filterByName: String): [GithubInstallationRepository]!
+  slug: String!
+}
+
+type GithubInstallationRepository implements Node {
+  """The ID of the object"""
+  id: ID!
+  installation: GithubAppInstallation!
   name: String!
   namespace: String!
+  repoUrl: String!
   url: String!
+}
+
+type GithubRepoConnection implements Node {
+  app: DeployApp!
+  connectedAt: DateTime!
+  connectedBy: User!
+  deployBranch: String!
+  deploymentStatusEvents: Boolean!
+  githubRepoInstallation: GithubInstallationRepository!
+
+  """The ID of the object"""
+  id: ID!
+  pullRequestComments: Boolean!
 }
 
 union GlobalObject = Namespace | User
@@ -2091,6 +2183,12 @@ input InputSignature {
 input InstallGithubAppInput {
   clientMutationId: String
 
+  """Github App Account ID"""
+  githubAccountId: ID
+
+  """Github App Account Login"""
+  githubAccountLogin: String
+
   """Github app Installation ID"""
   installationId: ID!
 }
@@ -2098,6 +2196,7 @@ input InstallGithubAppInput {
 """Add a new github app installation"""
 type InstallGithubAppPayload {
   clientMutationId: String
+  installation: GithubAppInstallation
   success: Boolean!
   user: User!
 }
@@ -2510,9 +2609,6 @@ type Mutation {
 
   """Add an SSH authorized key to an SSH user."""
   addSshAuthorizedKey(input: AddSshAuthorizedKeyInput!): AddSshAuthorizedKeyPayload
-
-  """Add webhook to user"""
-  addWebhook(input: AddWebhookInput!): AddWebhookPayload
   archivePackage(input: ArchivePackageInput!): ArchivePackagePayload
 
   """Attach vault to an app"""
@@ -2535,6 +2631,9 @@ type Mutation {
 
   """Claim a perishable app as their own."""
   claimPerishableApp(input: ClaimPerishableAppInput!): ClaimPerishableAppPayload
+
+  """Connect a github repo to an app."""
+  connectGithubRepoToApp(input: ConnectGithubRepoToAppInput!): ConnectGithubRepoToAppPayload
 
   """Create a new database for an app."""
   createAppDb(input: CreateAppDBInput!): CreateAppDBPayload
@@ -2580,6 +2679,9 @@ type Mutation {
 
   """Disable app with a reason."""
   disableApp(input: DisableAppInput!): DisableAppPayload
+
+  """Disconnect a github repo from an app."""
+  disconnectGithubRepoFromApp(input: DisconnectGithubRepoFromAppInput!): DisconnectGithubRepoFromAppPayload
 
   """Edit an SSH user."""
   editSshUser(input: EditSshUserInput!): EditSshUserPayload
@@ -2643,9 +2745,6 @@ type Mutation {
   removePackageCollaborator(input: RemovePackageCollaboratorInput!): RemovePackageCollaboratorPayload
   removePackageCollaboratorInvite(input: RemovePackageCollaboratorInviteInput!): RemovePackageCollaboratorInvitePayload
   removePackageTransferRequest(input: RemovePackageTransferRequestInput!): RemovePackageTransferRequestPayload
-
-  """Add webhook to user"""
-  removeWebhook(input: RemoveWebhookInput!): RemoveWebhookPayload
   renameApp(input: RenameAppInput!): RenameAppPayload
   renameAppAlias(input: RenameAppAliasInput!): RenameAppAliasPayload
   renamePackage(input: RenamePackageInput!): RenamePackagePayload
@@ -2688,6 +2787,8 @@ type Mutation {
 
   """Update autobuild config for an app."""
   updateAutobuildConfigForApp(input: UpdateAutobuildConfigForAppInput!): UpdateAutobuildConfigForAppPayload
+  updateBuildConfig(input: UpdateBuildConfigInput!): UpdateBuildConfigPayload
+  updateGithubRepoConnection(input: UpdateGithubRepoAppConnectionInput!): UpdateGithubRepoAppConnectionPayload
   updateNamespace(input: UpdateNamespaceInput!): UpdateNamespacePayload
   updateNamespaceCollaboratorInviteRole(input: UpdateNamespaceCollaboratorInviteRoleInput!): UpdateNamespaceCollaboratorInviteRolePayload
   updateNamespaceCollaboratorRole(input: UpdateNamespaceCollaboratorRoleInput!): UpdateNamespaceCollaboratorRolePayload
@@ -3331,6 +3432,39 @@ interface PackageReleaseInterface {
   webcV3: WebcImage
 }
 
+type PackageRollout implements Node {
+  createdAt: DateTime!
+  deletedAt: DateTime
+  externalId: String
+
+  """The ID of the object"""
+  id: ID!
+  rollout: Rollout!
+  sourcePackageRelease: PackageWebc
+  sourcePackageVersion: PackageVersion
+  updatedAt: DateTime!
+}
+
+type PackageRolloutConnection {
+  """Contains the nodes in this connection."""
+  edges: [PackageRolloutEdge]!
+
+  """Pagination data for this connection."""
+  pageInfo: PageInfo!
+
+  """Total number of items in the connection."""
+  totalCount: Int
+}
+
+"""A Relay edge containing a `PackageRollout` and its cursor."""
+type PackageRolloutEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: PackageRollout
+}
+
 type PackageSearchConnection {
   """Contains the nodes in this connection."""
   edges: [PackageSearchEdge]!
@@ -3431,6 +3565,7 @@ type PackageVersion implements Node & PackageInstance & PackageReleaseInterface 
   nativeexecutableSet(after: String, before: String, first: Int, last: Int, offset: Int): NativeExecutableConnection!
   npmBindings: PackageVersionNPMBinding
   package: Package!
+  packagerolloutSet(after: String, before: String, first: Int, last: Int, offset: Int): PackageRolloutConnection!
   packagewebcSet(after: String, before: String, first: Int, last: Int, offset: Int): PackageWebcConnection!
   pirita256hash: String @deprecated(reason: "Please use distribution.piritaSha256Hash instead.")
   piritaFile: String @deprecated(reason: "Please use distribution.piritaDownloadUrl instead.")
@@ -3784,6 +3919,7 @@ type PaymentIntent implements Node {
 
   """The ID of the object"""
   id: ID!
+  invoicePdfUrl: String
   status: String!
 }
 
@@ -4041,6 +4177,7 @@ type Query {
   getTemplateLanguages(after: String, before: String, first: Int, last: Int, offset: Int): TemplateLanguageConnection
   getUser(username: String!): User
   getWebcImage(hash: String!): WebcImage
+  githubRollout(id: ID!): GitHubRollout
   info: RegistryInfo
   internalTask(id: ID!): InternalTask
   latestTOS: TermsOfService!
@@ -4060,6 +4197,7 @@ type Query {
   nodes(ids: [ID!]!): [Node]
   packages(after: String, before: String, first: Int, last: Int, offset: Int): PackageConnection
   recentPackageVersions(after: String, before: String, curated: Boolean, first: Int, last: Int, offset: Int): PackageVersionConnection!
+  rollout(id: ID!): Rollout
   search(after: String, appTemplates: AppTemplateFilter, apps: AppFilter, before: String, blogposts: BlogPostsFilter, first: Int, last: Int, namespaces: NamespacesFilter, packages: PackagesFilter, query: String!, users: UsersFilter): SearchConnection!
   searchAutocomplete(after: String, before: String, first: Int, kind: [SearchKind!], last: Int, query: String!): SearchConnection!
   viewer: User
@@ -4316,17 +4454,6 @@ type RemovePackageTransferRequestPayload {
   package: Package!
 }
 
-input RemoveWebhookInput {
-  clientMutationId: String
-  id: ID!
-}
-
-"""Add webhook to user"""
-type RemoveWebhookPayload {
-  clientMutationId: String
-  success: Boolean!
-}
-
 input RenameAppAliasInput {
   clientMutationId: String
 
@@ -4465,6 +4592,43 @@ type RevokeAPITokenPayload {
   success: Boolean
   token: APIToken
 }
+
+type Rollout implements Node {
+  afterDeployCommand: String
+  buildCommand: String
+  buildConfiguration: BuildConfiguration
+  buildId: String
+  createdAt: DateTime!
+  deployappVersion: DeployAppVersion
+
+  """The ID of the object"""
+  id: ID!
+  installCommand: String
+  logUrl: String
+  rolloutDetails: RolloutType
+  startCommand: String
+  status: StatusEnum!
+  updatedAt: DateTime!
+}
+
+type RolloutConnection {
+  """Contains the nodes in this connection."""
+  edges: [RolloutEdge]!
+
+  """Pagination data for this connection."""
+  pageInfo: PageInfo!
+}
+
+"""A Relay edge containing a `Rollout` and its cursor."""
+type RolloutEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: Rollout
+}
+
+union RolloutType = GitHubRollout | PackageRollout | ZipRollout
 
 input RotateCredentialsForAppDBInput {
   clientMutationId: String
@@ -4787,6 +4951,7 @@ input SocialAuthJWTInput {
   provider: String!
   register: Boolean = false
   registerIntent: String
+  response: JSONString
 }
 
 type SocialAuthJWTPayload {
@@ -4866,7 +5031,7 @@ type SshUserEdge {
 
 enum StatusEnum {
   CANCELLED
-  FAILURE
+  FAILED
   INTERNAL_ERROR
   QUEUED
   RUNNING
@@ -5127,6 +5292,9 @@ type UnwatchPackagePayload {
 }
 
 input UpdateAutobuildConfigForAppInput {
+  """After deploy command for the app"""
+  afterDeployCmd: String
+
   """The ID of the App"""
   appId: ID!
 
@@ -5136,12 +5304,49 @@ input UpdateAutobuildConfigForAppInput {
 
   """Install command for the app"""
   installCmd: String
+
+  """Preset name of the build kind"""
+  presetName: String
+
+  """Start command for the app"""
+  startCmd: String
 }
 
 """Update autobuild config for an app."""
 type UpdateAutobuildConfigForAppPayload {
   app: DeployApp!
   clientMutationId: String
+}
+
+input UpdateBuildConfigInput {
+  afterDeployCmd: String
+  appId: ID!
+  buildCmd: String
+  clientMutationId: String
+  installCmd: String
+  presetName: String
+  startCmd: String
+}
+
+type UpdateBuildConfigPayload {
+  buildConfig: BuildConfiguration!
+  clientMutationId: String
+  success: Boolean!
+}
+
+input UpdateGithubRepoAppConnectionInput {
+  clientMutationId: String
+
+  """The ID of the GithubRepoConnection"""
+  connectionId: ID!
+  deploymentStatusEvents: Boolean
+  pullRequestComments: Boolean
+}
+
+type UpdateGithubRepoAppConnectionPayload {
+  clientMutationId: String
+  githubRepoConnection: GithubRepoConnection!
+  success: Boolean!
 }
 
 input UpdateNamespaceCollaboratorInviteRoleInput {
@@ -5424,9 +5629,10 @@ type User implements Node & Owner & PackageOwner {
   email: String!
   firstName: String!
   fullName: String!
-  githubInstallationExists: Boolean!
-  githubRepositories: [GithubRepository]!
-  githubScopes: [String]!
+  githubInstallationExists: Boolean! @deprecated(reason: "Please use github installations instead.")
+  githubInstallations: [GithubAppInstallation!]
+  githubRepositories: [GithubInstallationRepository]! @deprecated(reason: "Please use github installations instead.")
+  githubScopes: [String]! @deprecated(reason: "Please use github installations instead.")
   githubUrl: String
   githubUser: SocialAuth
   globalId: ID!
@@ -5469,7 +5675,6 @@ type User implements Node & Owner & PackageOwner {
   viewerCan(action: OwnerAction!): Boolean!
   waitlist(name: String!): WaitlistMember
   wasmerInternal: Boolean!
-  webhooks: [Webhook]
   websiteUrl: String
 }
 
@@ -5765,14 +5970,6 @@ enum WebcVersion {
   V3
 }
 
-type Webhook implements Node {
-  active: Boolean!
-
-  """The ID of the object"""
-  id: ID!
-  url: String!
-}
-
 type WordPressPlugin {
   active: Boolean!
   description: String
@@ -5844,4 +6041,17 @@ input WorkloadV1 {
 
 input WorkloadV2 {
   source: String!
+}
+
+type ZipRollout implements Node {
+  createdAt: DateTime!
+  deletedAt: DateTime
+  externalId: String
+
+  """The ID of the object"""
+  id: ID!
+  rollout: Rollout
+  updatedAt: DateTime!
+  zipFileHash: String
+  zipFileUrl: String!
 }
