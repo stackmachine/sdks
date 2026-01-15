@@ -8,13 +8,10 @@ import {
 } from "relay-runtime";
 import * as RelayRuntime from 'relay-runtime';
 const { Environment, Network, QueryResponseCache, RecordSource, Store, Observable } = RelayRuntime;
+import { createClient as createSubscriptionClient } from "graphql-ws";
 
 export const graphql = RelayRuntime.graphql;
 export const fetchQuery = RelayRuntime.fetchQuery;
-
-import * as wsPkg from "persisted-subscriptions-transport-ws";
-const { SubscriptionClient } = wsPkg;
-// import { createClient, type Sink } from "graphql-ws";
 
 const DEFAULT_CACHE_TTL = 30 * 1000; // 30 seconds, to resolve preloaded results
 
@@ -142,67 +139,33 @@ function createNetwork(
   let network;
   // Create a shared subscription client that can be reused
   let subscriptionClient: any = null;
-  let activeSubscriptions = 0;
 
   const getSubscriptionClient = () => {
     if (!subscriptionClient || subscriptionClient.status === 3) { // 3 = CLOSED
-      subscriptionClient = new SubscriptionClient(
-        endpoint.replace(/^http:\/\//, "ws://")?.replace(/^https:\/\//, "wss://"),
-        {
-          reconnect: true,
-          lazy: true,
-          connectionParams: {
-            headers: {
-              Authorization: token ? `Bearer ${token}` : "",
-            },
-          },
-        }
-      );
-    }
+      subscriptionClient = createSubscriptionClient({
+        url: endpoint.replace(/^http:\/\//, "ws://")?.replace(/^https:\/\//, "wss://"),
+        connectionParams: {
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+      });
+      }
     return subscriptionClient;
   };
 
   const subscribe = (request: any, variables: any) => {
     // Get or create the subscription client
     const client = getSubscriptionClient();
-    // Increment active subscriptions counter
-    activeSubscriptions++;
-    
-    // Important: Convert subscriptions-transport-ws observable type to Relay's
-    return Observable.create(sink => {
-      const subscribeObservable = client.request({
-        query: request.text,
-        id: request.id,
-        operationName: request.name,
-        variables,
-      });
-      
-      const subscription = subscribeObservable.subscribe({
-        next: (data: any) => sink.next(data),
-        error: (error: any) => sink.error(error),
-        complete: () => {
-          // console.log("COMPLETE");
-          sink.complete();
+    return Observable.create((sink) => {
+      return client.subscribe(
+        {
+          query: request.text || "",
+          // @ts-ignore
+          id: request.id,
+          operationName: request.name,
+          variables,
         },
-      });
-      
-      // Return a dispose function that will be called when the subscription is disposed
-      return () => {
-        // console.log("UNSUBSCRIBING");
-        subscription.unsubscribe();
-        
-        // Decrement active subscriptions counter
-        activeSubscriptions--;
-        
-        // If no more active subscriptions, close the client
-        if (activeSubscriptions <= 0) {
-          // console.log("CLOSING CLIENT - NO MORE ACTIVE SUBSCRIPTIONS");
-          client.close();
-          activeSubscriptions = 0; // Reset counter to avoid negative values
-        }
-        
-        // console.log("UNSUBSCRIBED");
-      };
+        sink
+      );
     });
   };
   

@@ -1,6 +1,6 @@
 {
   "name": "stackmachine",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
@@ -18,7 +18,6 @@
   "dependencies": {
     "@zip.js/zip.js": "^2.8.8",
     "graphql-ws": "^6.0.4",
-    "persisted-subscriptions-transport-ws": "^0.11.0",
     "relay-compiler": "^18.0.0",
     "relay-runtime": "^18.0.0"
   },
