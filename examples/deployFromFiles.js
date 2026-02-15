@@ -7,19 +7,19 @@ const client = await StackMachine.init({
 });
 
 console.log("Uploading file...");
-const appName = "file-upload-test8";
+const appName = "myfilesapp1254";
 
 const zip = await createZip({
     "index.php": "<html><body><h1>Hello World!</h1></body></html>",
 });
-const uploadUrl = await client.uploadFile(zip, (progress) => {
+const uploadUrl = await client.files.upload(zip, (progress) => {
     console.log("Uploading files... ", progress * 100, "%");
 });
 
-const build = await client.deployApp({
+const build = await client.apps.autobuild({
     appName: appName,
     owner: "stackmachine",
-    // domains: [`${appName}.sm.run`],
+    domains: [`${appName}.wasmer.app`],
     uploadUrl: uploadUrl
 });
 

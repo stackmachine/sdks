@@ -6,8 +6,6 @@ const client = await StackMachine.init({
     token: STACKMACHINE_TOKEN || "wap_sm_demo"
 });
 
-const deleted = await client.deleteApp({
-    id: "da_XYZ"
-});
+await client.apps.del("da_XYZ");
 
-console.log("App deleted!", deleted);
+console.log("App deleted!");

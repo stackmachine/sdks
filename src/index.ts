@@ -18,11 +18,9 @@ import {
 } from "__generated__/srcDeleteAppMutation.graphql";
 import {
   srcGetAppByNameQuery,
-  srcGetAppByNameQuery$variables,
 } from "__generated__/srcGetAppByNameQuery.graphql";
 import {
   srcGetAppByIdQuery,
-  srcGetAppByIdQuery$variables,
 } from "__generated__/srcGetAppByIdQuery.graphql";
 import { createZip, handleUploadFileToCloud } from "upload";
 import nodeAppAlias, { srcAppAlias$data } from "__generated__/srcAppAlias.graphql";
@@ -131,35 +129,6 @@ class AppAlias {
   redirectionHttpCode: HTTPRedirectType;
   redirectsFromIds: string[];
   redirectsToId: string | undefined;
-  async retrieveMany(ids: string[]): Promise<AppAlias[]> {
-    let env = environment();
-    let query = await fetchQuery<srcGetAppAliasesQuery>(env,
-      graphql`
-        query srcGetAppAliasesQuery($ids: [ID!]!) {
-          nodes(ids: $ids) {
-            ...srcAppAlias
-          }
-        }
-      `,
-      {
-        ids: ids,
-      },
-    ).toPromise();
-    return query?.nodes?.map((node: any) => new AppAlias(getFragmentData<srcAppAlias$data>(env, nodeAppAlias, node))) || [];
-  }
-  async retrieve(id: string): Promise<AppAlias | undefined> {
-    let aliases = await this.retrieveMany([id]);
-    return aliases[0];
-  }
-  get redirectsFrom(): Promise<AppAlias[]> {
-    return this.retrieveMany(this.redirectsFromIds);
-  }
-  get redirectsTo(): Promise<AppAlias | undefined> {
-    if (!this.redirectsToId) {
-      return Promise.resolve(undefined);
-    }
-    return this.retrieve(this.redirectsToId);
-  }
   expectedDnsRecords: { host: string; recordType: string; value: string }[];
   firstCheckedAt: Date;
   lastCheckedAt: Date;
@@ -177,70 +146,6 @@ class AppAlias {
       this.lastCheckedAt = data.lastCheckedAt;
       this.updatedAt = data.updatedAt;
       this.createdAt = data.createdAt;
-  }
-  verify(): Promise<boolean> {
-    const env = environment();
-    return new Promise((resolve, reject) => {
-      commitMutation<srcVerifyAppDomainMutation>(env, {
-        mutation: graphql`
-          mutation srcVerifyAppDomainMutation($input: VerifyAppDomainInput!) {
-            verifyAppDomain(input: $input) {
-              verified
-            }
-          }
-        `,
-        onCompleted: (response, errors) => {
-          if (errors && errors.length > 0) {
-            reject(errors[0].message.toString());
-          }
-          if (response.verifyAppDomain) {
-            resolve(response.verifyAppDomain.verified);
-          } else {
-            reject(new Error("Failed to verify domain, mutation was not successful."));
-          }
-        },
-        onError: (error) => {
-          reject(error.message.toString());
-        },
-        variables: {
-          input: {
-            domainId: this.id,
-          },
-        },
-      });
-    });
-  }
-  delete(): Promise<void> {
-    const env = environment();
-    return new Promise((resolve, reject) => {
-      commitMutation<srcDeleteAppDomainMutation>(env, {
-        mutation: graphql`
-          mutation srcDeleteAppDomainMutation($input: DeleteAppDomainInput!) {
-            deleteAppDomain(input: $input) {
-              success
-            }
-          }
-        `,
-        onCompleted: (response, errors) => {
-          if (errors && errors.length > 0) {
-            reject(errors[0].message.toString());
-          }
-          if (response.deleteAppDomain?.success) {
-            resolve();
-          } else {
-            reject(new Error("Failed to delete domain, mutation was not successful."));
-          }
-        },
-        onError: (error) => {
-          reject(error.message.toString());
-        },
-        variables: {
-          input: {
-            id: this.id,
-          },
-        },
-      });
-    });
   }
 }
 
@@ -299,68 +204,6 @@ class DeployApp {
     //   this.kind = new DeployAppKindWordPress(kindData);
     // }
   }
-  async upsertDomain(domain: string): Promise<AppAlias> {
-    const env = environment();
-    let query: any = await new Promise((resolve, reject) => {
-      commitMutation<srcUpsertAppDomainMutation>(env, {
-        mutation: graphql`
-          mutation srcUpsertAppDomainMutation($input: UpsertAppDomainInput!) {
-            upsertAppDomain(input: $input) {
-              success
-              domains {
-                ...srcAppAlias
-              }
-            }
-          }
-        `,
-        onCompleted: (response, errors) => {
-          if (errors && errors.length > 0) {
-            reject(errors[0].message.toString());
-          }
-          if (!response.upsertAppDomain) {
-            reject(new Error("Failed to upsert domain, mutation failed."));
-            return;
-          }
-          if (response.upsertAppDomain?.success) {
-            const domains = response.upsertAppDomain.domains;
-            if (!domains) {
-              reject(new Error("Failed to upsert domain, no domains returned."));
-              return;
-            }
-            var addedDomain: AppAlias | null = null;
-            for (const returnedDomain of domains) {
-              let appAliasData = getFragmentData<srcAppAlias$data>(env, nodeAppAlias, returnedDomain);
-              const appAlias = new AppAlias(appAliasData);
-              if (appAlias.expectedDnsRecords.find((record) => record.host == domain)) {
-                addedDomain = appAlias;
-              }
-              this.domains.push(appAlias);
-            }
-
-            if (!addedDomain) {
-              reject(new Error("Failed to upsert domain, domain not found in returned domains."));
-              return;
-            }
-            this.domains.push(addedDomain);
-            resolve(addedDomain);
-          } else {
-            reject(new Error("Failed to upsert domain, mutation was not successful."));
-          }
-        },
-        onError: (error) => {
-          reject(error.message.toString());
-        },
-        variables: {
-          input: {
-            appId: this.id,
-            name: domain,
-            wait: false,
-          },
-        },
-      });
-    });
-    return query;
-  }
 }
 
 enum LogStream {
@@ -399,36 +242,6 @@ class DeployAppVersion {
       app = new DeployApp(appData);
     }
     this.app = app;
-  }
-
-  async fetchLogs(since: Date): Promise<Log[]> {
-    const env = environment();
-    let query = await fetchQuery<srcGetAppLogsQuery>(env,
-      graphql`
-        query srcGetAppLogsQuery($appId: ID!, $since: DateTime!) {
-          node(id: $appId) {
-            ...on DeployAppVersion {
-              logs(startingFromISO: $since) {
-                edges {
-                  node {
-                    datetime
-                    instanceId
-                    message
-                    stream
-                    timestamp
-                  }
-                }
-              }
-            }
-          }
-        }
-      `,
-      {
-        appId: this.id,
-        since: since.toISOString(),
-      },
-    ).toPromise();
-    return (query?.node?.logs?.edges.filter((edge) => edge?.node).map((edge) => edge?.node) as Log[]) || [];
   }
 }
 function getFragmentData<T>(
@@ -557,82 +370,281 @@ class AutobuildApp {
   }
 }
 
-export class StackMachine {
-  environment: Environment;
-  private constructor(environment: Environment) {
-    this.environment = environment;
+class AppsDomainsResource {
+  private async retrieveMany(ids: string[]): Promise<AppAlias[]> {
+    const env = environment();
+    const query = await fetchQuery<srcGetAppAliasesQuery>(
+      env,
+      graphql`
+        query srcGetAppAliasesQuery($ids: [ID!]!) {
+          nodes(ids: $ids) {
+            ...srcAppAlias
+          }
+        }
+      `,
+      {
+        ids,
+      }
+    ).toPromise();
+    return (
+      query?.nodes?.map(
+        (node: any) =>
+          new AppAlias(getFragmentData<srcAppAlias$data>(env, nodeAppAlias, node))
+      ) || []
+    );
   }
-  static async init(settings: StackMachineRegistryConfig) {
-    const environment = createEnvironment({
-      endpoint: settings.apiUrl || DEFAULT_API_URL,
-      token: settings.token,
+
+  async retrieve(id: string): Promise<AppAlias | null> {
+    const aliases = await this.retrieveMany([id]);
+    return aliases[0] || null;
+  }
+
+  async create(input: { app: string; hostname: string }): Promise<AppAlias> {
+    const env = environment();
+    return new Promise((resolve, reject) => {
+      commitMutation<srcUpsertAppDomainMutation>(env, {
+        mutation: graphql`
+          mutation srcUpsertAppDomainMutation($input: UpsertAppDomainInput!) {
+            upsertAppDomain(input: $input) {
+              success
+              domains {
+                ...srcAppAlias
+              }
+            }
+          }
+        `,
+        onCompleted: (response, errors) => {
+          if (errors && errors.length > 0) {
+            reject(errors[0].message.toString());
+            return;
+          }
+          if (!response.upsertAppDomain) {
+            reject(new Error("Failed to create domain, mutation failed."));
+            return;
+          }
+          if (response.upsertAppDomain.success) {
+            const domains = response.upsertAppDomain.domains;
+            if (!domains) {
+              reject(new Error("Failed to create domain, no domains returned."));
+              return;
+            }
+            let addedDomain: AppAlias | null = null;
+            for (const returnedDomain of domains) {
+              const appAliasData = getFragmentData<srcAppAlias$data>(
+                env,
+                nodeAppAlias,
+                returnedDomain
+              );
+              const appAlias = new AppAlias(appAliasData);
+              if (
+                appAlias.expectedDnsRecords.find(
+                  (record) => record.host === input.hostname
+                )
+              ) {
+                addedDomain = appAlias;
+              }
+            }
+            if (!addedDomain) {
+              reject(
+                new Error(
+                  "Failed to create domain, domain not found in returned domains."
+                )
+              );
+              return;
+            }
+            resolve(addedDomain);
+          } else {
+            reject(new Error("Failed to create domain, mutation was not successful."));
+          }
+        },
+        onError: (error) => {
+          reject(error.message.toString());
+        },
+        variables: {
+          input: {
+            appId: input.app,
+            name: input.hostname,
+            wait: false,
+          },
+        },
+      });
     });
-    config = {
-      environment,
-    };
-    return new StackMachine(environment);
   }
-  async getApp(
-    input: srcGetAppByNameQuery$variables | srcGetAppByIdQuery$variables
-  ): Promise<DeployApp | null> {
+
+  async verify(id: string): Promise<boolean> {
     const env = environment();
-    if ("id" in input) {
-      // We fetch by id
-      let query = await fetchQuery<srcGetAppByIdQuery>(
-        env,
-        graphql`
-          query srcGetAppByIdQuery($id: ID!) {
-            app: node(id: $id) {
-              __typename
-              ...srcDeployAppData
+    return new Promise((resolve, reject) => {
+      commitMutation<srcVerifyAppDomainMutation>(env, {
+        mutation: graphql`
+          mutation srcVerifyAppDomainMutation($input: VerifyAppDomainInput!) {
+            verifyAppDomain(input: $input) {
+              verified
             }
           }
         `,
-        {
-          id: input.id!,
-        }
-      ).toPromise();
-      if (!query?.app || query.app.__typename !== "DeployApp") {
-        return null;
-      }
-      let appData = getFragmentData<srcDeployAppData$data>(
-        environment(),
-        nodeApp,
-        query.app
-      );
-      return new DeployApp(appData);
-    } else {
-      // We fetch by name
-      let query = await fetchQuery<srcGetAppByNameQuery>(
-        env,
-        graphql`
-          query srcGetAppByNameQuery($name: String!, $owner: String) {
-            app: getDeployApp(name: $name, owner: $owner) {
-              ...srcDeployAppData
+        onCompleted: (response, errors) => {
+          if (errors && errors.length > 0) {
+            reject(errors[0].message.toString());
+            return;
+          }
+          if (response.verifyAppDomain) {
+            resolve(response.verifyAppDomain.verified);
+          } else {
+            reject(
+              new Error("Failed to verify domain, mutation was not successful.")
+            );
+          }
+        },
+        onError: (error) => {
+          reject(error.message.toString());
+        },
+        variables: {
+          input: {
+            domainId: id,
+          },
+        },
+      });
+    });
+  }
+
+  async del(id: string): Promise<void> {
+    const env = environment();
+    return new Promise((resolve, reject) => {
+      commitMutation<srcDeleteAppDomainMutation>(env, {
+        mutation: graphql`
+          mutation srcDeleteAppDomainMutation($input: DeleteAppDomainInput!) {
+            deleteAppDomain(input: $input) {
+              success
             }
           }
         `,
-        {
-          name: input.name,
-          owner: input.owner,
+        onCompleted: (response, errors) => {
+          if (errors && errors.length > 0) {
+            reject(errors[0].message.toString());
+            return;
+          }
+          if (response.deleteAppDomain?.success) {
+            resolve();
+          } else {
+            reject(
+              new Error("Failed to delete domain, mutation was not successful.")
+            );
+          }
+        },
+        onError: (error) => {
+          reject(error.message.toString());
+        },
+        variables: {
+          input: {
+            id,
+          },
+        },
+      });
+    });
+  }
+}
+
+class AppsVersionsLogsResource {
+  async list(input: { version: string; since: Date }): Promise<Log[]> {
+    const env = environment();
+    const query = await fetchQuery<srcGetAppLogsQuery>(
+      env,
+      graphql`
+        query srcGetAppLogsQuery($appId: ID!, $since: DateTime!) {
+          node(id: $appId) {
+            ...on DeployAppVersion {
+              logs(startingFromISO: $since) {
+                edges {
+                  node {
+                    datetime
+                    instanceId
+                    message
+                    stream
+                    timestamp
+                  }
+                }
+              }
+            }
+          }
         }
-      ).toPromise();
-      if (!query?.app) {
-        return null;
+      `,
+      {
+        appId: input.version,
+        since: input.since.toISOString(),
       }
-      let appData = getFragmentData<srcDeployAppData$data>(
-        environment(),
-        nodeApp,
-        query.app
-      );
-      return new DeployApp(appData);
+    ).toPromise();
+    return (
+      (query?.node?.logs?.edges
+        .filter((edge) => edge?.node)
+        .map((edge) => edge?.node) as Log[]) || []
+    );
+  }
+}
+
+class AppsVersionsResource {
+  logs: AppsVersionsLogsResource;
+  constructor() {
+    this.logs = new AppsVersionsLogsResource();
+  }
+}
+
+class DeployAppsResource {
+  domains: AppsDomainsResource;
+  versions: AppsVersionsResource;
+  constructor() {
+    this.domains = new AppsDomainsResource();
+    this.versions = new AppsVersionsResource();
+  }
+
+  async retrieve(id: string): Promise<DeployApp | null> {
+    const env = environment();
+    const query = await fetchQuery<srcGetAppByIdQuery>(
+      env,
+      graphql`
+        query srcGetAppByIdQuery($id: ID!) {
+          app: node(id: $id) {
+            __typename
+            ...srcDeployAppData
+          }
+        }
+      `,
+      {
+        id,
+      }
+    ).toPromise();
+    if (!query?.app || query.app.__typename !== "DeployApp") {
+      return null;
     }
+    const appData = getFragmentData<srcDeployAppData$data>(env, nodeApp, query.app);
+    return new DeployApp(appData);
   }
-  async deleteApp(
-    input: srcDeleteAppMutation$variables["input"]
-  ): Promise<void> {
+
+  async retrieveByName(name: string, owner?: string): Promise<DeployApp | null> {
     const env = environment();
-    let success: any = await new Promise((resolve, reject) => {
+    const query = await fetchQuery<srcGetAppByNameQuery>(
+      env,
+      graphql`
+        query srcGetAppByNameQuery($name: String!, $owner: String) {
+          app: getDeployApp(name: $name, owner: $owner) {
+            ...srcDeployAppData
+          }
+        }
+      `,
+      {
+        name,
+        owner,
+      }
+    ).toPromise();
+    if (!query?.app) {
+      return null;
+    }
+    const appData = getFragmentData<srcDeployAppData$data>(env, nodeApp, query.app);
+    return new DeployApp(appData);
+  }
+
+  async del(id: string): Promise<void> {
+    const env = environment();
+    await new Promise((resolve, reject) => {
       commitMutation<srcDeleteAppMutation>(env, {
         mutation: graphql`
           mutation srcDeleteAppMutation($input: DeleteAppInput!) {
@@ -654,20 +666,17 @@ export class StackMachine {
           reject(`The app could not be deleted: ${error.message.toString()}`);
         },
         variables: {
-          input,
+          input: { id },
         },
       });
     });
-    return success;
   }
-  async uploadFile(file: Blob, setUploadFilesProgress?: (progress: number) => void): Promise<string> {
+
+  async autobuild(
+    input: srcAutobuildMutation$variables["input"]
+  ): Promise<AutobuildApp> {
     const env = environment();
-    const url = await handleUploadFileToCloud(env, file, setUploadFilesProgress);
-    return url;
-  }
-  async deployApp(input: srcAutobuildMutation$variables["input"]): Promise<AutobuildApp> {
-    const env = environment();
-    let query: any = await new Promise((resolve, reject) => {
+    const query: any = await new Promise((resolve, reject) => {
       commitMutation<srcAutobuildMutation>(env, {
         mutation: graphql`
           mutation srcAutobuildMutation($input: DeployViaAutobuildInput!) {
@@ -694,9 +703,38 @@ export class StackMachine {
         },
       });
     });
-    // console.log(query.deployViaAutobuild.buildId);
-    const app = new AutobuildApp(query.deployViaAutobuild.buildId);
-    return app;
+    return new AutobuildApp(query.deployViaAutobuild.buildId);
+  }
+}
+
+class FilesResource {
+  async upload(
+    file: Blob,
+    setUploadFilesProgress?: (progress: number) => void
+  ): Promise<string> {
+    const env = environment();
+    return handleUploadFileToCloud(env, file, setUploadFilesProgress);
+  }
+}
+
+export class StackMachine {
+  environment: Environment;
+  apps: DeployAppsResource;
+  files: FilesResource;
+  private constructor(environment: Environment) {
+    this.environment = environment;
+    this.apps = new DeployAppsResource();
+    this.files = new FilesResource();
+  }
+  static async init(settings: StackMachineRegistryConfig) {
+    const environment = createEnvironment({
+      endpoint: settings.apiUrl || DEFAULT_API_URL,
+      token: settings.token,
+    });
+    config = {
+      environment,
+    };
+    return new StackMachine(environment);
   }
 }
 

@@ -8,7 +8,7 @@ const client = await StackMachine.init({
 
 console.log("Creating build...");
 
-const build = await client.deployApp({
+const build = await client.apps.autobuild({
     appName: "wp-app-xas1",
     repoUrl: "https://github.com/wordpress/wordpress",
     branch: "6.8.3",

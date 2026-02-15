@@ -8,12 +8,12 @@ const client = await StackMachine.init({
 });
 
 const zip = new Blob([readFileSync("test.zip")]);
-const uploadUrl = await client.uploadFile(zip, (progress) => {
+const uploadUrl = await client.files.upload(zip, (progress) => {
     console.log("Uploading files... ", progress * 100, "%");
 });
 
 const appName = "zip-upload-test6";
-const build = await client.deployApp({
+const build = await client.apps.autobuild({
     appName: appName,
     owner: "stackmachine",
     uploadUrl: uploadUrl,

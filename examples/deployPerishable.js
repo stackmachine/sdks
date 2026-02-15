@@ -11,11 +11,11 @@ console.log("Uploading file...");
 const zip = await createZip({
     "index.php": "<html><body><h1>This app will perish in 2 hours</h1></body></html>",
 });
-const uploadUrl = await client.uploadFile(zip, (progress) => {
+const uploadUrl = await client.files.upload(zip, (progress) => {
     console.log("Uploading files... ", progress * 100, "%");
 });
 
-const build = await client.deployApp({
+const build = await client.apps.autobuild({
     appName: "perishable-app",
     owner: "stackmachine",
     uploadUrl: uploadUrl,

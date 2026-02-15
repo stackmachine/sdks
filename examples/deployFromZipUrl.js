@@ -9,7 +9,7 @@ const client = await StackMachine.init({
 console.log("Uploading file...");
 
 const appName = "zip-upload-test6";
-const build = await client.deployApp({
+const build = await client.apps.autobuild({
     appName: appName,
     owner: "stackmachine",
     uploadUrl: "https://www.example.com/test.zip"

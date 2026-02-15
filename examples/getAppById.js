@@ -6,8 +6,6 @@ const client = await StackMachine.init({
     token: STACKMACHINE_TOKEN || "wap_sm_demo"
 });
 
-const app = await client.getApp({
-    id: "da_XYZ"
-});
+const app = await client.apps.retrieve("da_XYZ");
 
 console.log("App", app);

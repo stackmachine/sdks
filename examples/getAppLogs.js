@@ -6,11 +6,15 @@ const client = await StackMachine.init({
     token: STACKMACHINE_TOKEN || "wap_sm_demo"
 });
 
-const app = await client.getApp({
-    id: "da_XYZ"
-});
+const app = await client.apps.retrieve("da_XYZ");
+if (!app || !app.activeVersion) {
+    throw new Error("App or active version not found");
+}
 
 const last30Minutes = new Date(Date.now() - 30 * 60 * 1000);
 
-const logs = await app.activeVersion?.fetchLogs(last30Minutes);
+const logs = await client.apps.versions.logs.list({
+    version: app.activeVersion.id,
+    since: last30Minutes,
+});
 console.log(logs);

@@ -8,14 +8,13 @@ async function execWasmerDeploy(deployPath, subdomain) {
   try {
     const zip = await createZip(deployPath)
 
-    const upload = await client.uploadFile(zip)
+    const upload = await client.files.upload(zip)
 
-    const build = await client.deployApp({
+    const build = await client.apps.autobuild({
       appName: subdomain,
-      owner: 'syrusakbary',
+      owner: 'tiinyhost',
       uploadUrl: upload,
-      // THIS MAKE THINGS HALT
-      // domains: [`${subdomain}-syrus.wasmer.app`]
+      domains: [`${subdomain}-syrus.wasmer.app`]
     })
     console.log(upload);
     console.log(`Deploy: ${deployPath}`);
@@ -36,4 +35,4 @@ async function execWasmerDeploy(deployPath, subdomain) {
   }
 }
 
-execWasmerDeploy({ "index.php": "<html><body><h1>Hello World!</h1></body></html>" }, "test-my-app-syrus7");
+execWasmerDeploy({ "index.php": "<html><body><h1>Hello World!</h1></body></html>" }, "test-my-app-syrus9");
