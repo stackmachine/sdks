@@ -6,6 +6,9 @@ const client = await StackMachine.init({
     apiKey: STACKMACHINE_API_KEY || "wap_sm_demo"
 });
 
-await client.apps.del("da_XYZ");
+const appId = "da_XYZ";
+const { token } = await client.apps.ssh.tokens.create({
+    app: appId,
+});
 
-console.log("App deleted!");
+console.log("Generated SSH token:", token);

@@ -43,6 +43,7 @@ export { createZip };
 
 export type StackMachineRegistryConfig = {
   apiUrl?: string;
+  apiKey?: string;
   token?: string;
 };
 
@@ -244,6 +245,61 @@ class DeployAppVersion {
     this.app = app;
   }
 }
+
+enum SshAuthenticationMethod {
+  PASSWORD = "PASSWORD",
+  PUBLIC_KEY = "PUBLIC_KEY",
+}
+
+class SshAuthorizedKey {
+  id: string;
+  name: string | null;
+  publicKey: string;
+  createdAt: Date;
+  constructor(data: any) {
+    this.id = data.id;
+    this.name = data.name || null;
+    this.publicKey = data.publicKey;
+    this.createdAt = new Date(data.createdAt);
+  }
+}
+
+class SshUser {
+  id: string;
+  username: string;
+  port: number;
+  serverHost: string;
+  sftpRootFolder: string;
+  authenticationMethods: SshAuthenticationMethod[] | null;
+  constructor(data: any) {
+    this.id = data.id;
+    this.username = data.username;
+    this.port = data.port;
+    this.serverHost = data.serverHost;
+    this.sftpRootFolder = data.sftpRootFolder;
+    this.authenticationMethods = data.authenticationMethods
+      ? data.authenticationMethods.map(
+          (method: "PASSWORD" | "PUBLIC_KEY") => SshAuthenticationMethod[method]
+        )
+      : null;
+  }
+}
+
+class AppSshServer {
+  id: string;
+  enabled: boolean;
+  users: SshUser[];
+  constructor(data: any) {
+    this.id = data.id;
+    this.enabled = data.enabled;
+    this.users =
+      data.users?.edges
+        ?.map((edge: any) => edge?.node)
+        .filter((node: any) => !!node)
+        .map((node: any) => new SshUser(node)) || [];
+  }
+}
+
 function getFragmentData<T>(
   environment: Environment,
   node: ReaderFragment,
@@ -588,12 +644,462 @@ class AppsVersionsResource {
   }
 }
 
+class AppsSshUsersPasswordsResource {
+  async reveal(userId: string): Promise<{ password: string | null; sshUser: SshUser }> {
+    const env = environment();
+    const response: any = await new Promise((resolve, reject) => {
+      commitMutation<any>(env, {
+        mutation: graphql`
+          mutation srcRevealSshUserPasswordMutation($input: RevealSshUserPasswordInput!) {
+            revealSshUserPassword(input: $input) {
+              password
+              sshUser {
+                id
+                username
+                port
+                serverHost
+                sftpRootFolder
+                authenticationMethods
+              }
+            }
+          }
+        `,
+        onCompleted: (payload, errors) => {
+          if (errors && errors.length > 0) {
+            reject(errors[0].message.toString());
+            return;
+          }
+          resolve(payload);
+        },
+        onError: (error) => reject(error.message.toString()),
+        variables: {
+          input: { sshUserId: userId },
+        },
+      });
+    });
+    const payload = response?.revealSshUserPassword;
+    if (!payload?.sshUser) {
+      throw new Error("Failed to reveal SSH user password.");
+    }
+    return {
+      password: payload.password || null,
+      sshUser: new SshUser(payload.sshUser),
+    };
+  }
+
+  async rotate(userId: string): Promise<{ password: string; sshUser: SshUser }> {
+    const env = environment();
+    const response: any = await new Promise((resolve, reject) => {
+      commitMutation<any>(env, {
+        mutation: graphql`
+          mutation srcRotateSshUserPasswordMutation($input: RotateSshUserPasswordInput!) {
+            rotateSshUserPassword(input: $input) {
+              password
+              sshUser {
+                id
+                username
+                port
+                serverHost
+                sftpRootFolder
+                authenticationMethods
+              }
+            }
+          }
+        `,
+        onCompleted: (payload, errors) => {
+          if (errors && errors.length > 0) {
+            reject(errors[0].message.toString());
+            return;
+          }
+          resolve(payload);
+        },
+        onError: (error) => reject(error.message.toString()),
+        variables: {
+          input: { sshUserId: userId },
+        },
+      });
+    });
+    const payload = response?.rotateSshUserPassword;
+    if (!payload?.sshUser) {
+      throw new Error("Failed to rotate SSH user password.");
+    }
+    return {
+      password: payload.password,
+      sshUser: new SshUser(payload.sshUser),
+    };
+  }
+}
+
+class AppsSshUsersAuthorizedKeysResource {
+  async list(input: { user: string }): Promise<SshAuthorizedKey[]> {
+    const env = environment();
+    const query = await fetchQuery<any>(
+      env,
+      graphql`
+        query srcGetSshAuthorizedKeysQuery($id: ID!) {
+          node(id: $id) {
+            ... on SshUser {
+              authorizedKeys(first: 100) {
+                edges {
+                  node {
+                    id
+                    name
+                    publicKey
+                    createdAt
+                  }
+                }
+              }
+            }
+          }
+        }
+      `,
+      { id: input.user }
+    ).toPromise();
+
+    return (
+      query?.node?.authorizedKeys?.edges
+        ?.map((edge: any) => edge?.node)
+        .filter((node: any) => !!node)
+        .map((node: any) => new SshAuthorizedKey(node)) || []
+    );
+  }
+
+  async create(input: {
+    user: string;
+    publicKey: string;
+    name?: string;
+  }): Promise<SshAuthorizedKey> {
+    const env = environment();
+    const response: any = await new Promise((resolve, reject) => {
+      commitMutation<any>(env, {
+        mutation: graphql`
+          mutation srcAddSshAuthorizedKeyMutation($input: AddSshAuthorizedKeyInput!) {
+            addSshAuthorizedKey(input: $input) {
+              authorizedKey {
+                id
+                name
+                publicKey
+                createdAt
+              }
+            }
+          }
+        `,
+        onCompleted: (payload, errors) => {
+          if (errors && errors.length > 0) {
+            reject(errors[0].message.toString());
+            return;
+          }
+          resolve(payload);
+        },
+        onError: (error) => reject(error.message.toString()),
+        variables: {
+          input: {
+            sshUserId: input.user,
+            publicKey: input.publicKey,
+            name: input.name,
+          },
+        },
+      });
+    });
+    const keyData = response?.addSshAuthorizedKey?.authorizedKey;
+    if (!keyData) {
+      throw new Error("Failed to add SSH authorized key.");
+    }
+    return new SshAuthorizedKey(keyData);
+  }
+
+  async del(input: { user: string; name: string }): Promise<void> {
+    const env = environment();
+    await new Promise((resolve, reject) => {
+      commitMutation<any>(env, {
+        mutation: graphql`
+          mutation srcDeleteSshAuthorizedKeyMutation($input: DeleteSshAuthorizedKeyInput!) {
+            deleteSshAuthorizedKey(input: $input) {
+              success
+            }
+          }
+        `,
+        onCompleted: (payload, errors) => {
+          if (errors && errors.length > 0) {
+            reject(errors[0].message.toString());
+            return;
+          }
+          if (payload?.deleteSshAuthorizedKey?.success) {
+            resolve(payload);
+            return;
+          }
+          reject(new Error("Failed to delete SSH authorized key."));
+        },
+        onError: (error) => reject(error.message.toString()),
+        variables: {
+          // TODO: support key deletion by authorized-key ID when backend exposes it.
+          input: { sshUserId: input.user, name: input.name },
+        },
+      });
+    });
+  }
+}
+
+class AppsSshUsersResource {
+  passwords: AppsSshUsersPasswordsResource;
+  authorizedKeys: AppsSshUsersAuthorizedKeysResource;
+  constructor() {
+    this.passwords = new AppsSshUsersPasswordsResource();
+    this.authorizedKeys = new AppsSshUsersAuthorizedKeysResource();
+  }
+
+  async list(input: { app: string }): Promise<SshUser[]> {
+    const env = environment();
+    const query = await fetchQuery<any>(
+      env,
+      graphql`
+        query srcGetAppSshUsersQuery($id: ID!) {
+          node(id: $id) {
+            ... on DeployApp {
+              sshServer {
+                users(first: 100) {
+                  edges {
+                    node {
+                      id
+                      username
+                      port
+                      serverHost
+                      sftpRootFolder
+                      authenticationMethods
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      `,
+      { id: input.app }
+    ).toPromise();
+
+    return (
+      query?.node?.sshServer?.users?.edges
+        ?.map((edge: any) => edge?.node)
+        .filter((node: any) => !!node)
+        .map((node: any) => new SshUser(node)) || []
+    );
+  }
+
+  async retrieve(id: string): Promise<SshUser | null> {
+    const env = environment();
+    const query = await fetchQuery<any>(
+      env,
+      graphql`
+        query srcGetSshUserByIdQuery($id: ID!) {
+          node(id: $id) {
+            __typename
+            ... on SshUser {
+              id
+              username
+              port
+              serverHost
+              sftpRootFolder
+              authenticationMethods
+            }
+          }
+        }
+      `,
+      { id }
+    ).toPromise();
+    if (!query?.node || query.node.__typename !== "SshUser") {
+      return null;
+    }
+    return new SshUser(query.node);
+  }
+
+  async update(
+    id: string,
+    input: {
+      username?: string;
+      sftpRootFolder?: string;
+      authenticationMethods?: SshAuthenticationMethod[];
+    }
+  ): Promise<SshUser> {
+    const env = environment();
+    const response: any = await new Promise((resolve, reject) => {
+      commitMutation<any>(env, {
+        mutation: graphql`
+          mutation srcEditSshUserMutation($input: EditSshUserInput!) {
+            editSshUser(input: $input) {
+              sshUser {
+                id
+                username
+                port
+                serverHost
+                sftpRootFolder
+                authenticationMethods
+              }
+            }
+          }
+        `,
+        onCompleted: (payload, errors) => {
+          if (errors && errors.length > 0) {
+            reject(errors[0].message.toString());
+            return;
+          }
+          resolve(payload);
+        },
+        onError: (error) => reject(error.message.toString()),
+        variables: {
+          input: {
+            id,
+            username: input.username,
+            sftpRootFolder: input.sftpRootFolder,
+            authenticationMethods: input.authenticationMethods,
+          },
+        },
+      });
+    });
+    const userData = response?.editSshUser?.sshUser;
+    if (!userData) {
+      throw new Error("Failed to update SSH user.");
+    }
+    return new SshUser(userData);
+  }
+}
+
+class AppsSshTokensResource {
+  async create(input: { app: string }): Promise<{ token: string }> {
+    const env = environment();
+    const response: any = await new Promise((resolve, reject) => {
+      commitMutation<any>(env, {
+        mutation: graphql`
+          mutation srcGenerateSshTokenMutation($input: GenerateSshTokenInput!) {
+            generateSshToken(input: $input) {
+              token
+            }
+          }
+        `,
+        onCompleted: (payload, errors) => {
+          if (errors && errors.length > 0) {
+            reject(errors[0].message.toString());
+            return;
+          }
+          resolve(payload);
+        },
+        onError: (error) => reject(error.message.toString()),
+        variables: {
+          input: {
+            appId: input.app,
+          },
+        },
+      });
+    });
+    const token = response?.generateSshToken?.token;
+    if (!token) {
+      throw new Error("Failed to generate SSH token.");
+    }
+    return { token };
+  }
+}
+
+class AppsSshResource {
+  tokens: AppsSshTokensResource;
+  users: AppsSshUsersResource;
+  constructor() {
+    this.tokens = new AppsSshTokensResource();
+    this.users = new AppsSshUsersResource();
+  }
+
+  async retrieve(appId: string): Promise<AppSshServer | null> {
+    const env = environment();
+    const query = await fetchQuery<any>(
+      env,
+      graphql`
+        query srcGetAppSshServerQuery($id: ID!) {
+          node(id: $id) {
+            ... on DeployApp {
+              sshServer {
+                id
+                enabled
+                users(first: 100) {
+                  edges {
+                    node {
+                      id
+                      username
+                      port
+                      serverHost
+                      sftpRootFolder
+                      authenticationMethods
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      `,
+      { id: appId }
+    ).toPromise();
+    if (!query?.node?.sshServer) {
+      return null;
+    }
+    return new AppSshServer(query.node.sshServer);
+  }
+
+  async update(appId: string, input: { enabled: boolean }): Promise<AppSshServer> {
+    const env = environment();
+    const response: any = await new Promise((resolve, reject) => {
+      commitMutation<any>(env, {
+        mutation: graphql`
+          mutation srcToggleSshServerMutation($input: ToggleSshServerInput!) {
+            toggleSshServer(input: $input) {
+              sshServer {
+                id
+                enabled
+                users(first: 100) {
+                  edges {
+                    node {
+                      id
+                      username
+                      port
+                      serverHost
+                      sftpRootFolder
+                      authenticationMethods
+                    }
+                  }
+                }
+              }
+            }
+          }
+        `,
+        onCompleted: (payload, errors) => {
+          if (errors && errors.length > 0) {
+            reject(errors[0].message.toString());
+            return;
+          }
+          resolve(payload);
+        },
+        onError: (error) => reject(error.message.toString()),
+        variables: {
+          input: {
+            appId,
+            enabled: input.enabled,
+          },
+        },
+      });
+    });
+    const sshServer = response?.toggleSshServer?.sshServer;
+    if (!sshServer) {
+      throw new Error("Failed to update SSH server.");
+    }
+    return new AppSshServer(sshServer);
+  }
+}
+
 class DeployAppsResource {
   domains: AppsDomainsResource;
   versions: AppsVersionsResource;
+  ssh: AppsSshResource;
   constructor() {
     this.domains = new AppsDomainsResource();
     this.versions = new AppsVersionsResource();
+    this.ssh = new AppsSshResource();
   }
 
   async retrieve(id: string): Promise<DeployApp | null> {
@@ -707,6 +1213,7 @@ class DeployAppsResource {
   }
 }
 
+
 class FilesResource {
   async upload(
     file: Blob,
@@ -727,9 +1234,15 @@ export class StackMachine {
     this.files = new FilesResource();
   }
   static async init(settings: StackMachineRegistryConfig) {
+    if (!settings.apiKey && settings.token) {
+      console.log(
+        "[stackmachine] `token` is deprecated. Please use `apiKey` instead."
+      );
+    }
+    const authToken = settings.apiKey || settings.token;
     const environment = createEnvironment({
       endpoint: settings.apiUrl || DEFAULT_API_URL,
-      token: settings.token,
+      token: authToken,
     });
     config = {
       environment,

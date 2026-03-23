@@ -406,7 +406,7 @@ type AppTemplate implements Node {
   defaultRepositoryCloneName: String
   demoUrl: String!
   description: String!
-  framework: String
+  framework: String!
   highlighted: Boolean!
 
   """The ID of the object"""
@@ -1553,6 +1553,7 @@ type DeployApp implements Node & Owner {
   githubRepoConnection: GithubRepoConnection
   globalId: ID!
   globalName: String!
+  groupedMetrics(endAt: DateTime!, groupedBy: MetricGrouping!, startAt: DateTime!): UsageMetrics!
 
   """The ID of the object"""
   id: ID!
@@ -1562,6 +1563,7 @@ type DeployApp implements Node & Owner {
   managed: Boolean!
   name: String!
   owner: Owner!
+  perishReason: DeployDeployAppPerishReasonChoices
   permalink: String!
   rollouts(after: String, before: String, first: Int, last: Int): RolloutConnection
   s3Credentials: S3Credentials
@@ -1716,6 +1718,18 @@ enum DeployAppsSortBy {
   MOST_ACTIVE
   NEWEST
   OLDEST
+}
+
+"""An enumeration."""
+enum DeployDeployAppPerishReasonChoices {
+  """App Unclaimed"""
+  APP_UNCLAIMED
+
+  """User Pending Verification"""
+  USER_PENDING_VERIFICATION
+
+  """User Requested"""
+  USER_REQUESTED
 }
 
 """An enumeration."""
@@ -2168,6 +2182,12 @@ enum GrapheneRole {
   VIEWER
 }
 
+type GroupedUsageMetrics {
+  groupedAt: DateTime!
+  requests: RequestMetrics!
+  workloads: WorkloadMetrics!
+}
+
 enum HTTPRedirectType {
   PERMANENT_MOVED
   PERMANENT_REDIRECT
@@ -2572,6 +2592,11 @@ enum MetricUnit {
   hours
 }
 
+type MetricsTotals {
+  requests: RequestMetrics!
+  workloads: WorkloadMetrics!
+}
+
 input MigrateAppRegionInput {
   """ID of the app to migrate"""
   appId: ID!
@@ -2771,6 +2796,9 @@ type Mutation {
   rotateSshUserPassword(input: RotateSshUserPasswordInput!): RotateSshUserPasswordPayload
   seePendingNotifications(input: SeePendingNotificationsInput!): SeePendingNotificationsPayload
   socialAuth(input: SocialAuthJWTInput!): SocialAuthJWTPayload
+
+  """Sync all blog posts from Notion to the database."""
+  syncNotionBlogPosts(input: SyncNotionBlogPostsInput!): SyncNotionBlogPostsPayload
   tagPackageRelease(input: TagPackageReleaseInput!): TagPackageReleasePayload
 
   """Toggle HTTP redirect for the active version of app"""
@@ -2812,6 +2840,7 @@ type Mutation {
   upsertVault(input: UpsertVaultInput!): UpsertVaultPayload
   validateNonce(input: ValidateNonceInput!): ValidateNoncePayload
   validateUserEmail(input: ValidateUserEmailInput!): ValidateUserEmailPayload
+  validateUserFingerprint(input: ValidateUserFingerprintInput!): ValidateUserFingerprintPayload
   validateUserPassword(input: ValidateUserPasswordInput!): ValidateUserPasswordPayload
   verifyAccessToken(token: String): Verify
 
@@ -2864,6 +2893,7 @@ type Namespace implements Node & Owner & PackageOwner {
   githubHandle: String
   globalId: ID!
   globalName: String!
+  groupedMetrics(endAt: DateTime!, groupedBy: MetricGrouping!, startAt: DateTime!): UsageMetrics!
 
   """The ID of the object"""
   id: ID!
@@ -3945,6 +3975,12 @@ type PaymentIntentEdge {
 
 union PaymentMethod = CardPaymentMethod
 
+"""An enumeration."""
+enum PendingVerification {
+  FINGERPRINT
+  VALIDATE_EMAIL
+}
+
 type PiritaFilesystemDir {
   name(display: PiritaFilesystemNameDisplay): String!
 }
@@ -4171,8 +4207,8 @@ type Query {
   getPackages(names: [String!]!): [Package]!
   getPasswordResetToken(token: String!): GetPasswordResetToken
   getSecretValue(id: ID!): String
-  getSignedUrl(expiresAfterSeconds: Int = 60, filename: String): SignedUrl
-  getSignedUrlForPackageUpload(expiresAfterSeconds: Int = 60, filename: String, name: String, version: String = "latest"): SignedUrl
+  getSignedUrl(expiresAfterSeconds: Int = 60, filename: String, method: String): SignedUrl
+  getSignedUrlForPackageUpload(expiresAfterSeconds: Int = 60, filename: String, method: String, name: String, version: String = "latest"): SignedUrl
   getTemplateFrameworks(after: String, before: String, first: Int, last: Int, offset: Int): TemplateFrameworkConnection
   getTemplateLanguages(after: String, before: String, first: Int, last: Int, offset: Int): TemplateLanguageConnection
   getUser(username: String!): User
@@ -4524,6 +4560,21 @@ type RequestAppTransferPayload {
   wasInstantlyTransferred: Boolean!
 }
 
+type RequestMetrics {
+  cachedRequests: BigInt!
+  dataCachedBytes: BigInt!
+  dataServedBytes: BigInt!
+  http2xx: BigInt!
+  http3xx: BigInt!
+  http4xx: BigInt!
+  http5xx: BigInt!
+  httpOther: BigInt!
+  percentageCached: Float!
+  requestDurationMillis: BigInt!
+  totalRequests: BigInt!
+  uniqueUsers: Int!
+}
+
 input RequestPackageTransferInput {
   clientMutationId: String
   newOwnerId: ID!
@@ -4604,7 +4655,7 @@ type Rollout implements Node {
   """The ID of the object"""
   id: ID!
   installCommand: String
-  logUrl: String
+  logUrl: String @deprecated(reason: "Use fetchBuildLogsSubscription instead")
   rolloutDetails: RolloutType
   startCommand: String
   status: StatusEnum!
@@ -5100,6 +5151,19 @@ type Subscription {
   timeout: Int
   userNotificationCreated(userId: ID!): UserNotificationCreated!
   waitOnRepoCreation(repoId: ID!): Boolean!
+}
+
+input SyncNotionBlogPostsInput {
+  clientMutationId: String
+}
+
+"""Sync all blog posts from Notion to the database."""
+type SyncNotionBlogPostsPayload {
+  clientMutationId: String
+  createdCount: Int!
+  errors: [String]
+  syncedCount: Int!
+  updatedCount: Int!
 }
 
 type TXTRecord implements DNSRecordInterface & Node {
@@ -5608,6 +5672,13 @@ type UsageMetric {
   variant: MetricType!
 }
 
+type UsageMetrics {
+  endAt: DateTime!
+  grouped: [GroupedUsageMetrics!]!
+  startAt: DateTime!
+  totals: MetricsTotals!
+}
+
 type User implements Node & Owner & PackageOwner {
   apiTokens(after: String, before: String, first: Int, last: Int, offset: Int): APITokenConnection!
   apps(after: String, before: String, collaborating: Boolean = false, first: Int, last: Int, offset: Int, sortBy: DeployAppsSortBy): DeployAppConnection!
@@ -5637,6 +5708,7 @@ type User implements Node & Owner & PackageOwner {
   githubUser: SocialAuth
   globalId: ID!
   globalName: String!
+  groupedMetrics(endAt: DateTime!, groupedBy: MetricGrouping!, startAt: DateTime!): UsageMetrics!
   hasUsablePassword: Boolean
 
   """The ID of the object"""
@@ -5656,6 +5728,7 @@ type User implements Node & Owner & PackageOwner {
   packageTransfersIncoming(after: String, before: String, first: Int, last: Int, offset: Int): PackageTransferRequestConnection!
   packageVersions(after: String, before: String, first: Int, last: Int, offset: Int): PackageVersionConnection!
   packages(after: String, before: String, collaborating: Boolean = false, first: Int, last: Int, offset: Int): PackageConnection!
+  pendingVerifications: [PendingVerification!]!
   probationStartedAt: DateTime
   publicActivity(after: String, before: String, first: Int, last: Int, offset: Int): ActivityEventConnection!
   registerIntent: String
@@ -5810,6 +5883,16 @@ input ValidateUserEmailInput {
 }
 
 type ValidateUserEmailPayload {
+  clientMutationId: String
+  user: User
+}
+
+input ValidateUserFingerprintInput {
+  clientMutationId: String
+  fingerprintVisitorId: String!
+}
+
+type ValidateUserFingerprintPayload {
   clientMutationId: String
   user: User
 }
@@ -5992,6 +6075,7 @@ type WordPressTheme {
 type WordpressAppKind {
   adminUrl: String!
   liveConfig(forceFetch: Boolean): WordpressLiveConfig
+  wordpressCronjobEnabled: Boolean!
 }
 
 type WordpressDeploymentDefaults {
@@ -6022,6 +6106,15 @@ type WordpressLiveConfig {
   themes: [WordPressTheme]!
   usersCount: Int!
   wordpressVersion: String!
+}
+
+type WorkloadMetrics {
+  memoryBytes: BigInt!
+  networkEgressBytes: BigInt!
+  networkIngressBytes: BigInt!
+  realCpuTimeMillis: BigInt!
+  wallCpuTimeMillis: BigInt!
+  workloads: Int!
 }
 
 input WorkloadRunnerV1 {

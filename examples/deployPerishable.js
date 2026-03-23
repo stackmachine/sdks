@@ -1,9 +1,9 @@
 import { StackMachine, createZip } from "stackmachine";
 
-const STACKMACHINE_TOKEN = process.env.STACKMACHINE_TOKEN;
+const STACKMACHINE_API_KEY = process.env.STACKMACHINE_API_KEY;
 
 const client = await StackMachine.init({
-    token: STACKMACHINE_TOKEN || "wap_sm_demo"
+    apiKey: STACKMACHINE_API_KEY || "wap_sm_demo"
 });
 
 console.log("Uploading file...");

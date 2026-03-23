@@ -89,7 +89,7 @@ export async function networkFetch(
   // console.info(
   //   `[ ${new Date().toUTCString()}:${new Date().getMilliseconds()}] Fetched (${request.name})`,
   // );
-  // console.log(JSON.stringify(json, null, 2));
+  // console.log("Response:", JSON.stringify(json, null, 2));
 
   return json;
 }

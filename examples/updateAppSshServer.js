@@ -6,6 +6,9 @@ const client = await StackMachine.init({
     apiKey: STACKMACHINE_API_KEY || "wap_sm_demo"
 });
 
-await client.apps.del("da_XYZ");
+const appId = "da_XYZ";
+const sshServer = await client.apps.ssh.update(appId, {
+    enabled: true,
+});
 
-console.log("App deleted!");
+console.log("Updated SSH server state:", sshServer.enabled);
