@@ -41,12 +41,24 @@ function relay() {
 
 export default {
   input: 'src/index.ts',
+  external: [
+    '@zip.js/zip.js',
+    'graphql-ws',
+    'relay-runtime',
+  ],
   output: {
     dir: 'dist',
     format: 'esm',
   },
   plugins: [
-    typescript(),
+    typescript({
+      compilerOptions: {
+        noEmit: false,
+        outDir: './dist',
+        declaration: true,
+        declarationDir: './dist',
+      },
+    }),
     relay(),
     // nodeResolve()
   ],
