@@ -46,10 +46,19 @@ export default {
     'graphql-ws',
     'relay-runtime',
   ],
-  output: {
-    dir: 'dist',
-    format: 'esm',
-  },
+  output: [
+    {
+      dir: 'dist',
+      format: 'esm',
+      entryFileNames: '[name].js',
+    },
+    {
+      dir: 'dist',
+      format: 'cjs',
+      exports: 'named',
+      entryFileNames: '[name].cjs',
+    },
+  ],
   plugins: [
     typescript({
       compilerOptions: {
