@@ -23,6 +23,38 @@ type AAAARecord implements DNSRecordInterface & Node {
   updatedAt: DateTime!
 }
 
+type APIKey implements Node {
+  createdAt: DateTime!
+  createdBy: User!
+  deletedAt: DateTime
+
+  """The ID of the object"""
+  id: ID!
+  lastUsedAt: DateTime
+  maskedKey: String!
+  namespace: Namespace!
+}
+
+type APIKeyConnection {
+  """Contains the nodes in this connection."""
+  edges: [APIKeyEdge]!
+
+  """Pagination data for this connection."""
+  pageInfo: PageInfo!
+
+  """Total number of items in the connection."""
+  totalCount: Int
+}
+
+"""A Relay edge containing a `APIKey` and its cursor."""
+type APIKeyEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: APIKey
+}
+
 type APIToken implements Node {
   createdAt: DateTime!
 
@@ -406,13 +438,13 @@ type AppTemplate implements Node {
   defaultRepositoryCloneName: String
   demoUrl: String!
   description: String!
-  framework: String
+  framework: String!
   highlighted: Boolean!
 
   """The ID of the object"""
   id: ID!
   isPublic: Boolean!
-  language: String
+  language: String!
   name: String!
   readme: String!
   repoLicense: String!
@@ -1277,6 +1309,17 @@ type CreateCheckoutSessionPayload {
   clientSecret: String!
 }
 
+input CreateNamespaceAPIKeyInput {
+  clientMutationId: String
+  namespaceId: ID!
+}
+
+type CreateNamespaceAPIKeyPayload {
+  apiKey: APIKey!
+  clientMutationId: String
+  keyRaw: String!
+}
+
 input CreateNamespaceInput {
   """The namespace avatar"""
   avatarUpload: Upload
@@ -1492,6 +1535,16 @@ type DeleteDomainPayload {
   success: Boolean!
 }
 
+input DeleteNamespaceAPIKeyInput {
+  apiKeyId: ID!
+  clientMutationId: String
+}
+
+type DeleteNamespaceAPIKeyPayload {
+  clientMutationId: String
+  success: Boolean!
+}
+
 input DeleteNamespaceInput {
   clientMutationId: String
   namespaceId: ID!
@@ -1548,20 +1601,35 @@ type DeployApp implements Node & Owner {
   deployments(after: String, before: String, first: Int, last: Int): DeploymentConnection @deprecated(reason: "Use rollouts instead")
   description: String
   domains(after: String, before: String, first: Int, last: Int, offset: Int, sortBy: AppAliasSortBy! = NEWEST): AppAliasConnection!
+  emailUsage: EmailUsageSummary
   favicon: URL
   forceHttps: Boolean!
   githubRepoConnection: GithubRepoConnection
   globalId: ID!
   globalName: String!
+  groupedMetrics(endAt: DateTime!, groupedBy: MetricGrouping!, startAt: DateTime!): UsageMetrics!
 
   """The ID of the object"""
   id: ID!
   isPro: Boolean!
   kind: Kind
+  logs(
+    after: String
+    before: String
+    first: Int
+
+    """Filter for this instance id in logs"""
+    instanceId: String
+    last: Int
+
+    """Search logs for this text."""
+    textSearch: String
+  ): LogConnection!
   mails: [AppMail]
   managed: Boolean!
   name: String!
   owner: Owner!
+  perishReason: DeployDeployAppPerishReasonChoices
   permalink: String!
   rollouts(after: String, before: String, first: Int, last: Int): RolloutConnection
   s3Credentials: S3Credentials
@@ -1637,14 +1705,20 @@ type DeployAppVersion implements Node {
   logs(
     after: String
     before: String
+
+    """Fetch logs until this timestamp. Takes ISO timestamp."""
+    end: DateTime
     first: Int
 
-    """List of instance ids to fetch logs from."""
-    instanceIds: [String]
+    """Filter for this instance id in logs"""
+    instanceId: String
     last: Int
 
     """Filter for this request id in logs"""
     requestId: String
+
+    """Get logs starting from this timestamp. Takes ISO timestamp."""
+    start: DateTime
 
     """
     Get logs starting from this timestamp. Takes EPOCH timestamp in seconds.
@@ -1656,6 +1730,9 @@ type DeployAppVersion implements Node {
 
     """List of streams to fetch logs from. e.g. stdout, stderr."""
     streams: [LogStream]
+
+    """Search logs for this text."""
+    textSearch: String
 
     """Fetch logs until this timestamp. Takes EPOCH timestamp in seconds."""
     until: Float
@@ -1716,6 +1793,18 @@ enum DeployAppsSortBy {
   MOST_ACTIVE
   NEWEST
   OLDEST
+}
+
+"""An enumeration."""
+enum DeployDeployAppPerishReasonChoices {
+  """App Unclaimed"""
+  APP_UNCLAIMED
+
+  """User Pending Verification"""
+  USER_PENDING_VERIFICATION
+
+  """User Requested"""
+  USER_REQUESTED
 }
 
 """An enumeration."""
@@ -1955,6 +2044,12 @@ type EditSshUserPayload {
   sshUser: SshUser!
 }
 
+type EmailUsageSummary {
+  currentUsage: Int!
+  endDate: DateTime!
+  startDate: DateTime!
+}
+
 input EnableAppInput {
   """ID of app to disable"""
   appId: ID!
@@ -2168,6 +2263,12 @@ enum GrapheneRole {
   VIEWER
 }
 
+type GroupedUsageMetrics {
+  groupedAt: DateTime!
+  requests: RequestMetrics!
+  workloads: WorkloadMetrics!
+}
+
 enum HTTPRedirectType {
   PERMANENT_MOVED
   PERMANENT_REDIRECT
@@ -2361,6 +2462,7 @@ type Log {
 
   """ID of instance from which the log was generated"""
   instanceId: String!
+  labels: [LogLabel]!
 
   """Log message"""
   message: String!
@@ -2387,6 +2489,11 @@ type LogEdge {
 
   """The item at the end of the edge"""
   node: Log
+}
+
+type LogLabel {
+  label: String!
+  value: String!
 }
 
 """An enumeration."""
@@ -2572,6 +2679,11 @@ enum MetricUnit {
   hours
 }
 
+type MetricsTotals {
+  requests: RequestMetrics!
+  workloads: WorkloadMetrics!
+}
+
 input MigrateAppRegionInput {
   """ID of the app to migrate"""
   appId: ID!
@@ -2639,6 +2751,7 @@ type Mutation {
   createAppDb(input: CreateAppDBInput!): CreateAppDBPayload
   createCheckoutSession(input: CreateCheckoutSessionInput!): CreateCheckoutSessionPayload
   createNamespace(input: CreateNamespaceInput!): CreateNamespacePayload
+  createNamespaceApiKey(input: CreateNamespaceAPIKeyInput!): CreateNamespaceAPIKeyPayload
   createRepoForAppTemplate(input: CreateRepoForAppTemplateInput!): CreateRepoForAppTemplatePayload
   deleteApp(input: DeleteAppInput!): DeleteAppPayload
 
@@ -2653,6 +2766,7 @@ type Mutation {
   deleteDNSRecord(input: DeleteDNSRecordInput!): DeleteDNSRecordPayload
   deleteDomain(input: DeleteDomainInput!): DeleteDomainPayload
   deleteNamespace(input: DeleteNamespaceInput!): DeleteNamespacePayload
+  deleteNamespaceApiKey(input: DeleteNamespaceAPIKeyInput!): DeleteNamespaceAPIKeyPayload
 
   """Edit an SSH user."""
   deleteSshAuthorizedKey(input: DeleteSshAuthorizedKeyInput!): DeleteSshAuthorizedKeyPayload
@@ -2770,7 +2884,13 @@ type Mutation {
   """Rotate the password for an SSH user."""
   rotateSshUserPassword(input: RotateSshUserPasswordInput!): RotateSshUserPasswordPayload
   seePendingNotifications(input: SeePendingNotificationsInput!): SeePendingNotificationsPayload
+
+  """Set the requested default domain for an app."""
+  setAppDefaultAlias(input: SetAppDefaultAliasInput!): SetAppDefaultAliasPayload
   socialAuth(input: SocialAuthJWTInput!): SocialAuthJWTPayload
+
+  """Sync all blog posts from Notion to the database."""
+  syncNotionBlogPosts(input: SyncNotionBlogPostsInput!): SyncNotionBlogPostsPayload
   tagPackageRelease(input: TagPackageReleaseInput!): TagPackageReleasePayload
 
   """Toggle HTTP redirect for the active version of app"""
@@ -2812,6 +2932,7 @@ type Mutation {
   upsertVault(input: UpsertVaultInput!): UpsertVaultPayload
   validateNonce(input: ValidateNonceInput!): ValidateNoncePayload
   validateUserEmail(input: ValidateUserEmailInput!): ValidateUserEmailPayload
+  validateUserFingerprint(input: ValidateUserFingerprintInput!): ValidateUserFingerprintPayload
   validateUserPassword(input: ValidateUserPasswordInput!): ValidateUserPasswordPayload
   verifyAccessToken(token: String): Verify
 
@@ -2845,6 +2966,7 @@ type NakedDeployment implements Node {
 }
 
 type Namespace implements Node & Owner & PackageOwner {
+  apiKeys(after: String, before: String, first: Int, last: Int, offset: Int): APIKeyConnection!
   apps(after: String, before: String, first: Int, last: Int, offset: Int, sortBy: DeployAppsSortBy): DeployAppConnection!
   avatar: String!
   avatarUpdatedAt: DateTime
@@ -2861,9 +2983,11 @@ type Namespace implements Node & Owner & PackageOwner {
   description: String!
   displayName: String
   domains(after: String, before: String, first: Int, last: Int, offset: Int): DNSDomainConnection!
+  emailUsage: EmailUsageSummary
   githubHandle: String
   globalId: ID!
   globalName: String!
+  groupedMetrics(endAt: DateTime!, groupedBy: MetricGrouping!, startAt: DateTime!): UsageMetrics!
 
   """The ID of the object"""
   id: ID!
@@ -3136,6 +3260,7 @@ type ObtainJSONWebTokenPayload {
 }
 
 interface Owner {
+  emailUsage: EmailUsageSummary
   globalId: ID!
   globalName: String!
   isPro: Boolean!
@@ -3945,6 +4070,12 @@ type PaymentIntentEdge {
 
 union PaymentMethod = CardPaymentMethod
 
+"""An enumeration."""
+enum PendingVerification {
+  FINGERPRINT
+  VALIDATE_EMAIL
+}
+
 type PiritaFilesystemDir {
   name(display: PiritaFilesystemNameDisplay): String!
 }
@@ -4171,8 +4302,8 @@ type Query {
   getPackages(names: [String!]!): [Package]!
   getPasswordResetToken(token: String!): GetPasswordResetToken
   getSecretValue(id: ID!): String
-  getSignedUrl(expiresAfterSeconds: Int = 60, filename: String): SignedUrl
-  getSignedUrlForPackageUpload(expiresAfterSeconds: Int = 60, filename: String, name: String, version: String = "latest"): SignedUrl
+  getSignedUrl(expiresAfterSeconds: Int = 60, filename: String, method: String): SignedUrl
+  getSignedUrlForPackageUpload(expiresAfterSeconds: Int = 60, filename: String, method: String, name: String, version: String = "latest"): SignedUrl
   getTemplateFrameworks(after: String, before: String, first: Int, last: Int, offset: Int): TemplateFrameworkConnection
   getTemplateLanguages(after: String, before: String, first: Int, last: Int, offset: Int): TemplateLanguageConnection
   getUser(username: String!): User
@@ -4181,6 +4312,16 @@ type Query {
   info: RegistryInfo
   internalTask(id: ID!): InternalTask
   latestTOS: TermsOfService!
+  logValues(
+    after: String
+    appId: ID
+    appVersionId: ID
+    before: String
+
+    """Label to get the values for"""
+    label: String!
+  ): [String]!
+  logs(after: String, appId: ID, appVersionId: ID, before: String, first: Int, instanceId: ID, last: Int, textSearch: String): LogConnection!
 
   """Generate a unique repo name in the logged in user's github account."""
   newRepoName(
@@ -4203,6 +4344,7 @@ type Query {
   viewer: User
   viewerCan(action: OwnerAction!, ownerName: String!): Boolean!
   wordpressDeploymentDefaults: WordpressDeploymentDefaults!
+  wordpressVersions: [WordpressVersion!]!
 }
 
 input ReadNotificationInput {
@@ -4524,6 +4666,21 @@ type RequestAppTransferPayload {
   wasInstantlyTransferred: Boolean!
 }
 
+type RequestMetrics {
+  cachedRequests: BigInt!
+  dataCachedBytes: BigInt!
+  dataServedBytes: BigInt!
+  http2xx: BigInt!
+  http3xx: BigInt!
+  http4xx: BigInt!
+  http5xx: BigInt!
+  httpOther: BigInt!
+  percentageCached: Float!
+  requestDurationMillis: BigInt!
+  totalRequests: BigInt!
+  uniqueUsers: Int!
+}
+
 input RequestPackageTransferInput {
   clientMutationId: String
   newOwnerId: ID!
@@ -4604,7 +4761,7 @@ type Rollout implements Node {
   """The ID of the object"""
   id: ID!
   installCommand: String
-  logUrl: String
+  logUrl: String @deprecated(reason: "Use fetchBuildLogsSubscription instead")
   rolloutDetails: RolloutType
   startCommand: String
   status: StatusEnum!
@@ -4838,6 +4995,7 @@ type Secret implements Node {
   """The ID of the object"""
   id: ID!
   name: String!
+  sensitive: Boolean!
   updatedAt: DateTime!
 }
 
@@ -4864,6 +5022,9 @@ type SecretEdge {
 input SecretInput {
   """Name of the secret."""
   name: String!
+
+  """Whether the secret should be encrypted at rest and in entity logs."""
+  sensitive: Boolean = true
 
   """Value of the secret."""
   value: String!
@@ -4905,6 +5066,20 @@ input SeePendingNotificationsInput {
 type SeePendingNotificationsPayload {
   clientMutationId: String
   success: Boolean
+}
+
+input SetAppDefaultAliasInput {
+  clientMutationId: String
+
+  """ID of the domain to set as the default."""
+  id: ID!
+}
+
+"""Set the requested default domain for an app."""
+type SetAppDefaultAliasPayload {
+  clientMutationId: String
+  domain: AppAlias!
+  success: Boolean!
 }
 
 input SetDefaultPaymentMethodInput {
@@ -5061,6 +5236,7 @@ type Subscription {
     """Force generation"""
     forceGeneration: Boolean = false
   ): DeployAppVersion!
+  logAdded(appId: ID, appVersionId: ID, instanceId: ID, textSearch: String): Log!
   packageVersionCreated(ownerId: ID, publishedBy: ID): PackageVersion!
 
   """Subscribe to package version ready"""
@@ -5100,6 +5276,19 @@ type Subscription {
   timeout: Int
   userNotificationCreated(userId: ID!): UserNotificationCreated!
   waitOnRepoCreation(repoId: ID!): Boolean!
+}
+
+input SyncNotionBlogPostsInput {
+  clientMutationId: String
+}
+
+"""Sync all blog posts from Notion to the database."""
+type SyncNotionBlogPostsPayload {
+  clientMutationId: String
+  createdCount: Int!
+  errors: [String]
+  syncedCount: Int!
+  updatedCount: Int!
 }
 
 type TXTRecord implements DNSRecordInterface & Node {
@@ -5497,6 +5686,9 @@ input UpsertAppDomainInput {
   """ID of the domain to upsert."""
   id: ID
 
+  """Whether this domain should become the app's selected default domain."""
+  isDefault: Boolean = false
+
   """Name of the secret."""
   name: String!
 
@@ -5523,6 +5715,9 @@ input UpsertAppSecretInput {
 
   """Name of the secret."""
   name: String!
+
+  """Whether the secret should be encrypted at rest and in entity logs."""
+  sensitive: Boolean = true
 
   """Value of the secret."""
   value: String!
@@ -5608,6 +5803,13 @@ type UsageMetric {
   variant: MetricType!
 }
 
+type UsageMetrics {
+  endAt: DateTime!
+  grouped: [GroupedUsageMetrics!]!
+  startAt: DateTime!
+  totals: MetricsTotals!
+}
+
 type User implements Node & Owner & PackageOwner {
   apiTokens(after: String, before: String, first: Int, last: Int, offset: Int): APITokenConnection!
   apps(after: String, before: String, collaborating: Boolean = false, first: Int, last: Int, offset: Int, sortBy: DeployAppsSortBy): DeployAppConnection!
@@ -5627,6 +5829,7 @@ type User implements Node & Owner & PackageOwner {
   dateJoined: DateTime!
   domains(after: String, before: String, first: Int, last: Int, offset: Int): DNSDomainConnection!
   email: String!
+  emailUsage: EmailUsageSummary
   firstName: String!
   fullName: String!
   githubInstallationExists: Boolean! @deprecated(reason: "Please use github installations instead.")
@@ -5637,6 +5840,7 @@ type User implements Node & Owner & PackageOwner {
   githubUser: SocialAuth
   globalId: ID!
   globalName: String!
+  groupedMetrics(endAt: DateTime!, groupedBy: MetricGrouping!, startAt: DateTime!): UsageMetrics!
   hasUsablePassword: Boolean
 
   """The ID of the object"""
@@ -5656,6 +5860,7 @@ type User implements Node & Owner & PackageOwner {
   packageTransfersIncoming(after: String, before: String, first: Int, last: Int, offset: Int): PackageTransferRequestConnection!
   packageVersions(after: String, before: String, first: Int, last: Int, offset: Int): PackageVersionConnection!
   packages(after: String, before: String, collaborating: Boolean = false, first: Int, last: Int, offset: Int): PackageConnection!
+  pendingVerifications: [PendingVerification!]!
   probationStartedAt: DateTime
   publicActivity(after: String, before: String, first: Int, last: Int, offset: Int): ActivityEventConnection!
   registerIntent: String
@@ -5810,6 +6015,16 @@ input ValidateUserEmailInput {
 }
 
 type ValidateUserEmailPayload {
+  clientMutationId: String
+  user: User
+}
+
+input ValidateUserFingerprintInput {
+  clientMutationId: String
+  fingerprintVisitorId: String!
+}
+
+type ValidateUserFingerprintPayload {
   clientMutationId: String
   user: User
 }
@@ -5992,6 +6207,8 @@ type WordPressTheme {
 type WordpressAppKind {
   adminUrl: String!
   liveConfig(forceFetch: Boolean): WordpressLiveConfig
+  wordpressCronjobEnabled: Boolean!
+  wordpressVersion: WordpressVersion
 }
 
 type WordpressDeploymentDefaults {
@@ -6022,6 +6239,28 @@ type WordpressLiveConfig {
   themes: [WordPressTheme]!
   usersCount: Int!
   wordpressVersion: String!
+}
+
+type WordpressVersion implements Node {
+  downloadUrl: String!
+  githubRepo: String!
+  githubTag: String!
+
+  """The ID of the object"""
+  id: ID!
+  isLatest: Boolean!
+  minPhpVersion: String!
+  mysqlVersion: String!
+  version: String!
+}
+
+type WorkloadMetrics {
+  memoryBytes: BigInt!
+  networkEgressBytes: BigInt!
+  networkIngressBytes: BigInt!
+  realCpuTimeMillis: BigInt!
+  wallCpuTimeMillis: BigInt!
+  workloads: Int!
 }
 
 input WorkloadRunnerV1 {

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<904d3b9b7c586fbe801a7ca8092e0b47>>
+ * @generated SignedSource<<ac432e5cf4e1a508c9864d6c47401c81>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,6 +15,7 @@ export type UpsertAppDomainInput = {
   appId: string;
   clientMutationId?: string | null | undefined;
   id?: string | null | undefined;
+  isDefault?: boolean | null | undefined;
   name: string;
   redirection?: AppDomainRedirectRules | null | undefined;
   wait?: boolean | null | undefined;
