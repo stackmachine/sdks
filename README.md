@@ -47,6 +47,9 @@ Install dependencies with `npm install`.
 
 Run `npm run ci` before pushing changes. This runs the same validation steps as CI:
 
+- formatting check
 - type checking
 - build
 - `check-schema` to verify `schema.graphql` is up to date
+
+Use `npm run format` to apply Prettier formatting locally.

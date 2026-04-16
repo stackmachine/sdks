@@ -25,7 +25,9 @@ import {
   srcGetAppByIdQuery$variables,
 } from "__generated__/srcGetAppByIdQuery.graphql";
 import { createZip, handleUploadFileToCloud } from "upload";
-import nodeAppAlias, { srcAppAlias$data } from "__generated__/srcAppAlias.graphql";
+import nodeAppAlias, {
+  srcAppAlias$data,
+} from "__generated__/srcAppAlias.graphql";
 import { srcUpsertAppDomainMutation } from "__generated__/srcUpsertAppDomainMutation.graphql";
 import { srcGetAppLogsQuery } from "__generated__/srcGetAppLogsQuery.graphql";
 import { srcDeleteAppDomainMutation } from "__generated__/srcDeleteAppDomainMutation.graphql";
@@ -55,7 +57,7 @@ let config: {
 const assertConfig = () => {
   if (!config) {
     throw new Error(
-      "StackMachine is not initialized. Please call init() first."
+      "StackMachine is not initialized. Please call init() first.",
     );
   }
 };
@@ -133,7 +135,8 @@ class AppAlias {
   redirectsToId: string | undefined;
   async retrieveMany(ids: string[]): Promise<AppAlias[]> {
     let env = environment();
-    let query = await fetchQuery<srcGetAppAliasesQuery>(env,
+    let query = await fetchQuery<srcGetAppAliasesQuery>(
+      env,
       graphql`
         query srcGetAppAliasesQuery($ids: [ID!]!) {
           nodes(ids: $ids) {
@@ -145,7 +148,14 @@ class AppAlias {
         ids: ids,
       },
     ).toPromise();
-    return query?.nodes?.map((node: any) => new AppAlias(getFragmentData<srcAppAlias$data>(env, nodeAppAlias, node))) || [];
+    return (
+      query?.nodes?.map(
+        (node: any) =>
+          new AppAlias(
+            getFragmentData<srcAppAlias$data>(env, nodeAppAlias, node),
+          ),
+      ) || []
+    );
   }
   async retrieve(id: string): Promise<AppAlias | undefined> {
     let aliases = await this.retrieveMany([id]);
@@ -166,17 +176,22 @@ class AppAlias {
   updatedAt: Date;
   createdAt: Date;
   constructor(data: srcAppAlias$data) {
-      this.id = data.id;
-      this.url = data.url;
-      this.state = AppAliasVerificationStates[data.state as "UNVERIFIED" | "VERIFIED" | "APEX_WITHOUT_REDIRECTION"];
-      this.redirectionHttpCode = HTTPRedirectType[data.redirectionHttpCode as "PERMANENT" | "TEMPORARY"];
-      this.redirectsFromIds = data.redirectsFrom?.map((redirect) => redirect?.id!) || [];
-      this.redirectsToId = data.redirectsTo?.id;
-      this.expectedDnsRecords = data.expectedDnsRecords as any;
-      this.firstCheckedAt = data.firstCheckedAt;
-      this.lastCheckedAt = data.lastCheckedAt;
-      this.updatedAt = data.updatedAt;
-      this.createdAt = data.createdAt;
+    this.id = data.id;
+    this.url = data.url;
+    this.state =
+      AppAliasVerificationStates[
+        data.state as "UNVERIFIED" | "VERIFIED" | "APEX_WITHOUT_REDIRECTION"
+      ];
+    this.redirectionHttpCode =
+      HTTPRedirectType[data.redirectionHttpCode as "PERMANENT" | "TEMPORARY"];
+    this.redirectsFromIds =
+      data.redirectsFrom?.map((redirect) => redirect?.id!) || [];
+    this.redirectsToId = data.redirectsTo?.id;
+    this.expectedDnsRecords = data.expectedDnsRecords as any;
+    this.firstCheckedAt = data.firstCheckedAt;
+    this.lastCheckedAt = data.lastCheckedAt;
+    this.updatedAt = data.updatedAt;
+    this.createdAt = data.createdAt;
   }
   verify(): Promise<boolean> {
     const env = environment();
@@ -196,7 +211,11 @@ class AppAlias {
           if (response.verifyAppDomain) {
             resolve(response.verifyAppDomain.verified);
           } else {
-            reject(new Error("Failed to verify domain, mutation was not successful."));
+            reject(
+              new Error(
+                "Failed to verify domain, mutation was not successful.",
+              ),
+            );
           }
         },
         onError: (error) => {
@@ -228,7 +247,11 @@ class AppAlias {
           if (response.deleteAppDomain?.success) {
             resolve();
           } else {
-            reject(new Error("Failed to delete domain, mutation was not successful."));
+            reject(
+              new Error(
+                "Failed to delete domain, mutation was not successful.",
+              ),
+            );
           }
         },
         onError: (error) => {
@@ -288,11 +311,21 @@ class DeployApp {
     this.name = data.name;
     this.url = data.url;
     this.adminUrl = data.adminUrl;
-    this.domains = data.domains.edges
-      .map((edge) => new AppAlias(getFragmentData<srcAppAlias$data>(environment(), nodeAppAlias, edge?.node)));
+    this.domains = data.domains.edges.map(
+      (edge) =>
+        new AppAlias(
+          getFragmentData<srcAppAlias$data>(
+            environment(),
+            nodeAppAlias,
+            edge?.node,
+          ),
+        ),
+    );
     this.favicon = data.favicon;
     this.screenshot = data.screenshot;
-    this.activeVersion = data.activeVersion ? new DeployAppVersion(data.activeVersion as any, this) : null;
+    this.activeVersion = data.activeVersion
+      ? new DeployAppVersion(data.activeVersion as any, this)
+      : null;
     // this.managed = data.managed;
     // if (data.kind?.__typename === "WordPressAppKind") {
     //   let kindData = getFragmentData<srcDeployAppKindWordPress$data>(environment(), nodeApp, data.kind);
@@ -324,27 +357,45 @@ class DeployApp {
           if (response.upsertAppDomain?.success) {
             const domains = response.upsertAppDomain.domains;
             if (!domains) {
-              reject(new Error("Failed to upsert domain, no domains returned."));
+              reject(
+                new Error("Failed to upsert domain, no domains returned."),
+              );
               return;
             }
             var addedDomain: AppAlias | null = null;
             for (const returnedDomain of domains) {
-              let appAliasData = getFragmentData<srcAppAlias$data>(env, nodeAppAlias, returnedDomain);
+              let appAliasData = getFragmentData<srcAppAlias$data>(
+                env,
+                nodeAppAlias,
+                returnedDomain,
+              );
               const appAlias = new AppAlias(appAliasData);
-              if (appAlias.expectedDnsRecords.find((record) => record.host == domain)) {
+              if (
+                appAlias.expectedDnsRecords.find(
+                  (record) => record.host == domain,
+                )
+              ) {
                 addedDomain = appAlias;
               }
               this.domains.push(appAlias);
             }
 
             if (!addedDomain) {
-              reject(new Error("Failed to upsert domain, domain not found in returned domains."));
+              reject(
+                new Error(
+                  "Failed to upsert domain, domain not found in returned domains.",
+                ),
+              );
               return;
             }
             this.domains.push(addedDomain);
             resolve(addedDomain);
           } else {
-            reject(new Error("Failed to upsert domain, mutation was not successful."));
+            reject(
+              new Error(
+                "Failed to upsert domain, mutation was not successful.",
+              ),
+            );
           }
         },
         onError: (error) => {
@@ -394,7 +445,7 @@ class DeployAppVersion {
       let appData = getFragmentData<srcDeployAppData$data>(
         environment(),
         nodeApp,
-        data.app
+        data.app,
       );
       app = new DeployApp(appData);
     }
@@ -403,11 +454,12 @@ class DeployAppVersion {
 
   async fetchLogs(since: Date): Promise<Log[]> {
     const env = environment();
-    let query = await fetchQuery<srcGetAppLogsQuery>(env,
+    let query = await fetchQuery<srcGetAppLogsQuery>(
+      env,
       graphql`
         query srcGetAppLogsQuery($appId: ID!, $since: DateTime!) {
           node(id: $appId) {
-            ...on DeployAppVersion {
+            ... on DeployAppVersion {
               logs(startingFromISO: $since) {
                 edges {
                   node {
@@ -428,13 +480,17 @@ class DeployAppVersion {
         since: since.toISOString(),
       },
     ).toPromise();
-    return (query?.node?.logs?.edges.filter((edge) => edge?.node).map((edge) => edge?.node) as Log[]) || [];
+    return (
+      (query?.node?.logs?.edges
+        .filter((edge) => edge?.node)
+        .map((edge) => edge?.node) as Log[]) || []
+    );
   }
 }
 function getFragmentData<T>(
   environment: Environment,
   node: ReaderFragment,
-  fetchedData: any
+  fetchedData: any,
 ): T {
   let selector = getSelector(node, fetchedData);
   return environment.lookup(selector as any).data as any;
@@ -492,7 +548,7 @@ class AutobuildApp {
                 getFragmentData<srcDeployAppVersionData$data>(
                   env,
                   nodeAppVersion,
-                  appVersion
+                  appVersion,
                 );
               this.appVersion = new DeployAppVersion(appVersionData);
               resolve(this.appVersion);
@@ -500,8 +556,8 @@ class AutobuildApp {
             } else {
               reject(
                 new Error(
-                  "Error when building the app: build finished without deployed app"
-                )
+                  "Error when building the app: build finished without deployed app",
+                ),
               );
               return;
             }
@@ -518,8 +574,8 @@ class AutobuildApp {
           if (!this.appVersion) {
             reject(
               new Error(
-                "Error when building the app: build finished without deployed app"
-              )
+                "Error when building the app: build finished without deployed app",
+              ),
             );
           } else {
             resolve(this.appVersion);
@@ -550,7 +606,7 @@ class AutobuildApp {
     }
     if (!app) {
       throw new Error(
-        "Error when building the app: build finished without deployed app"
+        "Error when building the app: build finished without deployed app",
       );
     }
     return app;
@@ -573,7 +629,7 @@ export class StackMachine {
     return new StackMachine(environment);
   }
   async getApp(
-    input: srcGetAppByNameQuery$variables | srcGetAppByIdQuery$variables
+    input: srcGetAppByNameQuery$variables | srcGetAppByIdQuery$variables,
   ): Promise<DeployApp | null> {
     const env = environment();
     if ("id" in input) {
@@ -590,7 +646,7 @@ export class StackMachine {
         `,
         {
           id: input.id!,
-        }
+        },
       ).toPromise();
       if (!query?.app || query.app.__typename !== "DeployApp") {
         return null;
@@ -598,7 +654,7 @@ export class StackMachine {
       let appData = getFragmentData<srcDeployAppData$data>(
         environment(),
         nodeApp,
-        query.app
+        query.app,
       );
       return new DeployApp(appData);
     } else {
@@ -615,7 +671,7 @@ export class StackMachine {
         {
           name: input.name,
           owner: input.owner,
-        }
+        },
       ).toPromise();
       if (!query?.app) {
         return null;
@@ -623,13 +679,13 @@ export class StackMachine {
       let appData = getFragmentData<srcDeployAppData$data>(
         environment(),
         nodeApp,
-        query.app
+        query.app,
       );
       return new DeployApp(appData);
     }
   }
   async deleteApp(
-    input: srcDeleteAppMutation$variables["input"]
+    input: srcDeleteAppMutation$variables["input"],
   ): Promise<void> {
     const env = environment();
     let success: any = await new Promise((resolve, reject) => {
@@ -644,7 +700,7 @@ export class StackMachine {
         onCompleted: (response, errors) => {
           if (errors && errors.length > 0) {
             reject(
-              `The app could not be deleted: ${errors[0].message.toString()}`
+              `The app could not be deleted: ${errors[0].message.toString()}`,
             );
             return;
           }
@@ -660,12 +716,21 @@ export class StackMachine {
     });
     return success;
   }
-  async uploadFile(file: Blob, setUploadFilesProgress?: (progress: number) => void): Promise<string> {
+  async uploadFile(
+    file: Blob,
+    setUploadFilesProgress?: (progress: number) => void,
+  ): Promise<string> {
     const env = environment();
-    const url = await handleUploadFileToCloud(env, file, setUploadFilesProgress);
+    const url = await handleUploadFileToCloud(
+      env,
+      file,
+      setUploadFilesProgress,
+    );
     return url;
   }
-  async deployApp(input: srcAutobuildMutation$variables["input"]): Promise<AutobuildApp> {
+  async deployApp(
+    input: srcAutobuildMutation$variables["input"],
+  ): Promise<AutobuildApp> {
     const env = environment();
     let query: any = await new Promise((resolve, reject) => {
       commitMutation<srcAutobuildMutation>(env, {
@@ -680,7 +745,7 @@ export class StackMachine {
         onCompleted: (response, errors) => {
           if (errors && errors.length > 0) {
             reject(
-              `The app could not be built: ${errors[0].message.toString()}`
+              `The app could not be built: ${errors[0].message.toString()}`,
             );
             return;
           }

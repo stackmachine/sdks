@@ -1,6 +1,6 @@
 {
-    "type": "module",
-    "dependencies": {
-        "stackmachine": "../"
-    }
+  "type": "module",
+  "dependencies": {
+    "stackmachine": "../"
+  }
 }

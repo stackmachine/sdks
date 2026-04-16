@@ -3,21 +3,21 @@ import { StackMachine } from "stackmachine";
 const STACKMACHINE_TOKEN = process.env.STACKMACHINE_TOKEN;
 
 const client = await StackMachine.init({
-    token: STACKMACHINE_TOKEN || "wap_sm_demo"
+  token: STACKMACHINE_TOKEN || "wap_sm_demo",
 });
 
 console.log("Uploading file...");
 
 const appName = "zip-upload-test6";
 const build = await client.deployApp({
-    appName: appName,
-    owner: "stackmachine",
-    uploadUrl: "https://www.example.com/test.zip"
+  appName: appName,
+  owner: "stackmachine",
+  uploadUrl: "https://www.example.com/test.zip",
 });
 
 console.log("Deploying app...");
-build.subscribeToProgress(({kind, message, datetime, stream}) => {
-    console.log(datetime, stream, kind, message);
+build.subscribeToProgress(({ kind, message, datetime, stream }) => {
+  console.log(datetime, stream, kind, message);
 });
 let startTime = new Date();
 console.log("Waiting for the app to be built...");
