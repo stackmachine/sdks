@@ -17,6 +17,7 @@
     "ci": "npm run format:check && npm run typecheck && npm run build && npm run check-schema",
     "build": "npm run relay && npm run build-sdk",
     "build-sdk": "rollup -c rollup.config.mjs",
+    "test": "npm run build && node --test",
     "check-schema": "npm run fetch-schema && git diff --quiet ./schema.graphql",
     "fetch-schema": "graphql-codegen --config .graphqlconfig",
     "format": "prettier --write .",
