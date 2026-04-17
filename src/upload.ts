@@ -96,15 +96,16 @@ const uploadFileInChunks = async (
   while (start < totalSize) {
     const chunk = file.slice(start, end);
     const response = await uploadChunk(uploadUrl, chunk, start, end, totalSize);
-    setUploadFilesProgress?.(start / totalSize);
     if (response.status === 308) {
       const rangeHeader = response.headers.get("Range");
       if (rangeHeader) {
         const uploadedBytes = parseInt(rangeHeader.split("-")[1]) + 1;
+        setUploadFilesProgress?.(uploadedBytes / totalSize);
         start = uploadedBytes;
         end = Math.min(start + CHUNK_SIZE, totalSize);
       }
     } else if (response.ok) {
+      setUploadFilesProgress?.(1);
       break;
     }
   }
@@ -142,10 +143,12 @@ export const handleUploadFileToCloud = async (
     const totalSize = zipFile.size;
     const url = query?.getSignedUrl?.url;
     // console.log("FileUploaded", url);
-    const uploadUrl = await initiateResumableUpload(url, totalSize);
-    await uploadFileInChunks(uploadUrl, zipFile);
-
-    setUploadFilesProgress?.(1);
+    const uploadUrl = await initiateResumableUpload(
+      url,
+      totalSize,
+      setUploadFilesProgress,
+    );
+    await uploadFileInChunks(uploadUrl, zipFile, setUploadFilesProgress);
     return url;
   } else {
     throw new Error("Failed to generate upload URL for the zip file");

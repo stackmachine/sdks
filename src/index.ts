@@ -24,6 +24,7 @@ import {
   srcGetAppByIdQuery,
   srcGetAppByIdQuery$variables,
 } from "__generated__/srcGetAppByIdQuery.graphql";
+import { srcViewerQuery } from "__generated__/srcViewerQuery.graphql";
 import { createZip, handleUploadFileToCloud } from "upload";
 import nodeAppAlias, {
   srcAppAlias$data,
@@ -503,6 +504,10 @@ export type AutoBuildProgressData = {
   stream: string | undefined | null;
 };
 
+export type Viewer = {
+  username: string;
+};
+
 class AutobuildApp {
   buildId: string;
   appVersion: DeployAppVersion | null = null;
@@ -615,9 +620,11 @@ class AutobuildApp {
 
 export class StackMachine {
   environment: Environment;
+
   private constructor(environment: Environment) {
     this.environment = environment;
   }
+
   static async init(settings: StackMachineRegistryConfig) {
     const environment = createEnvironment({
       endpoint: settings.apiUrl || DEFAULT_API_URL,
@@ -628,6 +635,28 @@ export class StackMachine {
     };
     return new StackMachine(environment);
   }
+
+  async viewer(): Promise<Viewer | null> {
+    const env = environment();
+    const query = await fetchQuery<srcViewerQuery>(
+      env,
+      graphql`
+        query srcViewerQuery {
+          viewer {
+            username
+          }
+        }
+      `,
+      {},
+    ).toPromise();
+    if (!query?.viewer) {
+      return null;
+    }
+    return {
+      username: query.viewer.username,
+    };
+  }
+
   async getApp(
     input: srcGetAppByNameQuery$variables | srcGetAppByIdQuery$variables,
   ): Promise<DeployApp | null> {
@@ -684,6 +713,7 @@ export class StackMachine {
       return new DeployApp(appData);
     }
   }
+
   async deleteApp(
     input: srcDeleteAppMutation$variables["input"],
   ): Promise<void> {
@@ -716,6 +746,7 @@ export class StackMachine {
     });
     return success;
   }
+
   async uploadFile(
     file: Blob,
     setUploadFilesProgress?: (progress: number) => void,
@@ -728,6 +759,7 @@ export class StackMachine {
     );
     return url;
   }
+
   async deployApp(
     input: srcAutobuildMutation$variables["input"],
   ): Promise<AutobuildApp> {
