@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<1abc9734e21a17a87a1d590c40c091c6>>
+ * @generated SignedSource<<dcc1989b13f348b84e4131ed4d80790d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -56,6 +56,7 @@ export type JobDefinitionInput = {
 };
 export type SecretInput = {
   name: string;
+  sensitive?: boolean | null | undefined;
   value: string;
 };
 export type srcAutobuildMutation$variables = {

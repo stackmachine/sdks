@@ -1,15 +1,29 @@
 {
   "name": "stackmachine",
   "version": "0.1.5",
-  "main": "dist/index.js",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
+    }
+  },
   "scripts": {
+    "ci": "npm run format:check && npm run typecheck && npm run build && npm run check-schema",
     "build": "npm run relay && npm run build-sdk",
     "build-sdk": "rollup -c rollup.config.mjs",
+    "test": "npm run build && node --test",
     "check-schema": "npm run fetch-schema && git diff --quiet ./schema.graphql",
     "fetch-schema": "graphql-codegen --config .graphqlconfig",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "relay": "mkdir -p src/__generated__ && relay-compiler relay.config.json",
+    "typecheck": "tsc --noEmit",
     "local-relay": "mkdir -p src/__generated__ && STACKMACHINE_RELAY_ENDPOINT=http://127.0.0.1:8000/graphql npm run relay-compile",
     "dev-relay": "mkdir -p src/__generated__ && STACKMACHINE_RELAY_ENDPOINT=https://api.stackmachine.com/graphql npm run relay-compile",
     "prod-relay": "mkdir -p src/__generated__ && STACKMACHINE_RELAY_ENDPOINT=https://api.stackmachine.com/graphql npm run relay-compile",
@@ -32,6 +46,7 @@
     "@types/relay-runtime": "^18.0.2",
     "babel-plugin-relay": "^18.2.0",
     "graphql": "^16.10.0",
+    "prettier": "^3.8.3",
     "rollup": "^4.39.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"

@@ -35,7 +35,7 @@ export const createZip = async (files: {
 const initiateResumableUpload = async (
   url: string,
   totalSize: number,
-  setUploadFilesProgress?: (progress: number) => void
+  setUploadFilesProgress?: (progress: number) => void,
 ): Promise<string> => {
   const response = await fetch(url, {
     method: "POST",
@@ -45,9 +45,7 @@ const initiateResumableUpload = async (
       "Content-Length": "0",
     },
   });
-  setUploadFilesProgress?.(
-    0.01
-  );
+  setUploadFilesProgress?.(0.01);
 
   if (!response.ok) {
     throw new Error(`Failed to initiate upload: ${response.statusText}`);
@@ -66,7 +64,7 @@ const uploadChunk = async (
   chunk: Blob,
   start: number,
   end: number,
-  total: number
+  total: number,
 ) => {
   const response = await fetch(uploadUrl, {
     method: "PUT",
@@ -88,7 +86,7 @@ const uploadChunk = async (
 const uploadFileInChunks = async (
   uploadUrl: string,
   file: Blob,
-  setUploadFilesProgress?: (progress: number) => void
+  setUploadFilesProgress?: (progress: number) => void,
 ) => {
   const totalSize = file.size;
 
@@ -98,15 +96,16 @@ const uploadFileInChunks = async (
   while (start < totalSize) {
     const chunk = file.slice(start, end);
     const response = await uploadChunk(uploadUrl, chunk, start, end, totalSize);
-    setUploadFilesProgress?.(start / totalSize);
     if (response.status === 308) {
       const rangeHeader = response.headers.get("Range");
       if (rangeHeader) {
         const uploadedBytes = parseInt(rangeHeader.split("-")[1]) + 1;
+        setUploadFilesProgress?.(uploadedBytes / totalSize);
         start = uploadedBytes;
         end = Math.min(start + CHUNK_SIZE, totalSize);
       }
     } else if (response.ok) {
+      setUploadFilesProgress?.(1);
       break;
     }
   }
@@ -124,7 +123,7 @@ export const generateShortRandomName = () => {
 export const handleUploadFileToCloud = async (
   environment: Environment,
   zipFile: Blob,
-  setUploadFilesProgress?: (progress: number) => void
+  setUploadFilesProgress?: (progress: number) => void,
 ) => {
   const query = await fetchQuery<uploadQuery>(
     environment,
@@ -137,17 +136,19 @@ export const handleUploadFileToCloud = async (
     `,
     {
       filename: `${generateShortRandomName()}.zip`,
-    }
+    },
   ).toPromise();
 
   if (query?.getSignedUrl?.url) {
     const totalSize = zipFile.size;
     const url = query?.getSignedUrl?.url;
     // console.log("FileUploaded", url);
-    const uploadUrl = await initiateResumableUpload(url, totalSize);
-    await uploadFileInChunks(uploadUrl, zipFile);
-
-    setUploadFilesProgress?.(1);
+    const uploadUrl = await initiateResumableUpload(
+      url,
+      totalSize,
+      setUploadFilesProgress,
+    );
+    await uploadFileInChunks(uploadUrl, zipFile, setUploadFilesProgress);
     return url;
   } else {
     throw new Error("Failed to generate upload URL for the zip file");
