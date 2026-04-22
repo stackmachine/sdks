@@ -1,4 +1,4 @@
-import { StackMachine } from "../../dist/index.js";
+import { StackMachine } from "stackmachine";
 
 const STACKMACHINE_TOKEN = process.env.STACKMACHINE_TOKEN;
 
