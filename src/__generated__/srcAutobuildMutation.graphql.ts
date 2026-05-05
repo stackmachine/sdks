@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<dcc1989b13f348b84e4131ed4d80790d>>
+ * @generated SignedSource<<3b4fe073e0e60abd152eb52d0837ff67>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -19,6 +19,7 @@ export type DeployViaAutobuildInput = {
   clientMutationId?: string | null | undefined;
   domains?: ReadonlyArray<string | null | undefined> | null | undefined;
   enableDatabase?: boolean | null | undefined;
+  envVars?: ReadonlyArray<EnvVarInput | null | undefined> | null | undefined;
   extraData?: AutobuildDeploymentExtraData | null | undefined;
   installCmd?: string | null | undefined;
   jobs?: ReadonlyArray<JobDefinitionInput | null | undefined> | null | undefined;
@@ -31,10 +32,14 @@ export type DeployViaAutobuildInput = {
   region?: string | null | undefined;
   repoUrl?: string | null | undefined;
   rootDir?: string | null | undefined;
-  secrets?: ReadonlyArray<SecretInput | null | undefined> | null | undefined;
   startCmd?: string | null | undefined;
   uploadUrl?: string | null | undefined;
   waitForScreenshotGeneration?: boolean | null | undefined;
+};
+export type EnvVarInput = {
+  name: string;
+  sensitive?: boolean | null | undefined;
+  value: string;
 };
 export type AutobuildDeploymentExtraData = {
   wordpress?: WordpressDeploymentExtraData | null | undefined;
@@ -45,6 +50,7 @@ export type WordpressDeploymentExtraData = {
   adminUsername: string;
   language?: string | null | undefined;
   siteName: string;
+  theme?: string | null | undefined;
 };
 export type JobDefinitionInput = {
   cliArgs?: ReadonlyArray<string | null | undefined> | null | undefined;
@@ -53,11 +59,6 @@ export type JobDefinitionInput = {
   name?: string | null | undefined;
   package?: string | null | undefined;
   timeout?: string | null | undefined;
-};
-export type SecretInput = {
-  name: string;
-  sensitive?: boolean | null | undefined;
-  value: string;
 };
 export type srcAutobuildMutation$variables = {
   input: DeployViaAutobuildInput;
