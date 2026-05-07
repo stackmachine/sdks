@@ -453,12 +453,12 @@ class DeployAppVersion {
     this.app = app;
   }
 
-  async fetchLogs(since: Date): Promise<Log[]> {
+  async fetchLogs(since: Date, first = 100): Promise<Log[]> {
     const env = environment();
     let query = await fetchQuery<srcGetAppLogsQuery>(
       env,
       graphql`
-        query srcGetAppLogsQuery($appId: ID!, $since: DateTime!) {
+        query srcGetAppLogsQuery($appId: ID!, $since: DateTime!, $first: Int!) {
           node(id: $appId) {
             ... on DeployAppVersion {
               logs(startingFromISO: $since) {
@@ -479,6 +479,7 @@ class DeployAppVersion {
       {
         appId: this.id,
         since: since.toISOString(),
+        first,
       },
     ).toPromise();
     return (

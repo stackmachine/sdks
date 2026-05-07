@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b42076925f328f66eb272448f8a316dd>>
+ * @generated SignedSource<<188bd9bb9921722e9189a7b36af65f86>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,6 +12,7 @@ import { ConcreteRequest } from 'relay-runtime';
 export type LogStream = "RUNTIME" | "STDERR" | "STDOUT" | "%future added value";
 export type srcGetAppLogsQuery$variables = {
   appId: string;
+  first: number;
   since: any;
 };
 export type srcGetAppLogsQuery$data = {
@@ -35,31 +36,39 @@ export type srcGetAppLogsQuery = {
 };
 
 const node: ConcreteRequest = (function(){
-var v0 = [
-  {
-    "defaultValue": null,
-    "kind": "LocalArgument",
-    "name": "appId"
-  },
-  {
-    "defaultValue": null,
-    "kind": "LocalArgument",
-    "name": "since"
-  }
-],
-v1 = [
+var v0 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
+  "name": "appId"
+},
+v1 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
+  "name": "first"
+},
+v2 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
+  "name": "since"
+},
+v3 = [
   {
     "kind": "Variable",
     "name": "id",
     "variableName": "appId"
   }
 ],
-v2 = {
+v4 = {
   "kind": "InlineFragment",
   "selections": [
     {
       "alias": null,
       "args": [
+        {
+          "kind": "Variable",
+          "name": "first",
+          "variableName": "first"
+        },
         {
           "kind": "Variable",
           "name": "startingFromISO",
@@ -137,20 +146,24 @@ v2 = {
 };
 return {
   "fragment": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": [
+      (v0/*: any*/),
+      (v1/*: any*/),
+      (v2/*: any*/)
+    ],
     "kind": "Fragment",
     "metadata": null,
     "name": "srcGetAppLogsQuery",
     "selections": [
       {
         "alias": null,
-        "args": (v1/*: any*/),
+        "args": (v3/*: any*/),
         "concreteType": null,
         "kind": "LinkedField",
         "name": "node",
         "plural": false,
         "selections": [
-          (v2/*: any*/)
+          (v4/*: any*/)
         ],
         "storageKey": null
       }
@@ -160,13 +173,17 @@ return {
   },
   "kind": "Request",
   "operation": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": [
+      (v0/*: any*/),
+      (v2/*: any*/),
+      (v1/*: any*/)
+    ],
     "kind": "Operation",
     "name": "srcGetAppLogsQuery",
     "selections": [
       {
         "alias": null,
-        "args": (v1/*: any*/),
+        "args": (v3/*: any*/),
         "concreteType": null,
         "kind": "LinkedField",
         "name": "node",
@@ -179,7 +196,7 @@ return {
             "name": "__typename",
             "storageKey": null
           },
-          (v2/*: any*/),
+          (v4/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -193,16 +210,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "3516b5fde92c62ba97630cdb6896aac4",
+    "cacheID": "13fee612dbf966cd30ba2d62395c80e6",
     "id": null,
     "metadata": {},
     "name": "srcGetAppLogsQuery",
     "operationKind": "query",
-    "text": "query srcGetAppLogsQuery(\n  $appId: ID!\n  $since: DateTime!\n) {\n  node(id: $appId) {\n    __typename\n    ... on DeployAppVersion {\n      logs(startingFromISO: $since) {\n        edges {\n          node {\n            datetime\n            instanceId\n            message\n            stream\n            timestamp\n          }\n        }\n      }\n    }\n    id\n  }\n}\n"
+    "text": "query srcGetAppLogsQuery(\n  $appId: ID!\n  $since: DateTime!\n  $first: Int!\n) {\n  node(id: $appId) {\n    __typename\n    ... on DeployAppVersion {\n      logs(startingFromISO: $since, first: $first) {\n        edges {\n          node {\n            datetime\n            instanceId\n            message\n            stream\n            timestamp\n          }\n        }\n      }\n    }\n    id\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "54773f6336665bf511c1be0e94bf0cd6";
+(node as any).hash = "f4ae67ecb23b04815c5101d1cb84f3d1";
 
 export default node;
