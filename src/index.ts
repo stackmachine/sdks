@@ -461,7 +461,7 @@ class DeployAppVersion {
         query srcGetAppLogsQuery($appId: ID!, $since: DateTime!, $first: Int!) {
           node(id: $appId) {
             ... on DeployAppVersion {
-              logs(startingFromISO: $since) {
+              logs(startingFromISO: $since, first: $first) {
                 edges {
                   node {
                     datetime
