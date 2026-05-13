@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<1378272295f696fa8b2e3c3c250c28bd>>
+ * @generated SignedSource<<83bd64ecb75cb39d3648e6525e1153b3>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,18 +10,24 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
-export type srcGetAppByIdQuery$variables = {
-  id: string;
+export type ToggleSshServerInput = {
+  appId: string;
+  clientMutationId?: string | null | undefined;
+  enabled: boolean;
 };
-export type srcGetAppByIdQuery$data = {
-  readonly app: {
-    readonly __typename: string;
-    readonly " $fragmentSpreads": FragmentRefs<"srcDeployAppData">;
+export type srcToggleSshServerMutation$variables = {
+  input: ToggleSshServerInput;
+};
+export type srcToggleSshServerMutation$data = {
+  readonly toggleSshServer: {
+    readonly app: {
+      readonly " $fragmentSpreads": FragmentRefs<"srcDeployAppData">;
+    };
   } | null | undefined;
 };
-export type srcGetAppByIdQuery = {
-  response: srcGetAppByIdQuery$data;
-  variables: srcGetAppByIdQuery$variables;
+export type srcToggleSshServerMutation = {
+  response: srcToggleSshServerMutation$data;
+  variables: srcToggleSshServerMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -29,55 +35,48 @@ var v0 = [
   {
     "defaultValue": null,
     "kind": "LocalArgument",
-    "name": "id"
+    "name": "input"
   }
 ],
 v1 = [
   {
     "kind": "Variable",
-    "name": "id",
-    "variableName": "id"
+    "name": "input",
+    "variableName": "input"
   }
 ],
 v2 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "__typename",
+  "name": "id",
   "storageKey": null
 },
 v3 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "id",
+  "name": "name",
   "storageKey": null
 },
 v4 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "name",
-  "storageKey": null
-},
-v5 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
   "name": "url",
   "storageKey": null
 },
-v6 = [
-  (v3/*: any*/)
+v5 = [
+  (v2/*: any*/)
 ],
-v7 = {
+v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "createdAt",
   "storageKey": null
 },
-v8 = [
+v7 = [
   {
     "kind": "Literal",
     "name": "first",
@@ -89,48 +88,62 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "srcGetAppByIdQuery",
+    "name": "srcToggleSshServerMutation",
     "selections": [
       {
-        "alias": "app",
+        "alias": null,
         "args": (v1/*: any*/),
-        "concreteType": null,
+        "concreteType": "ToggleSshServerPayload",
         "kind": "LinkedField",
-        "name": "node",
+        "name": "toggleSshServer",
         "plural": false,
         "selections": [
-          (v2/*: any*/),
           {
+            "alias": null,
             "args": null,
-            "kind": "FragmentSpread",
-            "name": "srcDeployAppData"
+            "concreteType": "DeployApp",
+            "kind": "LinkedField",
+            "name": "app",
+            "plural": false,
+            "selections": [
+              {
+                "args": null,
+                "kind": "FragmentSpread",
+                "name": "srcDeployAppData"
+              }
+            ],
+            "storageKey": null
           }
         ],
         "storageKey": null
       }
     ],
-    "type": "Query",
+    "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "srcGetAppByIdQuery",
+    "name": "srcToggleSshServerMutation",
     "selections": [
       {
-        "alias": "app",
+        "alias": null,
         "args": (v1/*: any*/),
-        "concreteType": null,
+        "concreteType": "ToggleSshServerPayload",
         "kind": "LinkedField",
-        "name": "node",
+        "name": "toggleSshServer",
         "plural": false,
         "selections": [
-          (v2/*: any*/),
-          (v3/*: any*/),
           {
-            "kind": "InlineFragment",
+            "alias": null,
+            "args": null,
+            "concreteType": "DeployApp",
+            "kind": "LinkedField",
+            "name": "app",
+            "plural": false,
             "selections": [
+              (v2/*: any*/),
               {
                 "alias": null,
                 "args": null,
@@ -138,8 +151,8 @@ return {
                 "name": "willPerishAt",
                 "storageKey": null
               },
+              (v3/*: any*/),
               (v4/*: any*/),
-              (v5/*: any*/),
               {
                 "alias": null,
                 "args": null,
@@ -171,7 +184,7 @@ return {
                         "name": "node",
                         "plural": false,
                         "selections": [
-                          (v3/*: any*/),
+                          (v2/*: any*/),
                           {
                             "alias": null,
                             "args": null,
@@ -179,7 +192,7 @@ return {
                             "name": "hostname",
                             "storageKey": null
                           },
-                          (v5/*: any*/),
+                          (v4/*: any*/),
                           {
                             "alias": null,
                             "args": null,
@@ -201,7 +214,7 @@ return {
                             "kind": "LinkedField",
                             "name": "redirectsFrom",
                             "plural": true,
-                            "selections": (v6/*: any*/),
+                            "selections": (v5/*: any*/),
                             "storageKey": null
                           },
                           {
@@ -211,7 +224,7 @@ return {
                             "kind": "LinkedField",
                             "name": "redirectsTo",
                             "plural": false,
-                            "selections": (v6/*: any*/),
+                            "selections": (v5/*: any*/),
                             "storageKey": null
                           },
                           {
@@ -267,7 +280,7 @@ return {
                             "name": "updatedAt",
                             "storageKey": null
                           },
-                          (v7/*: any*/)
+                          (v6/*: any*/)
                         ],
                         "storageKey": null
                       }
@@ -284,7 +297,7 @@ return {
                 "kind": "LinkedField",
                 "name": "activeVersion",
                 "plural": false,
-                "selections": (v6/*: any*/),
+                "selections": (v5/*: any*/),
                 "storageKey": null
               },
               {
@@ -309,7 +322,7 @@ return {
                 "name": "sshServer",
                 "plural": false,
                 "selections": [
-                  (v3/*: any*/),
+                  (v2/*: any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -319,7 +332,7 @@ return {
                   },
                   {
                     "alias": null,
-                    "args": (v8/*: any*/),
+                    "args": (v7/*: any*/),
                     "concreteType": "SshUserConnection",
                     "kind": "LinkedField",
                     "name": "users",
@@ -341,7 +354,7 @@ return {
                             "name": "node",
                             "plural": false,
                             "selections": [
-                              (v3/*: any*/),
+                              (v2/*: any*/),
                               {
                                 "alias": null,
                                 "args": null,
@@ -379,7 +392,7 @@ return {
                               },
                               {
                                 "alias": null,
-                                "args": (v8/*: any*/),
+                                "args": (v7/*: any*/),
                                 "concreteType": "SshAuthorizedKeyConnection",
                                 "kind": "LinkedField",
                                 "name": "authorizedKeys",
@@ -401,9 +414,9 @@ return {
                                         "name": "node",
                                         "plural": false,
                                         "selections": [
+                                          (v2/*: any*/),
+                                          (v6/*: any*/),
                                           (v3/*: any*/),
-                                          (v7/*: any*/),
-                                          (v4/*: any*/),
                                           {
                                             "alias": null,
                                             "args": null,
@@ -433,8 +446,7 @@ return {
                 "storageKey": null
               }
             ],
-            "type": "DeployApp",
-            "abstractKey": null
+            "storageKey": null
           }
         ],
         "storageKey": null
@@ -442,16 +454,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "00c53affe7ba98aeda4f56abd5e9d41c",
+    "cacheID": "3557db6237479482d1f7bfa870003181",
     "id": null,
     "metadata": {},
-    "name": "srcGetAppByIdQuery",
-    "operationKind": "query",
-    "text": "query srcGetAppByIdQuery(\n  $id: ID!\n) {\n  app: node(id: $id) {\n    __typename\n    ...srcDeployAppData\n    id\n  }\n}\n\nfragment srcAppAlias on AppAlias {\n  id\n  hostname\n  url\n  state\n  redirectionHttpCode\n  redirectsFrom {\n    id\n  }\n  redirectsTo {\n    id\n  }\n  expectedDnsRecords {\n    host\n    recordType\n    value\n  }\n  firstCheckedAt\n  lastCheckedAt\n  updatedAt\n  createdAt\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  name\n  url\n  adminUrl\n  domains {\n    edges {\n      node {\n        ...srcAppAlias\n        id\n      }\n    }\n  }\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n  sshServer {\n    ...srcDeployAppSshServerData\n    id\n  }\n}\n\nfragment srcDeployAppSshAuthorizedKeyData on SshAuthorizedKey {\n  id\n  createdAt\n  name\n  publicKey\n}\n\nfragment srcDeployAppSshServerData on AppSshServer {\n  id\n  enabled\n  users(first: 50) {\n    edges {\n      node {\n        ...srcDeployAppSshUserData\n        id\n      }\n    }\n  }\n}\n\nfragment srcDeployAppSshUserData on SshUser {\n  id\n  username\n  sftpRootFolder\n  port\n  serverHost\n  authenticationMethods\n  authorizedKeys(first: 50) {\n    edges {\n      node {\n        ...srcDeployAppSshAuthorizedKeyData\n        id\n      }\n    }\n  }\n}\n"
+    "name": "srcToggleSshServerMutation",
+    "operationKind": "mutation",
+    "text": "mutation srcToggleSshServerMutation(\n  $input: ToggleSshServerInput!\n) {\n  toggleSshServer(input: $input) {\n    app {\n      ...srcDeployAppData\n      id\n    }\n  }\n}\n\nfragment srcAppAlias on AppAlias {\n  id\n  hostname\n  url\n  state\n  redirectionHttpCode\n  redirectsFrom {\n    id\n  }\n  redirectsTo {\n    id\n  }\n  expectedDnsRecords {\n    host\n    recordType\n    value\n  }\n  firstCheckedAt\n  lastCheckedAt\n  updatedAt\n  createdAt\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  name\n  url\n  adminUrl\n  domains {\n    edges {\n      node {\n        ...srcAppAlias\n        id\n      }\n    }\n  }\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n  sshServer {\n    ...srcDeployAppSshServerData\n    id\n  }\n}\n\nfragment srcDeployAppSshAuthorizedKeyData on SshAuthorizedKey {\n  id\n  createdAt\n  name\n  publicKey\n}\n\nfragment srcDeployAppSshServerData on AppSshServer {\n  id\n  enabled\n  users(first: 50) {\n    edges {\n      node {\n        ...srcDeployAppSshUserData\n        id\n      }\n    }\n  }\n}\n\nfragment srcDeployAppSshUserData on SshUser {\n  id\n  username\n  sftpRootFolder\n  port\n  serverHost\n  authenticationMethods\n  authorizedKeys(first: 50) {\n    edges {\n      node {\n        ...srcDeployAppSshAuthorizedKeyData\n        id\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "541aafae80e86b5a0a6546a24c253821";
+(node as any).hash = "0cad06362ea5941c912366830cd0a0b6";
 
 export default node;
