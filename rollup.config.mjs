@@ -45,7 +45,7 @@ function relay() {
 
 export default {
   input: "src/index.ts",
-  external: ["@zip.js/zip.js", "graphql-ws", "relay-runtime"],
+  external: ["@zip.js/zip.js", "graphql-ws", "relay-runtime", "ssh2"],
   output: [
     {
       dir: "dist",
