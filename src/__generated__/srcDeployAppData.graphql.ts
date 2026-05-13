@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<39c9ab6269505f964ef179a3ade18e56>>
+ * @generated SignedSource<<838abe95e8815c2555b0ef7e37b967f2>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -26,9 +26,6 @@ export type srcDeployAppData$data = {
   readonly id: string;
   readonly name: string;
   readonly screenshot: any | null | undefined;
-  readonly sshServer: {
-    readonly " $fragmentSpreads": FragmentRefs<"srcDeployAppSshServerData">;
-  } | null | undefined;
   readonly url: string;
   readonly willPerishAt: any | null | undefined;
   readonly " $fragmentType": "srcDeployAppData";
@@ -144,22 +141,6 @@ return {
       "kind": "ScalarField",
       "name": "screenshot",
       "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "concreteType": "AppSshServer",
-      "kind": "LinkedField",
-      "name": "sshServer",
-      "plural": false,
-      "selections": [
-        {
-          "args": null,
-          "kind": "FragmentSpread",
-          "name": "srcDeployAppSshServerData"
-        }
-      ],
-      "storageKey": null
     }
   ],
   "type": "DeployApp",
@@ -167,6 +148,6 @@ return {
 };
 })();
 
-(node as any).hash = "cfe05aad6f6aec6745edbb1dd02dc127";
+(node as any).hash = "b2edc2167f5bf2099616ef0a61c267d5";
 
 export default node;

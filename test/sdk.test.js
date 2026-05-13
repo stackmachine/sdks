@@ -15,41 +15,6 @@ const requireEnv = (name) => {
   return value;
 };
 
-const delay = async (ms) => {
-  await new Promise((resolve) => setTimeout(resolve, ms));
-};
-
-const waitFor = async (
-  description,
-  callback,
-  { intervalMs = 5_000, timeoutMs = 90_000 } = {},
-) => {
-  const deadline = Date.now() + timeoutMs;
-  let lastError = null;
-
-  while (Date.now() < deadline) {
-    try {
-      const result = await callback();
-      if (result) {
-        return result;
-      }
-      lastError = new Error(`${description} is not ready yet.`);
-    } catch (error) {
-      lastError = error;
-    }
-
-    await delay(intervalMs);
-  }
-
-  if (lastError instanceof Error) {
-    throw new Error(
-      `Timed out waiting for ${description}: ${lastError.message}`,
-    );
-  }
-
-  throw new Error(`Timed out waiting for ${description}.`);
-};
-
 test(
   "stackmachine public sdk integration",
   { timeout: 240_000, concurrency: false },
@@ -106,7 +71,7 @@ test(
     );
 
     await t.test(
-      "viewer, upload, deploy, getApp, logs, ssh, domains, and deleteApp work together",
+      "viewer, upload, deploy, getApp, logs, domains, and deleteApp work together",
       async (t) => {
         let deployedAppId = null;
         let aliasId = null;
@@ -183,49 +148,6 @@ test(
         });
         assert.ok(fetchedByName);
         assert.equal(fetchedByName.id, deployedAppId);
-
-        const sshServer = await fetchedById.enableSsh();
-        assert.equal(sshServer.enabled, true);
-        assert.equal(typeof sshServer.id, "string");
-        assert.ok(Array.isArray(sshServer.users));
-
-        const sshUser = await waitFor(
-          "the SSH user to become available",
-          async () => {
-            const app = await client.getApp({ id: deployedAppId });
-            return app?.sshServer?.users?.[0] ?? null;
-          },
-          { intervalMs: 5_000, timeoutMs: 90_000 },
-        );
-
-        assert.equal(typeof sshUser.id, "string");
-        assert.equal(typeof sshUser.username, "string");
-        assert.equal(typeof sshUser.serverHost, "string");
-        assert.equal(typeof sshUser.port, "number");
-        assert.ok(
-          sshUser.authenticationMethods.includes("PASSWORD"),
-          "SSH user should support password authentication",
-        );
-
-        const sshPassword = await sshUser.revealPassword();
-        assert.equal(typeof sshPassword, "string");
-        assert.notEqual(sshPassword.length, 0);
-
-        const sshResult = await waitFor(
-          "the SSH server to accept commands",
-          async () =>
-            sshUser.exec("pwd && echo ssh-ok", {
-              password: sshPassword,
-              pty: true,
-              timeoutMs: 20_000,
-            }),
-          { intervalMs: 5_000, timeoutMs: 90_000 },
-        );
-
-        assert.equal(sshResult.code, 0);
-        assert.equal(sshResult.signal, null);
-        assert.notEqual(sshResult.stdout.trim().length, 0);
-        assert.match(sshResult.stdout, /ssh-ok/);
 
         const defaultAlias = fetchedById.domains[0];
         assert.equal(typeof defaultAlias.id, "string");
