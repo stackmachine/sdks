@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3a7d12c3c6aef38446088ed3bc65ec13>>
+ * @generated SignedSource<<e9fd702a8d90160a948a330bdd3e4950>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -85,32 +85,11 @@ v7 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "name",
-  "storageKey": null
-},
-v8 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
   "name": "url",
   "storageKey": null
 },
-v9 = [
+v8 = [
   (v6/*: any*/)
-],
-v10 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "createdAt",
-  "storageKey": null
-},
-v11 = [
-  {
-    "kind": "Literal",
-    "name": "first",
-    "value": 50
-  }
 ];
 return {
   "fragment": {
@@ -193,8 +172,14 @@ return {
                     "name": "willPerishAt",
                     "storageKey": null
                   },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "name",
+                    "storageKey": null
+                  },
                   (v7/*: any*/),
-                  (v8/*: any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -234,7 +219,7 @@ return {
                                 "name": "hostname",
                                 "storageKey": null
                               },
-                              (v8/*: any*/),
+                              (v7/*: any*/),
                               {
                                 "alias": null,
                                 "args": null,
@@ -256,7 +241,7 @@ return {
                                 "kind": "LinkedField",
                                 "name": "redirectsFrom",
                                 "plural": true,
-                                "selections": (v9/*: any*/),
+                                "selections": (v8/*: any*/),
                                 "storageKey": null
                               },
                               {
@@ -266,7 +251,7 @@ return {
                                 "kind": "LinkedField",
                                 "name": "redirectsTo",
                                 "plural": false,
-                                "selections": (v9/*: any*/),
+                                "selections": (v8/*: any*/),
                                 "storageKey": null
                               },
                               {
@@ -322,7 +307,13 @@ return {
                                 "name": "updatedAt",
                                 "storageKey": null
                               },
-                              (v10/*: any*/)
+                              {
+                                "alias": null,
+                                "args": null,
+                                "kind": "ScalarField",
+                                "name": "createdAt",
+                                "storageKey": null
+                              }
                             ],
                             "storageKey": null
                           }
@@ -339,7 +330,7 @@ return {
                     "kind": "LinkedField",
                     "name": "activeVersion",
                     "plural": false,
-                    "selections": (v9/*: any*/),
+                    "selections": (v8/*: any*/),
                     "storageKey": null
                   },
                   {
@@ -354,137 +345,6 @@ return {
                     "args": null,
                     "kind": "ScalarField",
                     "name": "screenshot",
-                    "storageKey": null
-                  },
-                  {
-                    "alias": null,
-                    "args": null,
-                    "concreteType": "AppSshServer",
-                    "kind": "LinkedField",
-                    "name": "sshServer",
-                    "plural": false,
-                    "selections": [
-                      (v6/*: any*/),
-                      {
-                        "alias": null,
-                        "args": null,
-                        "kind": "ScalarField",
-                        "name": "enabled",
-                        "storageKey": null
-                      },
-                      {
-                        "alias": null,
-                        "args": (v11/*: any*/),
-                        "concreteType": "SshUserConnection",
-                        "kind": "LinkedField",
-                        "name": "users",
-                        "plural": false,
-                        "selections": [
-                          {
-                            "alias": null,
-                            "args": null,
-                            "concreteType": "SshUserEdge",
-                            "kind": "LinkedField",
-                            "name": "edges",
-                            "plural": true,
-                            "selections": [
-                              {
-                                "alias": null,
-                                "args": null,
-                                "concreteType": "SshUser",
-                                "kind": "LinkedField",
-                                "name": "node",
-                                "plural": false,
-                                "selections": [
-                                  (v6/*: any*/),
-                                  {
-                                    "alias": null,
-                                    "args": null,
-                                    "kind": "ScalarField",
-                                    "name": "username",
-                                    "storageKey": null
-                                  },
-                                  {
-                                    "alias": null,
-                                    "args": null,
-                                    "kind": "ScalarField",
-                                    "name": "sftpRootFolder",
-                                    "storageKey": null
-                                  },
-                                  {
-                                    "alias": null,
-                                    "args": null,
-                                    "kind": "ScalarField",
-                                    "name": "port",
-                                    "storageKey": null
-                                  },
-                                  {
-                                    "alias": null,
-                                    "args": null,
-                                    "kind": "ScalarField",
-                                    "name": "serverHost",
-                                    "storageKey": null
-                                  },
-                                  {
-                                    "alias": null,
-                                    "args": null,
-                                    "kind": "ScalarField",
-                                    "name": "authenticationMethods",
-                                    "storageKey": null
-                                  },
-                                  {
-                                    "alias": null,
-                                    "args": (v11/*: any*/),
-                                    "concreteType": "SshAuthorizedKeyConnection",
-                                    "kind": "LinkedField",
-                                    "name": "authorizedKeys",
-                                    "plural": false,
-                                    "selections": [
-                                      {
-                                        "alias": null,
-                                        "args": null,
-                                        "concreteType": "SshAuthorizedKeyEdge",
-                                        "kind": "LinkedField",
-                                        "name": "edges",
-                                        "plural": true,
-                                        "selections": [
-                                          {
-                                            "alias": null,
-                                            "args": null,
-                                            "concreteType": "SshAuthorizedKey",
-                                            "kind": "LinkedField",
-                                            "name": "node",
-                                            "plural": false,
-                                            "selections": [
-                                              (v6/*: any*/),
-                                              (v10/*: any*/),
-                                              (v7/*: any*/),
-                                              {
-                                                "alias": null,
-                                                "args": null,
-                                                "kind": "ScalarField",
-                                                "name": "publicKey",
-                                                "storageKey": null
-                                              }
-                                            ],
-                                            "storageKey": null
-                                          }
-                                        ],
-                                        "storageKey": null
-                                      }
-                                    ],
-                                    "storageKey": "authorizedKeys(first:50)"
-                                  }
-                                ],
-                                "storageKey": null
-                              }
-                            ],
-                            "storageKey": null
-                          }
-                        ],
-                        "storageKey": "users(first:50)"
-                      }
-                    ],
                     "storageKey": null
                   }
                 ],
@@ -503,12 +363,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "ae37ee7c94c64d4e02fab50b70d6d917",
+    "cacheID": "cbde75cc80e8fe78fff9789f0c3706fe",
     "id": null,
     "metadata": {},
     "name": "srcAutobuildSubscription",
     "operationKind": "subscription",
-    "text": "subscription srcAutobuildSubscription(\n  $buildId: UUID!\n) {\n  autobuildDeployment(buildId: $buildId) {\n    appVersion {\n      ...srcDeployAppVersionData\n      id\n    }\n    kind\n    datetime\n    stream\n    message\n  }\n}\n\nfragment srcAppAlias on AppAlias {\n  id\n  hostname\n  url\n  state\n  redirectionHttpCode\n  redirectsFrom {\n    id\n  }\n  redirectsTo {\n    id\n  }\n  expectedDnsRecords {\n    host\n    recordType\n    value\n  }\n  firstCheckedAt\n  lastCheckedAt\n  updatedAt\n  createdAt\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  name\n  url\n  adminUrl\n  domains {\n    edges {\n      node {\n        ...srcAppAlias\n        id\n      }\n    }\n  }\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n  sshServer {\n    ...srcDeployAppSshServerData\n    id\n  }\n}\n\nfragment srcDeployAppSshAuthorizedKeyData on SshAuthorizedKey {\n  id\n  createdAt\n  name\n  publicKey\n}\n\nfragment srcDeployAppSshServerData on AppSshServer {\n  id\n  enabled\n  users(first: 50) {\n    edges {\n      node {\n        ...srcDeployAppSshUserData\n        id\n      }\n    }\n  }\n}\n\nfragment srcDeployAppSshUserData on SshUser {\n  id\n  username\n  sftpRootFolder\n  port\n  serverHost\n  authenticationMethods\n  authorizedKeys(first: 50) {\n    edges {\n      node {\n        ...srcDeployAppSshAuthorizedKeyData\n        id\n      }\n    }\n  }\n}\n\nfragment srcDeployAppVersionData on DeployAppVersion {\n  id\n  app {\n    ...srcDeployAppData\n    id\n  }\n}\n"
+    "text": "subscription srcAutobuildSubscription(\n  $buildId: UUID!\n) {\n  autobuildDeployment(buildId: $buildId) {\n    appVersion {\n      ...srcDeployAppVersionData\n      id\n    }\n    kind\n    datetime\n    stream\n    message\n  }\n}\n\nfragment srcAppAlias on AppAlias {\n  id\n  hostname\n  url\n  state\n  redirectionHttpCode\n  redirectsFrom {\n    id\n  }\n  redirectsTo {\n    id\n  }\n  expectedDnsRecords {\n    host\n    recordType\n    value\n  }\n  firstCheckedAt\n  lastCheckedAt\n  updatedAt\n  createdAt\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  name\n  url\n  adminUrl\n  domains {\n    edges {\n      node {\n        ...srcAppAlias\n        id\n      }\n    }\n  }\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n\nfragment srcDeployAppVersionData on DeployAppVersion {\n  id\n  app {\n    ...srcDeployAppData\n    id\n  }\n}\n"
   }
 };
 })();
