@@ -83,8 +83,10 @@ test(
 
         t.after(async () => {
           if (aliasId && deployedAppId) {
-            const app = await client.apps.retrieve(deployedAppId);
-            const alias = app?.domains.find((domain) => domain.id === aliasId);
+            const aliases = await client.apps.domains
+              .list({ app: deployedAppId, limit: 100 })
+              .autoPagingToArray({ limit: 100 });
+            const alias = aliases.find((domain) => domain.id === aliasId);
             if (alias) {
               await client.apps.domains.del(alias.id);
             }
@@ -141,8 +143,6 @@ test(
         assert.ok(fetchedById);
         assert.equal(fetchedById.id, deployedAppId);
         assert.equal(fetchedById.name, appName);
-        assert.ok(Array.isArray(fetchedById.domains));
-        assert.ok(fetchedById.domains.length >= 1);
         assert.ok(fetchedById.activeVersion);
         assert.equal(fetchedById.activeVersion.id, appVersion.id);
 
@@ -153,7 +153,16 @@ test(
         assert.ok(fetchedByName);
         assert.equal(fetchedByName.id, deployedAppId);
 
-        const defaultAlias = fetchedById.domains[0];
+        const domainsPage = await client.apps.domains.list({
+          app: fetchedById.id,
+          limit: 10,
+        });
+        assert.equal(domainsPage.object, "list");
+        assert.equal(typeof domainsPage.has_more, "boolean");
+        assert.equal(domainsPage.hasMore, domainsPage.has_more);
+        assert.ok(domainsPage.data.length >= 1);
+
+        const defaultAlias = domainsPage.data[0];
         assert.equal(typeof defaultAlias.id, "string");
         assert.equal(typeof defaultAlias.url, "string");
         assert.equal(typeof defaultAlias.state, "string");
@@ -168,12 +177,25 @@ test(
           version: fetchedById.activeVersion.id,
           since: new Date(Date.now() - 60 * 60 * 1000),
         });
-        assert.ok(Array.isArray(logs));
-        if (logs[0]) {
-          assert.equal(typeof logs[0].message, "string");
-          assert.equal(typeof logs[0].instanceId, "string");
-          assert.equal(typeof logs[0].stream, "string");
-          assert.equal(typeof logs[0].timestamp, "number");
+        assert.equal(logs.object, "list");
+        assert.ok(Array.isArray(logs.data));
+        if (logs.data[0]) {
+          assert.equal(typeof logs.data[0].message, "string");
+          assert.equal(typeof logs.data[0].instanceId, "string");
+          assert.equal(typeof logs.data[0].stream, "string");
+          assert.equal(typeof logs.data[0].timestamp, "number");
+        }
+
+        const appListPage = await client.apps.list({ limit: 1 });
+        assert.equal(appListPage.object, "list");
+        assert.ok(Array.isArray(appListPage.data));
+        const autoPagedApps = await client.apps
+          .list({ limit: 1 })
+          .autoPagingToArray({ limit: 1 });
+        assert.ok(autoPagedApps.length <= 1);
+        for await (const app of client.apps.list({ limit: 1 })) {
+          assert.equal(typeof app.id, "string");
+          break;
         }
 
         const domainName = `sdk-${Date.now().toString(36)}.example.com`;
@@ -189,21 +211,21 @@ test(
         assert.ok(alias.expectedDnsRecords.length > 0);
         assert.equal(alias.expectedDnsRecords[0].host, domainName);
 
-        const refreshedWithAlias = await client.apps.retrieve(deployedAppId);
-        assert.ok(
-          refreshedWithAlias.domains.some((domain) => domain.id === alias.id),
-        );
+        const refreshedWithAlias = await client.apps.domains
+          .list({ app: deployedAppId, limit: 100 })
+          .autoPagingToArray({ limit: 100 });
+        assert.ok(refreshedWithAlias.some((domain) => domain.id === alias.id));
         assert.deepEqual(alias.redirectsFromIds, []);
         assert.equal(alias.redirectsToId, undefined);
 
         await client.apps.domains.del(alias.id);
         aliasId = null;
 
-        const refreshedWithoutAlias = await client.apps.retrieve(deployedAppId);
+        const refreshedWithoutAlias = await client.apps.domains
+          .list({ app: deployedAppId, limit: 100 })
+          .autoPagingToArray({ limit: 100 });
         assert.ok(
-          !refreshedWithoutAlias.domains.some(
-            (domain) => domain.id === alias.id,
-          ),
+          !refreshedWithoutAlias.some((domain) => domain.id === alias.id),
         );
 
         await client.apps.del(deployedAppId);

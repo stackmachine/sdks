@@ -14,5 +14,6 @@ const last30Minutes = new Date(Date.now() - 30 * 60 * 1000);
 const logs = await client.apps.versions.logs.list({
   version: app.activeVersion.id,
   since: last30Minutes,
+  limit: 10,
 });
-console.log(logs);
+console.log(logs.data);

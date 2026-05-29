@@ -9,7 +9,8 @@ if (!app) {
   throw new Error("App not found");
 }
 
-const domain = app.domains.find((domain) =>
+const domains = await client.apps.domains.list({ app: app.id, limit: 100 });
+const domain = domains.data.find((domain) =>
   domain.url.includes("mydomainspecial.com"),
 );
 if (!domain) {

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<88f13f05c439d0ec60ef63df8020bfc2>>
+ * @generated SignedSource<<15ee6b3661f3f8b94154e94576ad7e5a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,6 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type SshAuthenticationMethod = "PASSWORD" | "PUBLIC_KEY" | "%future added value";
 export type srcGetAppSshServerQuery$variables = {
   id: string;
 };
@@ -18,18 +17,6 @@ export type srcGetAppSshServerQuery$data = {
     readonly sshServer?: {
       readonly enabled: boolean;
       readonly id: string;
-      readonly users: {
-        readonly edges: ReadonlyArray<{
-          readonly node: {
-            readonly authenticationMethods: ReadonlyArray<SshAuthenticationMethod | null | undefined> | null | undefined;
-            readonly id: string;
-            readonly port: number;
-            readonly serverHost: string;
-            readonly sftpRootFolder: string;
-            readonly username: string;
-          } | null | undefined;
-        } | null | undefined>;
-      };
     } | null | undefined;
   } | null | undefined;
 };
@@ -78,81 +65,6 @@ v3 = {
           "kind": "ScalarField",
           "name": "enabled",
           "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": [
-            {
-              "kind": "Literal",
-              "name": "first",
-              "value": 100
-            }
-          ],
-          "concreteType": "SshUserConnection",
-          "kind": "LinkedField",
-          "name": "users",
-          "plural": false,
-          "selections": [
-            {
-              "alias": null,
-              "args": null,
-              "concreteType": "SshUserEdge",
-              "kind": "LinkedField",
-              "name": "edges",
-              "plural": true,
-              "selections": [
-                {
-                  "alias": null,
-                  "args": null,
-                  "concreteType": "SshUser",
-                  "kind": "LinkedField",
-                  "name": "node",
-                  "plural": false,
-                  "selections": [
-                    (v2/*: any*/),
-                    {
-                      "alias": null,
-                      "args": null,
-                      "kind": "ScalarField",
-                      "name": "username",
-                      "storageKey": null
-                    },
-                    {
-                      "alias": null,
-                      "args": null,
-                      "kind": "ScalarField",
-                      "name": "port",
-                      "storageKey": null
-                    },
-                    {
-                      "alias": null,
-                      "args": null,
-                      "kind": "ScalarField",
-                      "name": "serverHost",
-                      "storageKey": null
-                    },
-                    {
-                      "alias": null,
-                      "args": null,
-                      "kind": "ScalarField",
-                      "name": "sftpRootFolder",
-                      "storageKey": null
-                    },
-                    {
-                      "alias": null,
-                      "args": null,
-                      "kind": "ScalarField",
-                      "name": "authenticationMethods",
-                      "storageKey": null
-                    }
-                  ],
-                  "storageKey": null
-                }
-              ],
-              "storageKey": null
-            }
-          ],
-          "storageKey": "users(first:100)"
         }
       ],
       "storageKey": null
@@ -213,16 +125,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "286f8901d48f62424207efad8f2d88a6",
+    "cacheID": "063e80612cd7a27b5b073d067d4d190e",
     "id": null,
     "metadata": {},
     "name": "srcGetAppSshServerQuery",
     "operationKind": "query",
-    "text": "query srcGetAppSshServerQuery(\n  $id: ID!\n) {\n  node(id: $id) {\n    __typename\n    ... on DeployApp {\n      sshServer {\n        id\n        enabled\n        users(first: 100) {\n          edges {\n            node {\n              id\n              username\n              port\n              serverHost\n              sftpRootFolder\n              authenticationMethods\n            }\n          }\n        }\n      }\n    }\n    id\n  }\n}\n"
+    "text": "query srcGetAppSshServerQuery(\n  $id: ID!\n) {\n  node(id: $id) {\n    __typename\n    ... on DeployApp {\n      sshServer {\n        id\n        enabled\n      }\n    }\n    id\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "789563c640425c93514da645931d0af4";
+(node as any).hash = "ecfe350e5b245f86ae54729cc15c26fd";
 
 export default node;

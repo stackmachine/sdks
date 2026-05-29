@@ -11,5 +11,6 @@ if (!sshServer) {
   console.log("SSH server is not configured for app:", appId);
 } else {
   console.log("SSH enabled:", sshServer.enabled);
-  console.log("SSH users:", sshServer.users);
+  const users = await client.apps.ssh.users.list({ app: appId, limit: 10 });
+  console.log("SSH users:", users.data);
 }

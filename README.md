@@ -51,6 +51,21 @@ const appVersion = await build.finish();
 const app = await client.apps.retrieve(appVersion.app.id);
 ```
 
+List APIs return Stripe-style paginated list objects:
+
+```js
+const apps = await client.apps.list({ limit: 10 });
+console.log(apps.data);
+
+for await (const app of client.apps.list({ limit: 25 })) {
+  console.log(app.name, app.url);
+}
+
+const domains = await client.apps.domains
+  .list({ app: app.id, limit: 25 })
+  .autoPagingToArray({ limit: 100 });
+```
+
 Check out the examples below for more client usage.
 
 ## Examples

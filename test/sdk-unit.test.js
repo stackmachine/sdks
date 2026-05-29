@@ -39,6 +39,43 @@ const deleteAppResponse = (success = true) =>
     },
   });
 
+const appNode = (id) => ({
+  id,
+  willPerishAt: null,
+  name: `app-${id}`,
+  url: `https://${id}.example.test`,
+  adminUrl: `https://${id}.example.test/admin`,
+  activeVersion: null,
+  favicon: null,
+  screenshot: null,
+});
+
+const appsListResponse = (
+  items,
+  pageInfo = {
+    hasNextPage: false,
+    hasPreviousPage: false,
+    endCursor: items.at(-1)?.cursor ?? null,
+    startCursor: items[0]?.cursor ?? null,
+  },
+  totalCount = items.length,
+) =>
+  jsonResponse({
+    data: {
+      viewer: {
+        id: "viewer-1",
+        apps: {
+          edges: items.map((item) => ({
+            cursor: item.cursor,
+            node: appNode(item.id),
+          })),
+          pageInfo,
+          totalCount,
+        },
+      },
+    },
+  });
+
 const abortError = () =>
   Object.assign(new Error("Aborted"), { name: "AbortError" });
 
@@ -168,6 +205,231 @@ test("StackMachine.init remains compatible and accepts token alias", async () =>
   }
 
   assert.equal(fetch.calls[0].headers.get("authorization"), "Bearer token-key");
+});
+
+test("list methods return Stripe-like list objects", async () => {
+  const fetch = mockFetch(() =>
+    appsListResponse(
+      [{ id: "app_1", cursor: "cursor_1" }],
+      {
+        hasNextPage: true,
+        hasPreviousPage: false,
+        endCursor: "cursor_1",
+        startCursor: "cursor_1",
+      },
+      3,
+    ),
+  );
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  const page = await client.apps.list({ limit: 1 });
+
+  assert.equal(page.object, "list");
+  assert.equal(page.url, "/v1/apps");
+  assert.equal(page.hasMore, true);
+  assert.equal(page.has_more, true);
+  assert.equal(page.nextPageCursor, "cursor_1");
+  assert.equal(page.previousPageCursor, "cursor_1");
+  assert.equal(page.totalCount, 3);
+  assert.equal(page.data.length, 1);
+  assert.equal(page.data[0].id, "app_1");
+  assert.equal(fetch.calls[0].body.variables.first, 1);
+  assert.equal(fetch.calls[0].body.variables.sortBy, "NEWEST");
+});
+
+test("pagination aliases map to GraphQL variables and validate conflicts", async () => {
+  const fetch = mockFetch(() => appsListResponse([]));
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  await client.apps.list({ limit: 2, starting_after: "cursor_a" });
+  await client.apps.list({ limit: 3, startingAfter: "cursor_b" });
+
+  assert.equal(fetch.calls[0].body.variables.first, 2);
+  assert.equal(fetch.calls[0].body.variables.after, "cursor_a");
+  assert.equal(fetch.calls[1].body.variables.first, 3);
+  assert.equal(fetch.calls[1].body.variables.after, "cursor_b");
+
+  assert.throws(
+    () =>
+      client.apps.list({
+        startingAfter: "cursor_a",
+        starting_after: "cursor_b",
+      }),
+    StackMachineValidationError,
+  );
+  assert.throws(
+    () =>
+      client.apps.list({
+        startingAfter: "cursor_a",
+        endingBefore: "cursor_b",
+      }),
+    StackMachineValidationError,
+  );
+  assert.throws(
+    () => client.apps.list({ limit: 0 }),
+    StackMachineValidationError,
+  );
+  assert.throws(
+    () => client.apps.list({ limit: 101 }),
+    StackMachineValidationError,
+  );
+});
+
+test("async iteration fetches subsequent pages and preserves request options", async () => {
+  const fetch = mockFetch((_, index) => {
+    if (index === 0) {
+      return appsListResponse(
+        [{ id: "app_1", cursor: "cursor_1" }],
+        {
+          hasNextPage: true,
+          hasPreviousPage: false,
+          endCursor: "cursor_1",
+          startCursor: "cursor_1",
+        },
+        2,
+      );
+    }
+    return appsListResponse(
+      [{ id: "app_2", cursor: "cursor_2" }],
+      {
+        hasNextPage: false,
+        hasPreviousPage: true,
+        endCursor: "cursor_2",
+        startCursor: "cursor_2",
+      },
+      2,
+    );
+  });
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  const ids = [];
+  for await (const app of client.apps.list(
+    { limit: 1 },
+    {
+      apiKey: "request-key",
+      headers: { "x-request": "yes" },
+    },
+  )) {
+    ids.push(app.id);
+  }
+
+  assert.deepEqual(ids, ["app_1", "app_2"]);
+  assert.equal(fetch.calls.length, 2);
+  assert.equal(fetch.calls[0].body.variables.first, 1);
+  assert.equal(fetch.calls[0].body.variables.after, undefined);
+  assert.equal(fetch.calls[1].body.variables.first, 1);
+  assert.equal(fetch.calls[1].body.variables.after, "cursor_1");
+  assert.equal(
+    fetch.calls[0].headers.get("authorization"),
+    "Bearer request-key",
+  );
+  assert.equal(
+    fetch.calls[1].headers.get("authorization"),
+    "Bearer request-key",
+  );
+  assert.equal(fetch.calls[1].headers.get("x-request"), "yes");
+});
+
+test("autoPagingEach stops when the handler returns false", async () => {
+  const fetch = mockFetch(() =>
+    appsListResponse(
+      [{ id: "app_1", cursor: "cursor_1" }],
+      {
+        hasNextPage: true,
+        hasPreviousPage: false,
+        endCursor: "cursor_1",
+        startCursor: "cursor_1",
+      },
+      2,
+    ),
+  );
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  const ids = [];
+  await client.apps.list({ limit: 1 }).autoPagingEach((app) => {
+    ids.push(app.id);
+    return false;
+  });
+
+  assert.deepEqual(ids, ["app_1"]);
+  assert.equal(fetch.calls.length, 1);
+});
+
+test("autoPagingToArray requires a limit and stops at that cap", async () => {
+  const fetch = mockFetch((_, index) =>
+    appsListResponse(
+      [{ id: `app_${index + 1}`, cursor: `cursor_${index + 1}` }],
+      {
+        hasNextPage: index < 2,
+        hasPreviousPage: index > 0,
+        endCursor: `cursor_${index + 1}`,
+        startCursor: `cursor_${index + 1}`,
+      },
+      3,
+    ),
+  );
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  await assert.rejects(
+    client.apps.list({ limit: 1 }).autoPagingToArray(),
+    StackMachineValidationError,
+  );
+
+  const apps = await client.apps
+    .list({ limit: 1 })
+    .autoPagingToArray({ limit: 2 });
+
+  assert.deepEqual(
+    apps.map((app) => app.id),
+    ["app_2", "app_3"],
+  );
+  assert.equal(fetch.calls.length, 3);
+});
+
+test("backward pagination maps endingBefore to GraphQL before and last", async () => {
+  const fetch = mockFetch(() =>
+    appsListResponse(
+      [{ id: "app_2", cursor: "cursor_2" }],
+      {
+        hasNextPage: true,
+        hasPreviousPage: true,
+        endCursor: "cursor_2",
+        startCursor: "cursor_2",
+      },
+      3,
+    ),
+  );
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  const page = await client.apps.list({
+    limit: 2,
+    endingBefore: "cursor_3",
+  });
+
+  assert.equal(fetch.calls[0].body.variables.first, undefined);
+  assert.equal(fetch.calls[0].body.variables.after, undefined);
+  assert.equal(fetch.calls[0].body.variables.last, 2);
+  assert.equal(fetch.calls[0].body.variables.before, "cursor_3");
+  assert.equal(page.hasMore, true);
+  assert.equal(page.previousPageCursor, "cursor_2");
 });
 
 test("mutations receive explicit, aliased, and generated client mutation ids", async () => {

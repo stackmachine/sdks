@@ -3,10 +3,7 @@ import { srcAutobuildSubscription } from "__generated__/srcAutobuildSubscription
 import nodeAppAlias, {
   srcAppAlias$data,
 } from "__generated__/srcAppAlias.graphql";
-import {
-  srcDeleteAppMutation,
-  srcDeleteAppMutation$variables,
-} from "__generated__/srcDeleteAppMutation.graphql";
+import { srcDeleteAppMutation } from "__generated__/srcDeleteAppMutation.graphql";
 import nodeApp, {
   srcDeployAppData$data,
 } from "__generated__/srcDeployAppData.graphql";
@@ -49,6 +46,15 @@ import {
   stackMachineErrorFromUnknown,
   type StackMachineGraphQLErrorPayload,
 } from "./errors";
+import {
+  connectionToListPageData,
+  createStackMachineListPromise,
+  type StackMachineAutoPagingEachHandler,
+  type StackMachineAutoPagingToArrayOptions,
+  type StackMachineList,
+  type StackMachineListPromise,
+  type StackMachinePaginationParams,
+} from "./pagination";
 import { createZip, handleUploadFileToCloud } from "./upload";
 
 const {
@@ -74,6 +80,11 @@ export {
   StackMachineValidationError,
   type StackMachineGraphQLErrorPayload,
   type StackMachineRequestOptions,
+  type StackMachineAutoPagingEachHandler,
+  type StackMachineAutoPagingToArrayOptions,
+  type StackMachineList,
+  type StackMachineListPromise,
+  type StackMachinePaginationParams,
 };
 
 export type StackMachineConfig = {
@@ -180,13 +191,37 @@ export type AppsDomainsCreateInput = {
   hostname: string;
   isDefault?: boolean;
 };
-export type AppsVersionsLogsListInput = {
-  version: string;
-  since: Date;
-  first?: number;
+export type AppAliasSortBy = "NEWEST" | "OLDEST";
+export type DeployAppsSortBy = "MOST_ACTIVE" | "NEWEST" | "OLDEST";
+export type DeployAppVersionsSortBy = "NEWEST" | "OLDEST";
+export type DeployAppsListInput = StackMachinePaginationParams & {
+  collaborating?: boolean;
+  sortBy?: DeployAppsSortBy;
 };
-export type AppsSshUsersListInput = { app: string };
-export type AppsSshAuthorizedKeysListInput = { user: string };
+export type AppsDomainsListInput = StackMachinePaginationParams & {
+  app: string;
+  sortBy?: AppAliasSortBy;
+};
+export type AppsVersionsListInput = StackMachinePaginationParams & {
+  app: string;
+  createdAfter?: Date;
+  sortBy?: DeployAppVersionsSortBy;
+};
+export type AppsVersionsLogsListInput = StackMachinePaginationParams & {
+  version: string;
+  since?: Date;
+  until?: Date;
+  instanceId?: string;
+  requestId?: string;
+  streams?: LogStream[];
+  textSearch?: string;
+};
+export type AppsSshUsersListInput = StackMachinePaginationParams & {
+  app: string;
+};
+export type AppsSshAuthorizedKeysListInput = StackMachinePaginationParams & {
+  user: string;
+};
 export type AppsSshAuthorizedKeysCreateInput = {
   user: string;
   publicKey: string;
@@ -404,13 +439,6 @@ export class DeployApp {
       name
       url
       adminUrl
-      domains {
-        edges {
-          node {
-            ...srcAppAlias
-          }
-        }
-      }
       activeVersion {
         id
       }
@@ -428,7 +456,6 @@ export class DeployApp {
   name: string;
   url: string;
   adminUrl: string;
-  domains: AppAlias[];
   favicon: string | null;
   screenshot: string | null;
   activeVersion: DeployAppVersion | null;
@@ -443,15 +470,6 @@ export class DeployApp {
     this.name = typedData.name;
     this.url = typedData.url;
     this.adminUrl = typedData.adminUrl;
-    this.domains = typedData.domains.edges
-      .map((edge) => edge?.node)
-      .filter((node): node is NonNullable<typeof node> => !!node)
-      .map(
-        (node) =>
-          new AppAlias(
-            this.client._getFragmentData<srcAppAlias$data>(nodeAppAlias, node),
-          ),
-      );
     this.favicon = typedData.favicon ?? null;
     this.screenshot = typedData.screenshot ?? null;
     this.activeVersion = typedData.activeVersion
@@ -500,7 +518,10 @@ export class DeployAppVersion {
   }
 }
 
-export type SshAuthenticationMethod = "PASSWORD" | "PUBLIC_KEY";
+export type SshAuthenticationMethod =
+  | "PASSWORD"
+  | "PUBLIC_KEY"
+  | "%future added value";
 
 export class SshAuthorizedKey {
   id: string;
@@ -539,15 +560,9 @@ export class SshUser {
 export class AppSshServer {
   id: string;
   enabled: boolean;
-  users: SshUser[];
   constructor(data: any) {
     this.id = data.id;
     this.enabled = data.enabled;
-    this.users =
-      data.users?.edges
-        ?.map((edge: any) => edge?.node)
-        .filter((node: any) => !!node)
-        .map((node: any) => new SshUser(node)) || [];
   }
 }
 
@@ -746,6 +761,77 @@ export class AppsDomainsResource {
     return aliases[0] || null;
   }
 
+  list(
+    input: AppsDomainsListInput,
+    options?: StackMachineRequestOptions,
+  ): StackMachineListPromise<AppAlias> {
+    return createStackMachineListPromise<AppAlias, AppsDomainsListInput>({
+      params: input,
+      options,
+      url: "/v1/apps/domains",
+      fetchPage: async (pagination, params, requestOptions) => {
+        const query = await this.client._query<any>(
+          graphql`
+            query srcListAppDomainsQuery(
+              $appId: ID!
+              $first: Int
+              $after: String
+              $last: Int
+              $before: String
+              $sortBy: AppAliasSortBy!
+            ) {
+              node(id: $appId) {
+                ... on DeployApp {
+                  domains(
+                    first: $first
+                    after: $after
+                    last: $last
+                    before: $before
+                    sortBy: $sortBy
+                  ) {
+                    edges {
+                      cursor
+                      node {
+                        ...srcAppAlias
+                      }
+                    }
+                    pageInfo {
+                      hasNextPage
+                      hasPreviousPage
+                      endCursor
+                      startCursor
+                    }
+                    totalCount
+                  }
+                }
+              }
+            }
+          `,
+          {
+            appId: params.app,
+            first: pagination.first,
+            after: pagination.after,
+            last: pagination.last,
+            before: pagination.before,
+            sortBy: params.sortBy ?? "NEWEST",
+          },
+          requestOptions,
+        );
+
+        return connectionToListPageData(
+          query?.node?.domains,
+          (node: any) =>
+            new AppAlias(
+              this.client._getFragmentData<srcAppAlias$data>(
+                nodeAppAlias,
+                node,
+              ),
+            ),
+        );
+      },
+    });
+  }
+
   async create(
     input: AppsDomainsCreateInput,
     options?: StackMachineRequestOptions,
@@ -867,56 +953,175 @@ export class AppsDomainsResource {
 export class AppsVersionsLogsResource {
   constructor(private client: SdkContext) {}
 
-  async list(
+  list(
     input: AppsVersionsLogsListInput,
     options?: StackMachineRequestOptions,
-  ): Promise<Log[]> {
-    const query = await this.client._query<srcGetAppLogsQuery>(
-      graphql`
-        query srcGetAppLogsQuery($appId: ID!, $since: DateTime!, $first: Int!) {
-          node(id: $appId) {
-            ... on DeployAppVersion {
-              logs(startingFromISO: $since, first: $first) {
-                edges {
-                  node {
-                    datetime
-                    instanceId
-                    message
-                    stream
-                    timestamp
+  ): StackMachineListPromise<Log> {
+    return createStackMachineListPromise<Log, AppsVersionsLogsListInput>({
+      params: input,
+      options,
+      url: "/v1/apps/versions/logs",
+      fetchPage: async (pagination, params, requestOptions) => {
+        const query = await this.client._query<srcGetAppLogsQuery>(
+          graphql`
+            query srcGetAppLogsQuery(
+              $appId: ID!
+              $since: DateTime
+              $until: DateTime
+              $instanceId: String
+              $requestId: String
+              $streams: [LogStream]
+              $textSearch: String
+              $first: Int
+              $after: String
+              $last: Int
+              $before: String
+            ) {
+              node(id: $appId) {
+                ... on DeployAppVersion {
+                  logs(
+                    startingFromISO: $since
+                    end: $until
+                    instanceId: $instanceId
+                    requestId: $requestId
+                    streams: $streams
+                    textSearch: $textSearch
+                    first: $first
+                    after: $after
+                    last: $last
+                    before: $before
+                  ) {
+                    edges {
+                      cursor
+                      node {
+                        datetime
+                        instanceId
+                        message
+                        stream
+                        timestamp
+                      }
+                    }
+                    pageInfo {
+                      hasNextPage
+                      hasPreviousPage
+                      endCursor
+                      startCursor
+                    }
                   }
                 }
               }
             }
-          }
-        }
-      `,
-      {
-        appId: input.version,
-        since: input.since.toISOString(),
-        first: input.first ?? 100,
-      },
-      options,
-    );
-    return (
-      query?.node?.logs?.edges
-        .map((edge) => edge?.node)
-        .filter((node): node is NonNullable<typeof node> => !!node)
-        .map((node) => ({
+          `,
+          {
+            appId: params.version,
+            since: params.since?.toISOString(),
+            until: params.until?.toISOString(),
+            instanceId: params.instanceId,
+            requestId: params.requestId,
+            streams: params.streams,
+            textSearch: params.textSearch,
+            first: pagination.first,
+            after: pagination.after,
+            last: pagination.last,
+            before: pagination.before,
+          },
+          requestOptions,
+        );
+
+        return connectionToListPageData(query?.node?.logs, (node) => ({
           datetime: parseDate(node.datetime)!,
           instanceId: node.instanceId,
           message: node.message,
           stream: node.stream,
           timestamp: node.timestamp,
-        })) || []
-    );
+        }));
+      },
+    });
   }
 }
 
 export class AppsVersionsResource {
   logs: AppsVersionsLogsResource;
-  constructor(client: SdkContext) {
+  constructor(private client: SdkContext) {
     this.logs = new AppsVersionsLogsResource(client);
+  }
+
+  list(
+    input: AppsVersionsListInput,
+    options?: StackMachineRequestOptions,
+  ): StackMachineListPromise<DeployAppVersion> {
+    return createStackMachineListPromise<
+      DeployAppVersion,
+      AppsVersionsListInput
+    >({
+      params: input,
+      options,
+      url: "/v1/apps/versions",
+      fetchPage: async (pagination, params, requestOptions) => {
+        const query = await this.client._query<any>(
+          graphql`
+            query srcListAppVersionsQuery(
+              $appId: ID!
+              $createdAfter: DateTime
+              $sortBy: DeployAppVersionsSortBy
+              $first: Int
+              $after: String
+              $last: Int
+              $before: String
+            ) {
+              node(id: $appId) {
+                ... on DeployApp {
+                  versions(
+                    createdAfter: $createdAfter
+                    sortBy: $sortBy
+                    first: $first
+                    after: $after
+                    last: $last
+                    before: $before
+                  ) {
+                    edges {
+                      cursor
+                      node {
+                        ...srcDeployAppVersionData
+                      }
+                    }
+                    pageInfo {
+                      hasNextPage
+                      hasPreviousPage
+                      endCursor
+                      startCursor
+                    }
+                    totalCount
+                  }
+                }
+              }
+            }
+          `,
+          {
+            appId: params.app,
+            createdAfter: params.createdAfter?.toISOString(),
+            sortBy: params.sortBy ?? "NEWEST",
+            first: pagination.first,
+            after: pagination.after,
+            last: pagination.last,
+            before: pagination.before,
+          },
+          requestOptions,
+        );
+
+        return connectionToListPageData(
+          query?.node?.versions,
+          (node: any) =>
+            new DeployAppVersion(
+              this.client._getFragmentData<srcDeployAppVersionData$data>(
+                nodeAppVersion,
+                node,
+              ),
+              this.client,
+            ),
+        );
+      },
+    });
   }
 }
 
@@ -1003,39 +1208,72 @@ export class AppsSshUsersPasswordsResource {
 export class AppsSshUsersAuthorizedKeysResource {
   constructor(private client: SdkContext) {}
 
-  async list(
+  list(
     input: AppsSshAuthorizedKeysListInput,
     options?: StackMachineRequestOptions,
-  ): Promise<SshAuthorizedKey[]> {
-    const query = await this.client._query<any>(
-      graphql`
-        query srcGetSshAuthorizedKeysQuery($id: ID!) {
-          node(id: $id) {
-            ... on SshUser {
-              authorizedKeys(first: 100) {
-                edges {
-                  node {
-                    id
-                    name
-                    publicKey
-                    createdAt
+  ): StackMachineListPromise<SshAuthorizedKey> {
+    return createStackMachineListPromise<
+      SshAuthorizedKey,
+      AppsSshAuthorizedKeysListInput
+    >({
+      params: input,
+      options,
+      url: "/v1/apps/ssh/users/authorized_keys",
+      fetchPage: async (pagination, params, requestOptions) => {
+        const query = await this.client._query<any>(
+          graphql`
+            query srcGetSshAuthorizedKeysQuery(
+              $id: ID!
+              $first: Int
+              $after: String
+              $last: Int
+              $before: String
+            ) {
+              node(id: $id) {
+                ... on SshUser {
+                  authorizedKeys(
+                    first: $first
+                    after: $after
+                    last: $last
+                    before: $before
+                  ) {
+                    edges {
+                      cursor
+                      node {
+                        id
+                        name
+                        publicKey
+                        createdAt
+                      }
+                    }
+                    pageInfo {
+                      hasNextPage
+                      hasPreviousPage
+                      endCursor
+                      startCursor
+                    }
+                    totalCount
                   }
                 }
               }
             }
-          }
-        }
-      `,
-      { id: input.user },
-      options,
-    );
+          `,
+          {
+            id: params.user,
+            first: pagination.first,
+            after: pagination.after,
+            last: pagination.last,
+            before: pagination.before,
+          },
+          requestOptions,
+        );
 
-    return (
-      query?.node?.authorizedKeys?.edges
-        ?.map((edge: any) => edge?.node)
-        .filter((node: any) => !!node)
-        .map((node: any) => new SshAuthorizedKey(node)) || []
-    );
+        return connectionToListPageData(
+          query?.node?.authorizedKeys,
+          (node: any) => new SshAuthorizedKey(node),
+        );
+      },
+    });
   }
 
   async create(
@@ -1112,43 +1350,73 @@ export class AppsSshUsersResource {
     this.authorizedKeys = new AppsSshUsersAuthorizedKeysResource(client);
   }
 
-  async list(
+  list(
     input: AppsSshUsersListInput,
     options?: StackMachineRequestOptions,
-  ): Promise<SshUser[]> {
-    const query = await this.client._query<any>(
-      graphql`
-        query srcGetAppSshUsersQuery($id: ID!) {
-          node(id: $id) {
-            ... on DeployApp {
-              sshServer {
-                users(first: 100) {
-                  edges {
-                    node {
-                      id
-                      username
-                      port
-                      serverHost
-                      sftpRootFolder
-                      authenticationMethods
+  ): StackMachineListPromise<SshUser> {
+    return createStackMachineListPromise<SshUser, AppsSshUsersListInput>({
+      params: input,
+      options,
+      url: "/v1/apps/ssh/users",
+      fetchPage: async (pagination, params, requestOptions) => {
+        const query = await this.client._query<any>(
+          graphql`
+            query srcGetAppSshUsersQuery(
+              $id: ID!
+              $first: Int
+              $after: String
+              $last: Int
+              $before: String
+            ) {
+              node(id: $id) {
+                ... on DeployApp {
+                  sshServer {
+                    users(
+                      first: $first
+                      after: $after
+                      last: $last
+                      before: $before
+                    ) {
+                      edges {
+                        cursor
+                        node {
+                          id
+                          username
+                          port
+                          serverHost
+                          sftpRootFolder
+                          authenticationMethods
+                        }
+                      }
+                      pageInfo {
+                        hasNextPage
+                        hasPreviousPage
+                        endCursor
+                        startCursor
+                      }
+                      totalCount
                     }
                   }
                 }
               }
             }
-          }
-        }
-      `,
-      { id: input.app },
-      options,
-    );
+          `,
+          {
+            id: params.app,
+            first: pagination.first,
+            after: pagination.after,
+            last: pagination.last,
+            before: pagination.before,
+          },
+          requestOptions,
+        );
 
-    return (
-      query?.node?.sshServer?.users?.edges
-        ?.map((edge: any) => edge?.node)
-        .filter((node: any) => !!node)
-        .map((node: any) => new SshUser(node)) || []
-    );
+        return connectionToListPageData(
+          query?.node?.sshServer?.users,
+          (node: any) => new SshUser(node),
+        );
+      },
+    });
   }
 
   async retrieve(
@@ -1273,18 +1541,6 @@ export class AppsSshResource {
               sshServer {
                 id
                 enabled
-                users(first: 100) {
-                  edges {
-                    node {
-                      id
-                      username
-                      port
-                      serverHost
-                      sftpRootFolder
-                      authenticationMethods
-                    }
-                  }
-                }
               }
             }
           }
@@ -1311,18 +1567,6 @@ export class AppsSshResource {
             sshServer {
               id
               enabled
-              users(first: 100) {
-                edges {
-                  node {
-                    id
-                    username
-                    port
-                    serverHost
-                    sftpRootFolder
-                    authenticationMethods
-                  }
-                }
-              }
             }
           }
         }
@@ -1353,6 +1597,73 @@ export class DeployAppsResource {
     this.domains = new AppsDomainsResource(client);
     this.versions = new AppsVersionsResource(client);
     this.ssh = new AppsSshResource(client);
+  }
+
+  list(
+    input: DeployAppsListInput = {},
+    options?: StackMachineRequestOptions,
+  ): StackMachineListPromise<DeployApp> {
+    return createStackMachineListPromise<DeployApp, DeployAppsListInput>({
+      params: input,
+      options,
+      url: "/v1/apps",
+      fetchPage: async (pagination, params, requestOptions) => {
+        const query = await this.client._query<any>(
+          graphql`
+            query srcListDeployAppsQuery(
+              $first: Int
+              $after: String
+              $last: Int
+              $before: String
+              $sortBy: DeployAppsSortBy
+              $collaborating: Boolean
+            ) {
+              viewer {
+                apps(
+                  first: $first
+                  after: $after
+                  last: $last
+                  before: $before
+                  sortBy: $sortBy
+                  collaborating: $collaborating
+                ) {
+                  edges {
+                    cursor
+                    node {
+                      ...srcDeployAppData
+                    }
+                  }
+                  pageInfo {
+                    hasNextPage
+                    hasPreviousPage
+                    endCursor
+                    startCursor
+                  }
+                  totalCount
+                }
+              }
+            }
+          `,
+          {
+            first: pagination.first,
+            after: pagination.after,
+            last: pagination.last,
+            before: pagination.before,
+            sortBy: params.sortBy ?? "NEWEST",
+            collaborating: params.collaborating,
+          },
+          requestOptions,
+        );
+
+        return connectionToListPageData(query?.viewer?.apps, (node: any) => {
+          const appData = this.client._getFragmentData<srcDeployAppData$data>(
+            nodeApp,
+            node,
+          );
+          return new DeployApp(appData, this.client);
+        });
+      },
+    });
   }
 
   async retrieve(
