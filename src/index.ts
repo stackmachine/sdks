@@ -16,14 +16,13 @@ import {
   srcDeleteAppMutation,
   srcDeleteAppMutation$variables,
 } from "__generated__/srcDeleteAppMutation.graphql";
-import {
-  srcGetAppByNameQuery,
-} from "__generated__/srcGetAppByNameQuery.graphql";
-import {
-  srcGetAppByIdQuery,
-} from "__generated__/srcGetAppByIdQuery.graphql";
+import { srcGetAppByNameQuery } from "__generated__/srcGetAppByNameQuery.graphql";
+import { srcGetAppByIdQuery } from "__generated__/srcGetAppByIdQuery.graphql";
+import { srcViewerQuery } from "__generated__/srcViewerQuery.graphql";
 import { createZip, handleUploadFileToCloud } from "upload";
-import nodeAppAlias, { srcAppAlias$data } from "__generated__/srcAppAlias.graphql";
+import nodeAppAlias, {
+  srcAppAlias$data,
+} from "__generated__/srcAppAlias.graphql";
 import { srcUpsertAppDomainMutation } from "__generated__/srcUpsertAppDomainMutation.graphql";
 import { srcGetAppLogsQuery } from "__generated__/srcGetAppLogsQuery.graphql";
 import { srcDeleteAppDomainMutation } from "__generated__/srcDeleteAppDomainMutation.graphql";
@@ -54,7 +53,7 @@ let config: {
 const assertConfig = () => {
   if (!config) {
     throw new Error(
-      "StackMachine is not initialized. Please call init() first."
+      "StackMachine is not initialized. Please call init() first.",
     );
   }
 };
@@ -136,17 +135,22 @@ class AppAlias {
   updatedAt: Date;
   createdAt: Date;
   constructor(data: srcAppAlias$data) {
-      this.id = data.id;
-      this.url = data.url;
-      this.state = AppAliasVerificationStates[data.state as "UNVERIFIED" | "VERIFIED" | "APEX_WITHOUT_REDIRECTION"];
-      this.redirectionHttpCode = HTTPRedirectType[data.redirectionHttpCode as "PERMANENT" | "TEMPORARY"];
-      this.redirectsFromIds = data.redirectsFrom?.map((redirect) => redirect?.id!) || [];
-      this.redirectsToId = data.redirectsTo?.id;
-      this.expectedDnsRecords = data.expectedDnsRecords as any;
-      this.firstCheckedAt = data.firstCheckedAt;
-      this.lastCheckedAt = data.lastCheckedAt;
-      this.updatedAt = data.updatedAt;
-      this.createdAt = data.createdAt;
+    this.id = data.id;
+    this.url = data.url;
+    this.state =
+      AppAliasVerificationStates[
+        data.state as "UNVERIFIED" | "VERIFIED" | "APEX_WITHOUT_REDIRECTION"
+      ];
+    this.redirectionHttpCode =
+      HTTPRedirectType[data.redirectionHttpCode as "PERMANENT" | "TEMPORARY"];
+    this.redirectsFromIds =
+      data.redirectsFrom?.map((redirect) => redirect?.id!) || [];
+    this.redirectsToId = data.redirectsTo?.id;
+    this.expectedDnsRecords = data.expectedDnsRecords as any;
+    this.firstCheckedAt = data.firstCheckedAt;
+    this.lastCheckedAt = data.lastCheckedAt;
+    this.updatedAt = data.updatedAt;
+    this.createdAt = data.createdAt;
   }
 }
 
@@ -194,11 +198,21 @@ class DeployApp {
     this.name = data.name;
     this.url = data.url;
     this.adminUrl = data.adminUrl;
-    this.domains = data.domains.edges
-      .map((edge) => new AppAlias(getFragmentData<srcAppAlias$data>(environment(), nodeAppAlias, edge?.node)));
+    this.domains = data.domains.edges.map(
+      (edge) =>
+        new AppAlias(
+          getFragmentData<srcAppAlias$data>(
+            environment(),
+            nodeAppAlias,
+            edge?.node,
+          ),
+        ),
+    );
     this.favicon = data.favicon;
     this.screenshot = data.screenshot;
-    this.activeVersion = data.activeVersion ? new DeployAppVersion(data.activeVersion as any, this) : null;
+    this.activeVersion = data.activeVersion
+      ? new DeployAppVersion(data.activeVersion as any, this)
+      : null;
     // this.managed = data.managed;
     // if (data.kind?.__typename === "WordPressAppKind") {
     //   let kindData = getFragmentData<srcDeployAppKindWordPress$data>(environment(), nodeApp, data.kind);
@@ -238,7 +252,7 @@ class DeployAppVersion {
       let appData = getFragmentData<srcDeployAppData$data>(
         environment(),
         nodeApp,
-        data.app
+        data.app,
       );
       app = new DeployApp(appData);
     }
@@ -279,7 +293,8 @@ class SshUser {
     this.sftpRootFolder = data.sftpRootFolder;
     this.authenticationMethods = data.authenticationMethods
       ? data.authenticationMethods.map(
-          (method: "PASSWORD" | "PUBLIC_KEY") => SshAuthenticationMethod[method]
+          (method: "PASSWORD" | "PUBLIC_KEY") =>
+            SshAuthenticationMethod[method],
         )
       : null;
   }
@@ -303,7 +318,7 @@ class AppSshServer {
 function getFragmentData<T>(
   environment: Environment,
   node: ReaderFragment,
-  fetchedData: any
+  fetchedData: any,
 ): T {
   let selector = getSelector(node, fetchedData);
   return environment.lookup(selector as any).data as any;
@@ -314,6 +329,10 @@ export type AutoBuildProgressData = {
   message: string | undefined | null;
   datetime: string;
   stream: string | undefined | null;
+};
+
+export type Viewer = {
+  username: string;
 };
 
 class AutobuildApp {
@@ -361,7 +380,7 @@ class AutobuildApp {
                 getFragmentData<srcDeployAppVersionData$data>(
                   env,
                   nodeAppVersion,
-                  appVersion
+                  appVersion,
                 );
               this.appVersion = new DeployAppVersion(appVersionData);
               resolve(this.appVersion);
@@ -369,8 +388,8 @@ class AutobuildApp {
             } else {
               reject(
                 new Error(
-                  "Error when building the app: build finished without deployed app"
-                )
+                  "Error when building the app: build finished without deployed app",
+                ),
               );
               return;
             }
@@ -387,8 +406,8 @@ class AutobuildApp {
           if (!this.appVersion) {
             reject(
               new Error(
-                "Error when building the app: build finished without deployed app"
-              )
+                "Error when building the app: build finished without deployed app",
+              ),
             );
           } else {
             resolve(this.appVersion);
@@ -419,7 +438,7 @@ class AutobuildApp {
     }
     if (!app) {
       throw new Error(
-        "Error when building the app: build finished without deployed app"
+        "Error when building the app: build finished without deployed app",
       );
     }
     return app;
@@ -440,12 +459,14 @@ class AppsDomainsResource {
       `,
       {
         ids,
-      }
+      },
     ).toPromise();
     return (
       query?.nodes?.map(
         (node: any) =>
-          new AppAlias(getFragmentData<srcAppAlias$data>(env, nodeAppAlias, node))
+          new AppAlias(
+            getFragmentData<srcAppAlias$data>(env, nodeAppAlias, node),
+          ),
       ) || []
     );
   }
@@ -481,7 +502,9 @@ class AppsDomainsResource {
           if (response.upsertAppDomain.success) {
             const domains = response.upsertAppDomain.domains;
             if (!domains) {
-              reject(new Error("Failed to create domain, no domains returned."));
+              reject(
+                new Error("Failed to create domain, no domains returned."),
+              );
               return;
             }
             let addedDomain: AppAlias | null = null;
@@ -489,12 +512,12 @@ class AppsDomainsResource {
               const appAliasData = getFragmentData<srcAppAlias$data>(
                 env,
                 nodeAppAlias,
-                returnedDomain
+                returnedDomain,
               );
               const appAlias = new AppAlias(appAliasData);
               if (
                 appAlias.expectedDnsRecords.find(
-                  (record) => record.host === input.hostname
+                  (record) => record.host === input.hostname,
                 )
               ) {
                 addedDomain = appAlias;
@@ -503,14 +526,18 @@ class AppsDomainsResource {
             if (!addedDomain) {
               reject(
                 new Error(
-                  "Failed to create domain, domain not found in returned domains."
-                )
+                  "Failed to create domain, domain not found in returned domains.",
+                ),
               );
               return;
             }
             resolve(addedDomain);
           } else {
-            reject(new Error("Failed to create domain, mutation was not successful."));
+            reject(
+              new Error(
+                "Failed to create domain, mutation was not successful.",
+              ),
+            );
           }
         },
         onError: (error) => {
@@ -547,7 +574,9 @@ class AppsDomainsResource {
             resolve(response.verifyAppDomain.verified);
           } else {
             reject(
-              new Error("Failed to verify domain, mutation was not successful.")
+              new Error(
+                "Failed to verify domain, mutation was not successful.",
+              ),
             );
           }
         },
@@ -583,7 +612,9 @@ class AppsDomainsResource {
             resolve();
           } else {
             reject(
-              new Error("Failed to delete domain, mutation was not successful.")
+              new Error(
+                "Failed to delete domain, mutation was not successful.",
+              ),
             );
           }
         },
@@ -601,15 +632,19 @@ class AppsDomainsResource {
 }
 
 class AppsVersionsLogsResource {
-  async list(input: { version: string; since: Date }): Promise<Log[]> {
+  async list(input: {
+    version: string;
+    since: Date;
+    first?: number;
+  }): Promise<Log[]> {
     const env = environment();
     const query = await fetchQuery<srcGetAppLogsQuery>(
       env,
       graphql`
-        query srcGetAppLogsQuery($appId: ID!, $since: DateTime!) {
+        query srcGetAppLogsQuery($appId: ID!, $since: DateTime!, $first: Int!) {
           node(id: $appId) {
-            ...on DeployAppVersion {
-              logs(startingFromISO: $since) {
+            ... on DeployAppVersion {
+              logs(startingFromISO: $since, first: $first) {
                 edges {
                   node {
                     datetime
@@ -627,7 +662,8 @@ class AppsVersionsLogsResource {
       {
         appId: input.version,
         since: input.since.toISOString(),
-      }
+        first: input.first ?? 100,
+      },
     ).toPromise();
     return (
       (query?.node?.logs?.edges
@@ -645,12 +681,16 @@ class AppsVersionsResource {
 }
 
 class AppsSshUsersPasswordsResource {
-  async reveal(userId: string): Promise<{ password: string | null; sshUser: SshUser }> {
+  async reveal(
+    userId: string,
+  ): Promise<{ password: string | null; sshUser: SshUser }> {
     const env = environment();
     const response: any = await new Promise((resolve, reject) => {
       commitMutation<any>(env, {
         mutation: graphql`
-          mutation srcRevealSshUserPasswordMutation($input: RevealSshUserPasswordInput!) {
+          mutation srcRevealSshUserPasswordMutation(
+            $input: RevealSshUserPasswordInput!
+          ) {
             revealSshUserPassword(input: $input) {
               password
               sshUser {
@@ -687,12 +727,16 @@ class AppsSshUsersPasswordsResource {
     };
   }
 
-  async rotate(userId: string): Promise<{ password: string; sshUser: SshUser }> {
+  async rotate(
+    userId: string,
+  ): Promise<{ password: string; sshUser: SshUser }> {
     const env = environment();
     const response: any = await new Promise((resolve, reject) => {
       commitMutation<any>(env, {
         mutation: graphql`
-          mutation srcRotateSshUserPasswordMutation($input: RotateSshUserPasswordInput!) {
+          mutation srcRotateSshUserPasswordMutation(
+            $input: RotateSshUserPasswordInput!
+          ) {
             rotateSshUserPassword(input: $input) {
               password
               sshUser {
@@ -753,7 +797,7 @@ class AppsSshUsersAuthorizedKeysResource {
           }
         }
       `,
-      { id: input.user }
+      { id: input.user },
     ).toPromise();
 
     return (
@@ -773,7 +817,9 @@ class AppsSshUsersAuthorizedKeysResource {
     const response: any = await new Promise((resolve, reject) => {
       commitMutation<any>(env, {
         mutation: graphql`
-          mutation srcAddSshAuthorizedKeyMutation($input: AddSshAuthorizedKeyInput!) {
+          mutation srcAddSshAuthorizedKeyMutation(
+            $input: AddSshAuthorizedKeyInput!
+          ) {
             addSshAuthorizedKey(input: $input) {
               authorizedKey {
                 id
@@ -813,7 +859,9 @@ class AppsSshUsersAuthorizedKeysResource {
     await new Promise((resolve, reject) => {
       commitMutation<any>(env, {
         mutation: graphql`
-          mutation srcDeleteSshAuthorizedKeyMutation($input: DeleteSshAuthorizedKeyInput!) {
+          mutation srcDeleteSshAuthorizedKeyMutation(
+            $input: DeleteSshAuthorizedKeyInput!
+          ) {
             deleteSshAuthorizedKey(input: $input) {
               success
             }
@@ -874,7 +922,7 @@ class AppsSshUsersResource {
           }
         }
       `,
-      { id: input.app }
+      { id: input.app },
     ).toPromise();
 
     return (
@@ -904,7 +952,7 @@ class AppsSshUsersResource {
           }
         }
       `,
-      { id }
+      { id },
     ).toPromise();
     if (!query?.node || query.node.__typename !== "SshUser") {
       return null;
@@ -918,7 +966,7 @@ class AppsSshUsersResource {
       username?: string;
       sftpRootFolder?: string;
       authenticationMethods?: SshAuthenticationMethod[];
-    }
+    },
   ): Promise<SshUser> {
     const env = environment();
     const response: any = await new Promise((resolve, reject) => {
@@ -1034,7 +1082,7 @@ class AppsSshResource {
           }
         }
       `,
-      { id: appId }
+      { id: appId },
     ).toPromise();
     if (!query?.node?.sshServer) {
       return null;
@@ -1042,7 +1090,10 @@ class AppsSshResource {
     return new AppSshServer(query.node.sshServer);
   }
 
-  async update(appId: string, input: { enabled: boolean }): Promise<AppSshServer> {
+  async update(
+    appId: string,
+    input: { enabled: boolean },
+  ): Promise<AppSshServer> {
     const env = environment();
     const response: any = await new Promise((resolve, reject) => {
       commitMutation<any>(env, {
@@ -1116,16 +1167,23 @@ class DeployAppsResource {
       `,
       {
         id,
-      }
+      },
     ).toPromise();
     if (!query?.app || query.app.__typename !== "DeployApp") {
       return null;
     }
-    const appData = getFragmentData<srcDeployAppData$data>(env, nodeApp, query.app);
+    const appData = getFragmentData<srcDeployAppData$data>(
+      env,
+      nodeApp,
+      query.app,
+    );
     return new DeployApp(appData);
   }
 
-  async retrieveByName(name: string, owner?: string): Promise<DeployApp | null> {
+  async retrieveByName(
+    name: string,
+    owner?: string,
+  ): Promise<DeployApp | null> {
     const env = environment();
     const query = await fetchQuery<srcGetAppByNameQuery>(
       env,
@@ -1139,12 +1197,16 @@ class DeployAppsResource {
       {
         name,
         owner,
-      }
+      },
     ).toPromise();
     if (!query?.app) {
       return null;
     }
-    const appData = getFragmentData<srcDeployAppData$data>(env, nodeApp, query.app);
+    const appData = getFragmentData<srcDeployAppData$data>(
+      env,
+      nodeApp,
+      query.app,
+    );
     return new DeployApp(appData);
   }
 
@@ -1162,7 +1224,7 @@ class DeployAppsResource {
         onCompleted: (response, errors) => {
           if (errors && errors.length > 0) {
             reject(
-              `The app could not be deleted: ${errors[0].message.toString()}`
+              `The app could not be deleted: ${errors[0].message.toString()}`,
             );
             return;
           }
@@ -1179,7 +1241,7 @@ class DeployAppsResource {
   }
 
   async autobuild(
-    input: srcAutobuildMutation$variables["input"]
+    input: srcAutobuildMutation$variables["input"],
   ): Promise<AutobuildApp> {
     const env = environment();
     const query: any = await new Promise((resolve, reject) => {
@@ -1195,7 +1257,7 @@ class DeployAppsResource {
         onCompleted: (response, errors) => {
           if (errors && errors.length > 0) {
             reject(
-              `The app could not be built: ${errors[0].message.toString()}`
+              `The app could not be built: ${errors[0].message.toString()}`,
             );
             return;
           }
@@ -1213,11 +1275,10 @@ class DeployAppsResource {
   }
 }
 
-
 class FilesResource {
   async upload(
     file: Blob,
-    setUploadFilesProgress?: (progress: number) => void
+    setUploadFilesProgress?: (progress: number) => void,
   ): Promise<string> {
     const env = environment();
     return handleUploadFileToCloud(env, file, setUploadFilesProgress);
@@ -1236,7 +1297,7 @@ export class StackMachine {
   static async init(settings: StackMachineRegistryConfig) {
     if (!settings.apiKey && settings.token) {
       console.log(
-        "[stackmachine] `token` is deprecated. Please use `apiKey` instead."
+        "[stackmachine] `token` is deprecated. Please use `apiKey` instead.",
       );
     }
     const authToken = settings.apiKey || settings.token;
@@ -1248,6 +1309,27 @@ export class StackMachine {
       environment,
     };
     return new StackMachine(environment);
+  }
+
+  async viewer(): Promise<Viewer | null> {
+    const env = environment();
+    const query = await fetchQuery<srcViewerQuery>(
+      env,
+      graphql`
+        query srcViewerQuery {
+          viewer {
+            username
+          }
+        }
+      `,
+      {},
+    ).toPromise();
+    if (!query?.viewer) {
+      return null;
+    }
+    return {
+      username: query.viewer.username,
+    };
   }
 }
 

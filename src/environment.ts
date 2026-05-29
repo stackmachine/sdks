@@ -6,8 +6,15 @@ import {
   type Variables,
   type QueryResponseCache as QueryResponseCacheType,
 } from "relay-runtime";
-import * as RelayRuntime from 'relay-runtime';
-const { Environment, Network, QueryResponseCache, RecordSource, Store, Observable } = RelayRuntime;
+import * as RelayRuntime from "relay-runtime";
+const {
+  Environment,
+  Network,
+  QueryResponseCache,
+  RecordSource,
+  Store,
+  Observable,
+} = RelayRuntime;
 import { createClient as createSubscriptionClient } from "graphql-ws";
 
 export const graphql = RelayRuntime.graphql;
@@ -56,7 +63,7 @@ export async function networkFetch(
     formData.append("variables", JSON.stringify(variables));
     formData.append("operationName", request.name);
 
-    Object.keys(uploadables).forEach(key => {
+    Object.keys(uploadables).forEach((key) => {
       if (Object.prototype.hasOwnProperty.call(uploadables, key)) {
         formData.append(key, uploadables[key]);
       }
@@ -141,14 +148,17 @@ function createNetwork(
   let subscriptionClient: any = null;
 
   const getSubscriptionClient = () => {
-    if (!subscriptionClient || subscriptionClient.status === 3) { // 3 = CLOSED
+    if (!subscriptionClient || subscriptionClient.status === 3) {
+      // 3 = CLOSED
       subscriptionClient = createSubscriptionClient({
-        url: endpoint.replace(/^http:\/\//, "ws://")?.replace(/^https:\/\//, "wss://"),
+        url: endpoint
+          .replace(/^http:\/\//, "ws://")
+          ?.replace(/^https:\/\//, "wss://"),
         connectionParams: {
           Authorization: token ? `Bearer ${token}` : "",
         },
       });
-      }
+    }
     return subscriptionClient;
   };
 
@@ -164,11 +174,11 @@ function createNetwork(
           operationName: request.name,
           variables,
         },
-        sink
+        sink,
       );
     });
   };
-  
+
   network = Network.create(fetchResponse, subscribe as any);
 
   return network;

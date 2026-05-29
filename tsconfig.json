@@ -1,29 +1,26 @@
 {
-    "compilerOptions": {
-      "target": "esnext",
-      "lib": ["esnext", "DOM"],
-      "declaration": true,
-      "declarationDir": "./dist",
-      "jsx": "preserve",
-      "allowJs": true,
-      "skipLibCheck": true,
-      "baseUrl": "./src",
-      "strict": true,
-      "noEmit": true,
-      "esModuleInterop": true,
-      "module": "esnext",
-      "moduleResolution": "node",
-      "resolveJsonModule": true,
-      "isolatedModules": true,
-      "incremental": false,
-      "plugins": [],
-      "paths": {
-        "@generated/*": ["./src/__generated__/*"],
-      },
-      "types": []
+  "compilerOptions": {
+    "target": "esnext",
+    "lib": ["esnext", "DOM"],
+    "declaration": true,
+    "declarationDir": "./dist",
+    "jsx": "preserve",
+    "allowJs": true,
+    "skipLibCheck": true,
+    "baseUrl": "./src",
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "incremental": false,
+    "plugins": [],
+    "paths": {
+      "@generated/*": ["./src/__generated__/*"]
     },
-    "include": [
-      "src/**/*.ts",
-    ]
-  }
-  
+    "types": []
+  },
+  "include": ["src/**/*.ts"]
+}
