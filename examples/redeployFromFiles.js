@@ -1,9 +1,7 @@
 import { StackMachine, createZip } from "stackmachine";
-const STACKMACHINE_API_KEY = process.env.STACKMACHINE_API_KEY;
+const STACKMACHINE_API_KEY = process.env.STACKMACHINE_API_KEY || "wap_sm_demo";
 
-const client = await StackMachine.init({
-  apiKey: STACKMACHINE_API_KEY || "wap_sm_demo",
-});
+const client = new StackMachine(STACKMACHINE_API_KEY);
 
 const zip = await createZip({
   "index.php": "<html><body><h1>Hello World!</h1></body></html>",

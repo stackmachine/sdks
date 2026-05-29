@@ -30,10 +30,10 @@ Initialize the client:
 ```js
 import { StackMachine } from "stackmachine";
 
-const client = await StackMachine.init({
-  apiKey: process.env.STACKMACHINE_API_KEY,
-});
+const client = new StackMachine(process.env.STACKMACHINE_API_KEY);
 ```
+
+`StackMachine.init({ apiKey, apiUrl })` is still supported for existing code. Pass constructor config such as `apiUrl`, `timeout`, or `maxNetworkRetries` only when you need to override the defaults.
 
 Use the resource clients for app and file operations:
 
@@ -61,7 +61,7 @@ Example scripts live in [`examples/`](./examples) and can be run with Node after
 
 Install dependencies with `npm install`.
 
-Run the integration test suite with `npm test`. The tests use Node's built-in `node:test` runner and require both `STACKMACHINE_API_KEY` and `STACKMACHINE_URL`. The test suite will fail fast if the API URL is not set.
+Run the test suite with `npm test`. The tests use Node's built-in `node:test` runner. Live integration coverage runs when both `STACKMACHINE_API_KEY` and `STACKMACHINE_URL` are set; otherwise that integration test is skipped.
 
 Load environment variables from an env file before running tests:
 

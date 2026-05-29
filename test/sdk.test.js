@@ -9,21 +9,25 @@ import {
 } from "@zip.js/zip.js";
 import { StackMachine, createZip } from "../dist/index.js";
 
-const requireEnv = (name) => {
-  const value = process.env[name];
-  assert.ok(value, `${name} must be set before running tests`);
-  return value;
-};
+const optionalEnv = (name) => process.env[name];
 
 test(
   "stackmachine public sdk integration",
   { timeout: 240_000, concurrency: false },
   async (t) => {
-    const apiKey = requireEnv("STACKMACHINE_API_KEY");
-    const apiUrl = requireEnv("STACKMACHINE_URL");
-    const client = await StackMachine.init({ apiKey, apiUrl });
+    const apiKey = optionalEnv("STACKMACHINE_API_KEY");
+    const apiUrl = optionalEnv("STACKMACHINE_URL");
+    if (!apiKey || !apiUrl) {
+      t.skip("requires STACKMACHINE_API_KEY and STACKMACHINE_URL");
+      return;
+    }
+
+    const client = new StackMachine(apiKey, { apiUrl });
+    const initClient = await StackMachine.init({ apiKey, apiUrl });
+    const initViewer = await initClient.viewer();
     const viewer = await client.viewer();
 
+    assert.ok(initViewer, "StackMachine.init should remain compatible");
     assert.ok(viewer, "viewer() should return the authenticated user");
     assert.equal(typeof viewer.username, "string");
     assert.notEqual(viewer.username.length, 0);

@@ -1,8 +1,6 @@
 import { StackMachine, createZip } from "stackmachine";
 
-const client = await StackMachine.init({
-  apiKey: "wap_XYZ",
-});
+const client = new StackMachine("wap_XYZ");
 
 async function execWasmerDeploy(deployPath, subdomain) {
   try {

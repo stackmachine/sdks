@@ -1,10 +1,8 @@
 import { StackMachine } from "../../dist/index.js";
 
-const STACKMACHINE_API_KEY = process.env.STACKMACHINE_API_KEY;
+const STACKMACHINE_API_KEY = process.env.STACKMACHINE_API_KEY || "wap_sm_demo";
 
-const client = await StackMachine.init({
-  apiKey: STACKMACHINE_API_KEY || "wap_sm_demo",
-});
+const client = new StackMachine(STACKMACHINE_API_KEY);
 
 console.log("Creating build...");
 

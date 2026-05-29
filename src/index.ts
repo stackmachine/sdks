@@ -1,33 +1,56 @@
-import {
-  srcAutobuildMutation,
-  srcAutobuildMutation$variables,
-} from "__generated__/srcAutobuildMutation.graphql";
-import { createEnvironment } from "./environment";
-import RelayRuntime, { ReaderFragment, type Environment } from "relay-runtime";
+import { srcAutobuildMutation } from "__generated__/srcAutobuildMutation.graphql";
 import { srcAutobuildSubscription } from "__generated__/srcAutobuildSubscription.graphql";
-import nodeApp, {
-  srcDeployAppData$data,
-} from "__generated__/srcDeployAppData.graphql";
-import nodeAppVersion, {
-  srcDeployAppVersionData$data,
-} from "__generated__/srcDeployAppVersionData.graphql";
-import { srcDeployAppKindWordPress$data } from "__generated__/srcDeployAppKindWordPress.graphql";
+import nodeAppAlias, {
+  srcAppAlias$data,
+} from "__generated__/srcAppAlias.graphql";
 import {
   srcDeleteAppMutation,
   srcDeleteAppMutation$variables,
 } from "__generated__/srcDeleteAppMutation.graphql";
-import { srcGetAppByNameQuery } from "__generated__/srcGetAppByNameQuery.graphql";
+import nodeApp, {
+  srcDeployAppData$data,
+} from "__generated__/srcDeployAppData.graphql";
+import { srcDeployAppKindWordPress$data } from "__generated__/srcDeployAppKindWordPress.graphql";
+import nodeAppVersion, {
+  srcDeployAppVersionData$data,
+} from "__generated__/srcDeployAppVersionData.graphql";
+import { srcGetAppAliasesQuery } from "__generated__/srcGetAppAliasesQuery.graphql";
 import { srcGetAppByIdQuery } from "__generated__/srcGetAppByIdQuery.graphql";
-import { srcViewerQuery } from "__generated__/srcViewerQuery.graphql";
-import { createZip, handleUploadFileToCloud } from "upload";
-import nodeAppAlias, {
-  srcAppAlias$data,
-} from "__generated__/srcAppAlias.graphql";
-import { srcUpsertAppDomainMutation } from "__generated__/srcUpsertAppDomainMutation.graphql";
+import { srcGetAppByNameQuery } from "__generated__/srcGetAppByNameQuery.graphql";
 import { srcGetAppLogsQuery } from "__generated__/srcGetAppLogsQuery.graphql";
 import { srcDeleteAppDomainMutation } from "__generated__/srcDeleteAppDomainMutation.graphql";
-import { srcGetAppAliasesQuery } from "__generated__/srcGetAppAliasesQuery.graphql";
+import { srcUpsertAppDomainMutation } from "__generated__/srcUpsertAppDomainMutation.graphql";
 import { srcVerifyAppDomainMutation } from "__generated__/srcVerifyAppDomainMutation.graphql";
+import { srcViewerQuery } from "__generated__/srcViewerQuery.graphql";
+import RelayRuntime, {
+  ReaderFragment,
+  type Environment,
+  type GraphQLTaggedNode,
+} from "relay-runtime";
+import {
+  createEnvironment,
+  DEFAULT_MAX_NETWORK_RETRIES,
+  DEFAULT_TIMEOUT_MS,
+  type EnvironmentOptions,
+  type StackMachineCacheConfig,
+  type StackMachineRequestOptions,
+} from "./environment";
+import {
+  StackMachineAPIError,
+  StackMachineError,
+  StackMachineGraphQLError,
+  StackMachineAuthenticationError,
+  StackMachineConnectionError,
+  StackMachineInvalidRequestError,
+  StackMachinePermissionError,
+  StackMachineRateLimitError,
+  StackMachineValidationError,
+  stackMachineErrorFromGraphQLErrors,
+  stackMachineErrorFromUnknown,
+  type StackMachineGraphQLErrorPayload,
+} from "./errors";
+import { createZip, handleUploadFileToCloud } from "./upload";
+
 const {
   graphql,
   fetchQuery,
@@ -39,29 +62,248 @@ const {
 const DEFAULT_API_URL = "https://api.stackmachine.com/graphql";
 
 export { createZip };
+export {
+  StackMachineAPIError,
+  StackMachineAuthenticationError,
+  StackMachineConnectionError,
+  StackMachineError,
+  StackMachineGraphQLError,
+  StackMachineInvalidRequestError,
+  StackMachinePermissionError,
+  StackMachineRateLimitError,
+  StackMachineValidationError,
+  type StackMachineGraphQLErrorPayload,
+  type StackMachineRequestOptions,
+};
 
-export type StackMachineRegistryConfig = {
+export type StackMachineConfig = {
   apiUrl?: string;
+  headers?: HeadersInit;
+  timeout?: number;
+  maxNetworkRetries?: number;
+  fetch?: typeof fetch;
+};
+
+export type StackMachineRegistryConfig = StackMachineConfig & {
   apiKey?: string;
+  /** @deprecated Use `apiKey` instead. */
   token?: string;
 };
 
-let config: {
+type MutationShape = {
+  response: unknown;
+  variables: Record<string, unknown>;
+};
+
+type SubscriptionHandlers<TSubscription extends { response: unknown }> = {
+  onNext?: (data: TSubscription["response"]) => void;
+  onCompleted?: () => void;
+  onError?: (error: Error) => void;
+};
+
+type SdkContext = {
   environment: Environment;
-} | null = null;
+  _query<
+    TQuery extends { response: unknown; variables: Record<string, unknown> },
+  >(
+    query: GraphQLTaggedNode,
+    variables: TQuery["variables"],
+    options?: StackMachineRequestOptions,
+  ): Promise<TQuery["response"]>;
+  _mutation<TMutation extends MutationShape>(
+    mutation: GraphQLTaggedNode,
+    variables: TMutation["variables"],
+    options?: StackMachineRequestOptions,
+  ): Promise<TMutation["response"]>;
+  _requestSubscription<TSubscription extends { response: unknown }>(
+    subscription: GraphQLTaggedNode,
+    variables: Record<string, unknown>,
+    handlers: SubscriptionHandlers<TSubscription>,
+    options?: StackMachineRequestOptions,
+  ): { dispose: () => void };
+  _getFragmentData<T>(node: ReaderFragment, fetchedData: unknown): T;
+};
 
-const assertConfig = () => {
-  if (!config) {
-    throw new Error(
-      "StackMachine is not initialized. Please call init() first.",
-    );
+export type DeployAppEnvVarInput = {
+  name: string;
+  sensitive?: boolean | null;
+  value: string;
+};
+export type DeployAppWordPressExtraData = {
+  adminEmail: string;
+  adminPassword: string;
+  adminUsername: string;
+  language?: string | null;
+  siteName: string;
+  theme?: string | null;
+};
+export type DeployAppAutobuildExtraData = {
+  wordpress?: DeployAppWordPressExtraData | null;
+};
+export type DeployAppJobDefinitionInput = {
+  cliArgs?: ReadonlyArray<string | null | undefined> | null;
+  command: string;
+  env?: ReadonlyArray<string | null | undefined> | null;
+  name?: string | null;
+  package?: string | null;
+  timeout?: string | null;
+};
+export type DeployAppAutobuildInput = {
+  afterDeployCmd?: string | null;
+  allowExistingApp?: boolean | null;
+  appId?: string | null;
+  appName?: string | null;
+  branch?: string | null;
+  buildCmd?: string | null;
+  clientMutationId?: string | null;
+  domains?: ReadonlyArray<string | null | undefined> | null;
+  enableDatabase?: boolean | null;
+  envVars?: ReadonlyArray<DeployAppEnvVarInput | null | undefined> | null;
+  extraData?: DeployAppAutobuildExtraData | null;
+  installCmd?: string | null;
+  jobs?: ReadonlyArray<DeployAppJobDefinitionInput | null | undefined> | null;
+  kind?: string | null;
+  managed?: boolean | null;
+  owner?: string | null;
+  params?: DeployAppAutobuildExtraData | null;
+  perishAt?: string | null;
+  presetName?: string | null;
+  region?: string | null;
+  repoUrl?: string | null;
+  rootDir?: string | null;
+  startCmd?: string | null;
+  uploadUrl?: string | null;
+  waitForScreenshotGeneration?: boolean | null;
+};
+export type AppsDomainsCreateInput = {
+  app: string;
+  hostname: string;
+  isDefault?: boolean;
+};
+export type AppsVersionsLogsListInput = {
+  version: string;
+  since: Date;
+  first?: number;
+};
+export type AppsSshUsersListInput = { app: string };
+export type AppsSshAuthorizedKeysListInput = { user: string };
+export type AppsSshAuthorizedKeysCreateInput = {
+  user: string;
+  publicKey: string;
+  name?: string;
+};
+export type AppsSshAuthorizedKeysDeleteInput = { user: string; name: string };
+export type AppsSshUsersUpdateInput = {
+  username?: string;
+  sftpRootFolder?: string;
+  authenticationMethods?: SshAuthenticationMethod[];
+};
+export type AppsSshServerUpdateInput = { enabled: boolean };
+
+export type AppAliasVerificationState =
+  | "APEX_WITHOUT_REDIRECTION"
+  | "UNVERIFIED"
+  | "VERIFIED"
+  | "%future added value";
+export type HTTPRedirectType =
+  | "PERMANENT_MOVED"
+  | "PERMANENT_REDIRECT"
+  | "TEMPORARY_FOUND"
+  | "TEMPORARY_REDIRECT"
+  | "%future added value";
+
+function parseDate(value: unknown): Date | null {
+  if (!value) {
+    return null;
   }
-};
+  return value instanceof Date ? value : new Date(value as string);
+}
 
-const environment = () => {
-  assertConfig();
-  return config!.environment;
-};
+function requiredPayload<T>(
+  value: T | null | undefined,
+  message: string,
+  operationName?: string,
+): T {
+  if (!value) {
+    throw new StackMachineAPIError({ message, operationName });
+  }
+  return value;
+}
+
+function operationNameFromNode(node: GraphQLTaggedNode): string | undefined {
+  return (node as any)?.params?.name ?? (node as any)?.default?.params?.name;
+}
+
+function generateClientMutationId(): string {
+  const cryptoApi = globalThis.crypto;
+  if (cryptoApi?.randomUUID) {
+    return `sm_${cryptoApi.randomUUID()}`;
+  }
+  return `sm_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
+}
+
+function resolveClientMutationId(
+  inputClientMutationId: unknown,
+  options?: StackMachineRequestOptions,
+): string {
+  const optionClientMutationId = options?.clientMutationId;
+  const optionIdempotencyKey = options?.idempotencyKey;
+  if (
+    optionClientMutationId &&
+    optionIdempotencyKey &&
+    optionClientMutationId !== optionIdempotencyKey
+  ) {
+    throw new StackMachineValidationError({
+      message:
+        "`idempotencyKey` and `clientMutationId` must match when both are provided.",
+      code: "idempotency_conflict",
+    });
+  }
+
+  const optionValue = optionClientMutationId ?? optionIdempotencyKey;
+  if (
+    optionValue &&
+    typeof inputClientMutationId === "string" &&
+    inputClientMutationId &&
+    inputClientMutationId !== optionValue
+  ) {
+    throw new StackMachineValidationError({
+      message:
+        "`input.clientMutationId` must match `idempotencyKey`/`clientMutationId` when both are provided.",
+      code: "idempotency_conflict",
+    });
+  }
+
+  if (optionValue) {
+    return optionValue;
+  }
+  if (typeof inputClientMutationId === "string" && inputClientMutationId) {
+    return inputClientMutationId;
+  }
+  return generateClientMutationId();
+}
+
+function withClientMutationId<TVariables extends Record<string, unknown>>(
+  variables: TVariables,
+  options?: StackMachineRequestOptions,
+): TVariables {
+  const input = variables.input;
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return variables;
+  }
+
+  const inputRecord = input as Record<string, unknown>;
+  return {
+    ...variables,
+    input: {
+      ...inputRecord,
+      clientMutationId: resolveClientMutationId(
+        inputRecord.clientMutationId,
+        options,
+      ),
+    },
+  };
+}
 
 class DeployAppKind {
   static fragment = graphql`
@@ -73,7 +315,7 @@ class DeployAppKind {
   `;
 }
 
-class DeployAppKindWordPress extends DeployAppKind {
+export class DeployAppKindWordPress extends DeployAppKind {
   static fragment = graphql`
     fragment srcDeployAppKindWordPress on Kind {
       ... on WordpressAppKind {
@@ -82,23 +324,14 @@ class DeployAppKindWordPress extends DeployAppKind {
     }
   `;
   adminUrl?: string;
-  constructor(data: srcDeployAppKindWordPress$data) {
+  constructor(data: any) {
     super();
-    this.adminUrl = data.adminUrl;
+    const typedData = data as srcDeployAppKindWordPress$data;
+    this.adminUrl = typedData.adminUrl;
   }
 }
 
-enum AppAliasVerificationStates {
-  UNVERIFIED = "UNVERIFIED",
-  VERIFIED = "VERIFIED",
-  APEX_WITHOUT_REDIRECTION = "APEX_WITHOUT_REDIRECTION",
-}
-enum HTTPRedirectType {
-  PERMANENT = "PERMANENT",
-  TEMPORARY = "TEMPORARY",
-}
-
-class AppAlias {
+export class AppAlias {
   static fragment = graphql`
     fragment srcAppAlias on AppAlias {
       id
@@ -124,37 +357,46 @@ class AppAlias {
     }
   `;
   id: string;
+  hostname: string;
   url: string;
-  state: AppAliasVerificationStates;
-  redirectionHttpCode: HTTPRedirectType;
+  state: AppAliasVerificationState;
+  redirectionHttpCode: HTTPRedirectType | null | undefined;
   redirectsFromIds: string[];
   redirectsToId: string | undefined;
   expectedDnsRecords: { host: string; recordType: string; value: string }[];
-  firstCheckedAt: Date;
-  lastCheckedAt: Date;
+  firstCheckedAt: Date | null;
+  lastCheckedAt: Date | null;
   updatedAt: Date;
   createdAt: Date;
-  constructor(data: srcAppAlias$data) {
-    this.id = data.id;
-    this.url = data.url;
-    this.state =
-      AppAliasVerificationStates[
-        data.state as "UNVERIFIED" | "VERIFIED" | "APEX_WITHOUT_REDIRECTION"
-      ];
-    this.redirectionHttpCode =
-      HTTPRedirectType[data.redirectionHttpCode as "PERMANENT" | "TEMPORARY"];
+
+  constructor(data: any) {
+    const typedData = data as srcAppAlias$data;
+    this.id = typedData.id;
+    this.hostname = typedData.hostname;
+    this.url = typedData.url;
+    this.state = typedData.state;
+    this.redirectionHttpCode = typedData.redirectionHttpCode;
     this.redirectsFromIds =
-      data.redirectsFrom?.map((redirect) => redirect?.id!) || [];
-    this.redirectsToId = data.redirectsTo?.id;
-    this.expectedDnsRecords = data.expectedDnsRecords as any;
-    this.firstCheckedAt = data.firstCheckedAt;
-    this.lastCheckedAt = data.lastCheckedAt;
-    this.updatedAt = data.updatedAt;
-    this.createdAt = data.createdAt;
+      typedData.redirectsFrom
+        ?.map((redirect) => redirect?.id!)
+        .filter(Boolean) || [];
+    this.redirectsToId = typedData.redirectsTo?.id;
+    this.expectedDnsRecords =
+      typedData.expectedDnsRecords
+        ?.filter((record): record is NonNullable<typeof record> => !!record)
+        .map((record) => ({
+          host: record.host,
+          recordType: record.recordType,
+          value: record.value,
+        })) || [];
+    this.firstCheckedAt = parseDate(typedData.firstCheckedAt);
+    this.lastCheckedAt = parseDate(typedData.lastCheckedAt);
+    this.updatedAt = parseDate(typedData.updatedAt)!;
+    this.createdAt = parseDate(typedData.createdAt)!;
   }
 }
 
-class DeployApp {
+export class DeployApp {
   static fragment = graphql`
     fragment srcDeployAppData on DeployApp {
       id
@@ -187,55 +429,48 @@ class DeployApp {
   url: string;
   adminUrl: string;
   domains: AppAlias[];
-  favicon: string;
-  screenshot: string;
+  favicon: string | null;
+  screenshot: string | null;
   activeVersion: DeployAppVersion | null;
-  // managed: boolean;
-  // kind: DeployAppKind | null = null;
-  constructor(data: srcDeployAppData$data) {
-    this.id = data.id;
-    this.willPerishAt = data.willPerishAt ? new Date(data.willPerishAt) : null;
-    this.name = data.name;
-    this.url = data.url;
-    this.adminUrl = data.adminUrl;
-    this.domains = data.domains.edges.map(
-      (edge) =>
-        new AppAlias(
-          getFragmentData<srcAppAlias$data>(
-            environment(),
-            nodeAppAlias,
-            edge?.node,
+
+  constructor(
+    data: any,
+    private client: SdkContext,
+  ) {
+    const typedData = data as srcDeployAppData$data;
+    this.id = typedData.id;
+    this.willPerishAt = parseDate(typedData.willPerishAt);
+    this.name = typedData.name;
+    this.url = typedData.url;
+    this.adminUrl = typedData.adminUrl;
+    this.domains = typedData.domains.edges
+      .map((edge) => edge?.node)
+      .filter((node): node is NonNullable<typeof node> => !!node)
+      .map(
+        (node) =>
+          new AppAlias(
+            this.client._getFragmentData<srcAppAlias$data>(nodeAppAlias, node),
           ),
-        ),
-    );
-    this.favicon = data.favicon;
-    this.screenshot = data.screenshot;
-    this.activeVersion = data.activeVersion
-      ? new DeployAppVersion(data.activeVersion as any, this)
+      );
+    this.favicon = typedData.favicon ?? null;
+    this.screenshot = typedData.screenshot ?? null;
+    this.activeVersion = typedData.activeVersion
+      ? new DeployAppVersion(typedData.activeVersion as any, this.client, this)
       : null;
-    // this.managed = data.managed;
-    // if (data.kind?.__typename === "WordPressAppKind") {
-    //   let kindData = getFragmentData<srcDeployAppKindWordPress$data>(environment(), nodeApp, data.kind);
-    //   this.kind = new DeployAppKindWordPress(kindData);
-    // }
   }
 }
 
-enum LogStream {
-  RUNTIME = "RUNTIME",
-  STDERR = "STDERR",
-  STDOUT = "STDOUT",
-}
+export type LogStream = "RUNTIME" | "STDERR" | "STDOUT" | "%future added value";
 
-type Log = {
+export type Log = {
   datetime: Date;
   instanceId: string;
   message: string;
-  stream: LogStream;
+  stream: LogStream | null | undefined;
   timestamp: number;
 };
 
-class DeployAppVersion {
+export class DeployAppVersion {
   static fragment = graphql`
     fragment srcDeployAppVersionData on DeployAppVersion {
       id
@@ -246,26 +481,28 @@ class DeployAppVersion {
   `;
   id: string;
   app: DeployApp;
-  constructor(data: srcDeployAppVersionData$data, app?: DeployApp) {
-    this.id = data.id;
+
+  constructor(
+    data: any,
+    private client: SdkContext,
+    app?: DeployApp,
+  ) {
+    const typedData = data as srcDeployAppVersionData$data;
+    this.id = typedData.id;
     if (!app) {
-      let appData = getFragmentData<srcDeployAppData$data>(
-        environment(),
+      const appData = this.client._getFragmentData<srcDeployAppData$data>(
         nodeApp,
-        data.app,
+        typedData.app,
       );
-      app = new DeployApp(appData);
+      app = new DeployApp(appData, this.client);
     }
     this.app = app;
   }
 }
 
-enum SshAuthenticationMethod {
-  PASSWORD = "PASSWORD",
-  PUBLIC_KEY = "PUBLIC_KEY",
-}
+export type SshAuthenticationMethod = "PASSWORD" | "PUBLIC_KEY";
 
-class SshAuthorizedKey {
+export class SshAuthorizedKey {
   id: string;
   name: string | null;
   publicKey: string;
@@ -274,11 +511,11 @@ class SshAuthorizedKey {
     this.id = data.id;
     this.name = data.name || null;
     this.publicKey = data.publicKey;
-    this.createdAt = new Date(data.createdAt);
+    this.createdAt = parseDate(data.createdAt)!;
   }
 }
 
-class SshUser {
+export class SshUser {
   id: string;
   username: string;
   port: number;
@@ -293,14 +530,13 @@ class SshUser {
     this.sftpRootFolder = data.sftpRootFolder;
     this.authenticationMethods = data.authenticationMethods
       ? data.authenticationMethods.map(
-          (method: "PASSWORD" | "PUBLIC_KEY") =>
-            SshAuthenticationMethod[method],
+          (method: SshAuthenticationMethod) => method,
         )
       : null;
   }
 }
 
-class AppSshServer {
+export class AppSshServer {
   id: string;
   enabled: boolean;
   users: SshUser[];
@@ -315,112 +551,138 @@ class AppSshServer {
   }
 }
 
-function getFragmentData<T>(
-  environment: Environment,
-  node: ReaderFragment,
-  fetchedData: any,
-): T {
-  let selector = getSelector(node, fetchedData);
-  return environment.lookup(selector as any).data as any;
-}
+export type AutoBuildDeployAppLogKind =
+  | "BUILD_STATUS"
+  | "COMPLETE"
+  | "DEPLOY_STATUS"
+  | "FAILED"
+  | "FETCHING_PLAN_STATUS"
+  | "LOG"
+  | "PREPARING_TO_DEPLOY_STATUS"
+  | "%future added value";
 
 export type AutoBuildProgressData = {
-  kind: string;
+  kind: AutoBuildDeployAppLogKind;
   message: string | undefined | null;
-  datetime: string;
-  stream: string | undefined | null;
+  datetime: Date;
+  stream: LogStream | undefined | null;
 };
 
 export type Viewer = {
   username: string;
 };
 
-class AutobuildApp {
+export class AutobuildApp {
   buildId: string;
   appVersion: DeployAppVersion | null = null;
-  subscription: any;
+  subscription: { dispose: () => void } | null = null;
   pendingLogs: AutoBuildProgressData[] = [];
   onProgress: ((data: AutoBuildProgressData) => void) | null = null;
   completedPromise: Promise<DeployAppVersion> | null = null;
-  constructor(buildId: string) {
+
+  constructor(
+    buildId: string,
+    private client: SdkContext,
+    options?: StackMachineRequestOptions,
+  ) {
     this.buildId = buildId;
     this.completedPromise = new Promise((resolve, reject) => {
-      const env = environment();
-      this.subscription = requestSubscription<srcAutobuildSubscription>(env, {
-        subscription: graphql`
-          subscription srcAutobuildSubscription($buildId: UUID!) {
-            autobuildDeployment(buildId: $buildId) {
-              appVersion {
-                ...srcDeployAppVersionData
+      this.subscription =
+        this.client._requestSubscription<srcAutobuildSubscription>(
+          graphql`
+            subscription srcAutobuildSubscription($buildId: UUID!) {
+              autobuildDeployment(buildId: $buildId) {
+                appVersion {
+                  ...srcDeployAppVersionData
+                }
+                kind
+                datetime
+                stream
+                message
               }
-              kind
-              datetime
-              stream
-              message
             }
-          }
-        `,
-        variables: {
-          buildId: this.buildId,
-        },
-        onNext: (data) => {
-          // console.log(data);
-          if (!data?.autobuildDeployment) {
-            return;
-          }
-          const { kind, message, appVersion, datetime, stream } =
-            data?.autobuildDeployment!;
+          `,
+          {
+            buildId: this.buildId,
+          },
+          {
+            onNext: (data) => {
+              if (!data?.autobuildDeployment) {
+                return;
+              }
+              const { kind, message, appVersion, datetime, stream } =
+                data.autobuildDeployment;
 
-          if (kind === "FAILED") {
-            reject(message);
-            return;
-          } else if (kind === "COMPLETE") {
-            if (appVersion !== undefined) {
-              let appVersionData =
-                getFragmentData<srcDeployAppVersionData$data>(
-                  env,
-                  nodeAppVersion,
-                  appVersion,
+              if (kind === "FAILED") {
+                reject(
+                  new StackMachineAPIError({
+                    message: message || "The app build failed.",
+                    operationName: "srcAutobuildSubscription",
+                  }),
                 );
-              this.appVersion = new DeployAppVersion(appVersionData);
-              resolve(this.appVersion);
-              return;
-            } else {
-              reject(
-                new Error(
-                  "Error when building the app: build finished without deployed app",
-                ),
-              );
-              return;
-            }
-          }
-          if (this.onProgress) {
-            this.onProgress({ kind, message, datetime, stream });
-          } else {
-            this.pendingLogs.push({ kind, message, datetime, stream });
-          }
-        },
-        onCompleted: () => {
-          this.onProgress = null;
-          this.subscription.dispose();
-          if (!this.appVersion) {
-            reject(
-              new Error(
-                "Error when building the app: build finished without deployed app",
-              ),
-            );
-          } else {
-            resolve(this.appVersion);
-            return;
-          }
-        },
-        onError: (error) => {
-          console.error(error);
-          reject(error);
-        },
-      });
+                return;
+              }
+              if (kind === "COMPLETE") {
+                if (appVersion !== undefined && appVersion !== null) {
+                  const appVersionData =
+                    this.client._getFragmentData<srcDeployAppVersionData$data>(
+                      nodeAppVersion,
+                      appVersion,
+                    );
+                  this.appVersion = new DeployAppVersion(
+                    appVersionData,
+                    this.client,
+                  );
+                  resolve(this.appVersion);
+                  return;
+                }
+                reject(
+                  new StackMachineAPIError({
+                    message:
+                      "Error when building the app: build finished without deployed app.",
+                    operationName: "srcAutobuildSubscription",
+                  }),
+                );
+                return;
+              }
+
+              const progress = {
+                kind,
+                message,
+                datetime: parseDate(datetime)!,
+                stream,
+              };
+              if (this.onProgress) {
+                this.onProgress(progress);
+              } else {
+                this.pendingLogs.push(progress);
+              }
+            },
+            onCompleted: () => {
+              this.onProgress = null;
+              this.subscription?.dispose();
+              this.subscription = null;
+              if (!this.appVersion) {
+                reject(
+                  new StackMachineAPIError({
+                    message:
+                      "Error when building the app: build finished without deployed app.",
+                    operationName: "srcAutobuildSubscription",
+                  }),
+                );
+              } else {
+                resolve(this.appVersion);
+              }
+            },
+            onError: (error) => {
+              reject(stackMachineErrorFromUnknown(error));
+            },
+          },
+          options,
+        );
     });
   }
+
   subscribeToProgress(callback: (data: AutoBuildProgressData) => void) {
     if (this.pendingLogs.length > 0) {
       for (const data of this.pendingLogs) {
@@ -430,26 +692,30 @@ class AutobuildApp {
     }
     this.onProgress = callback;
   }
+
   async finish(): Promise<DeployAppVersion> {
-    let app = await this.completedPromise;
-    if (this.subscription) {
-      this.subscription.dispose();
-      this.subscription = null;
-    }
+    const app = await this.completedPromise;
+    this.subscription?.dispose();
+    this.subscription = null;
     if (!app) {
-      throw new Error(
-        "Error when building the app: build finished without deployed app",
-      );
+      throw new StackMachineAPIError({
+        message:
+          "Error when building the app: build finished without deployed app.",
+        operationName: "srcAutobuildSubscription",
+      });
     }
     return app;
   }
 }
 
-class AppsDomainsResource {
-  private async retrieveMany(ids: string[]): Promise<AppAlias[]> {
-    const env = environment();
-    const query = await fetchQuery<srcGetAppAliasesQuery>(
-      env,
+export class AppsDomainsResource {
+  constructor(private client: SdkContext) {}
+
+  private async retrieveMany(
+    ids: string[],
+    options?: StackMachineRequestOptions,
+  ): Promise<AppAlias[]> {
+    const query = await this.client._query<srcGetAppAliasesQuery>(
       graphql`
         query srcGetAppAliasesQuery($ids: [ID!]!) {
           nodes(ids: $ids) {
@@ -460,186 +726,152 @@ class AppsDomainsResource {
       {
         ids,
       },
-    ).toPromise();
+      options,
+    );
     return (
       query?.nodes?.map(
         (node: any) =>
           new AppAlias(
-            getFragmentData<srcAppAlias$data>(env, nodeAppAlias, node),
+            this.client._getFragmentData<srcAppAlias$data>(nodeAppAlias, node),
           ),
       ) || []
     );
   }
 
-  async retrieve(id: string): Promise<AppAlias | null> {
-    const aliases = await this.retrieveMany([id]);
+  async retrieve(
+    id: string,
+    options?: StackMachineRequestOptions,
+  ): Promise<AppAlias | null> {
+    const aliases = await this.retrieveMany([id], options);
     return aliases[0] || null;
   }
 
-  async create(input: { app: string; hostname: string }): Promise<AppAlias> {
-    const env = environment();
-    return new Promise((resolve, reject) => {
-      commitMutation<srcUpsertAppDomainMutation>(env, {
-        mutation: graphql`
-          mutation srcUpsertAppDomainMutation($input: UpsertAppDomainInput!) {
-            upsertAppDomain(input: $input) {
-              success
-              domains {
-                ...srcAppAlias
-              }
+  async create(
+    input: AppsDomainsCreateInput,
+    options?: StackMachineRequestOptions,
+  ): Promise<AppAlias> {
+    const response = await this.client._mutation<srcUpsertAppDomainMutation>(
+      graphql`
+        mutation srcUpsertAppDomainMutation($input: UpsertAppDomainInput!) {
+          upsertAppDomain(input: $input) {
+            success
+            domains {
+              ...srcAppAlias
             }
           }
-        `,
-        onCompleted: (response, errors) => {
-          if (errors && errors.length > 0) {
-            reject(errors[0].message.toString());
-            return;
-          }
-          if (!response.upsertAppDomain) {
-            reject(new Error("Failed to create domain, mutation failed."));
-            return;
-          }
-          if (response.upsertAppDomain.success) {
-            const domains = response.upsertAppDomain.domains;
-            if (!domains) {
-              reject(
-                new Error("Failed to create domain, no domains returned."),
-              );
-              return;
-            }
-            let addedDomain: AppAlias | null = null;
-            for (const returnedDomain of domains) {
-              const appAliasData = getFragmentData<srcAppAlias$data>(
-                env,
-                nodeAppAlias,
-                returnedDomain,
-              );
-              const appAlias = new AppAlias(appAliasData);
-              if (
-                appAlias.expectedDnsRecords.find(
-                  (record) => record.host === input.hostname,
-                )
-              ) {
-                addedDomain = appAlias;
-              }
-            }
-            if (!addedDomain) {
-              reject(
-                new Error(
-                  "Failed to create domain, domain not found in returned domains.",
-                ),
-              );
-              return;
-            }
-            resolve(addedDomain);
-          } else {
-            reject(
-              new Error(
-                "Failed to create domain, mutation was not successful.",
-              ),
-            );
-          }
+        }
+      `,
+      {
+        input: {
+          appId: input.app,
+          name: input.hostname,
+          isDefault: input.isDefault,
+          wait: false,
         },
-        onError: (error) => {
-          reject(error.message.toString());
-        },
-        variables: {
-          input: {
-            appId: input.app,
-            name: input.hostname,
-            wait: false,
-          },
-        },
+      },
+      options,
+    );
+
+    const payload = requiredPayload(
+      response.upsertAppDomain,
+      "Failed to create domain, mutation failed.",
+      "srcUpsertAppDomainMutation",
+    );
+    if (!payload.success) {
+      throw new StackMachineAPIError({
+        message: "Failed to create domain, mutation was not successful.",
+        operationName: "srcUpsertAppDomainMutation",
       });
-    });
+    }
+
+    const domains = requiredPayload(
+      payload.domains,
+      "Failed to create domain, no domains returned.",
+      "srcUpsertAppDomainMutation",
+    );
+    const addedDomain = domains
+      .filter((domain): domain is NonNullable<typeof domain> => !!domain)
+      .map(
+        (domain) =>
+          new AppAlias(
+            this.client._getFragmentData<srcAppAlias$data>(
+              nodeAppAlias,
+              domain,
+            ),
+          ),
+      )
+      .find((domain) =>
+        domain.expectedDnsRecords.some(
+          (record) => record.host === input.hostname,
+        ),
+      );
+
+    return requiredPayload(
+      addedDomain,
+      "Failed to create domain, domain not found in returned domains.",
+      "srcUpsertAppDomainMutation",
+    );
   }
 
-  async verify(id: string): Promise<boolean> {
-    const env = environment();
-    return new Promise((resolve, reject) => {
-      commitMutation<srcVerifyAppDomainMutation>(env, {
-        mutation: graphql`
-          mutation srcVerifyAppDomainMutation($input: VerifyAppDomainInput!) {
-            verifyAppDomain(input: $input) {
-              verified
-            }
+  async verify(
+    id: string,
+    options?: StackMachineRequestOptions,
+  ): Promise<boolean> {
+    const response = await this.client._mutation<srcVerifyAppDomainMutation>(
+      graphql`
+        mutation srcVerifyAppDomainMutation($input: VerifyAppDomainInput!) {
+          verifyAppDomain(input: $input) {
+            verified
           }
-        `,
-        onCompleted: (response, errors) => {
-          if (errors && errors.length > 0) {
-            reject(errors[0].message.toString());
-            return;
-          }
-          if (response.verifyAppDomain) {
-            resolve(response.verifyAppDomain.verified);
-          } else {
-            reject(
-              new Error(
-                "Failed to verify domain, mutation was not successful.",
-              ),
-            );
-          }
+        }
+      `,
+      {
+        input: {
+          domainId: id,
         },
-        onError: (error) => {
-          reject(error.message.toString());
-        },
-        variables: {
-          input: {
-            domainId: id,
-          },
-        },
-      });
-    });
+      },
+      options,
+    );
+    return requiredPayload(
+      response.verifyAppDomain,
+      "Failed to verify domain, mutation was not successful.",
+      "srcVerifyAppDomainMutation",
+    ).verified;
   }
 
-  async del(id: string): Promise<void> {
-    const env = environment();
-    return new Promise((resolve, reject) => {
-      commitMutation<srcDeleteAppDomainMutation>(env, {
-        mutation: graphql`
-          mutation srcDeleteAppDomainMutation($input: DeleteAppDomainInput!) {
-            deleteAppDomain(input: $input) {
-              success
-            }
+  async del(id: string, options?: StackMachineRequestOptions): Promise<void> {
+    const response = await this.client._mutation<srcDeleteAppDomainMutation>(
+      graphql`
+        mutation srcDeleteAppDomainMutation($input: DeleteAppDomainInput!) {
+          deleteAppDomain(input: $input) {
+            success
           }
-        `,
-        onCompleted: (response, errors) => {
-          if (errors && errors.length > 0) {
-            reject(errors[0].message.toString());
-            return;
-          }
-          if (response.deleteAppDomain?.success) {
-            resolve();
-          } else {
-            reject(
-              new Error(
-                "Failed to delete domain, mutation was not successful.",
-              ),
-            );
-          }
+        }
+      `,
+      {
+        input: {
+          id,
         },
-        onError: (error) => {
-          reject(error.message.toString());
-        },
-        variables: {
-          input: {
-            id,
-          },
-        },
+      },
+      options,
+    );
+    if (!response.deleteAppDomain?.success) {
+      throw new StackMachineAPIError({
+        message: "Failed to delete domain, mutation was not successful.",
+        operationName: "srcDeleteAppDomainMutation",
       });
-    });
+    }
   }
 }
 
-class AppsVersionsLogsResource {
-  async list(input: {
-    version: string;
-    since: Date;
-    first?: number;
-  }): Promise<Log[]> {
-    const env = environment();
-    const query = await fetchQuery<srcGetAppLogsQuery>(
-      env,
+export class AppsVersionsLogsResource {
+  constructor(private client: SdkContext) {}
+
+  async list(
+    input: AppsVersionsLogsListInput,
+    options?: StackMachineRequestOptions,
+  ): Promise<Log[]> {
+    const query = await this.client._query<srcGetAppLogsQuery>(
       graphql`
         query srcGetAppLogsQuery($appId: ID!, $since: DateTime!, $first: Int!) {
           node(id: $appId) {
@@ -664,63 +896,65 @@ class AppsVersionsLogsResource {
         since: input.since.toISOString(),
         first: input.first ?? 100,
       },
-    ).toPromise();
+      options,
+    );
     return (
-      (query?.node?.logs?.edges
-        .filter((edge) => edge?.node)
-        .map((edge) => edge?.node) as Log[]) || []
+      query?.node?.logs?.edges
+        .map((edge) => edge?.node)
+        .filter((node): node is NonNullable<typeof node> => !!node)
+        .map((node) => ({
+          datetime: parseDate(node.datetime)!,
+          instanceId: node.instanceId,
+          message: node.message,
+          stream: node.stream,
+          timestamp: node.timestamp,
+        })) || []
     );
   }
 }
 
-class AppsVersionsResource {
+export class AppsVersionsResource {
   logs: AppsVersionsLogsResource;
-  constructor() {
-    this.logs = new AppsVersionsLogsResource();
+  constructor(client: SdkContext) {
+    this.logs = new AppsVersionsLogsResource(client);
   }
 }
 
-class AppsSshUsersPasswordsResource {
+export class AppsSshUsersPasswordsResource {
+  constructor(private client: SdkContext) {}
+
   async reveal(
     userId: string,
+    options?: StackMachineRequestOptions,
   ): Promise<{ password: string | null; sshUser: SshUser }> {
-    const env = environment();
-    const response: any = await new Promise((resolve, reject) => {
-      commitMutation<any>(env, {
-        mutation: graphql`
-          mutation srcRevealSshUserPasswordMutation(
-            $input: RevealSshUserPasswordInput!
-          ) {
-            revealSshUserPassword(input: $input) {
-              password
-              sshUser {
-                id
-                username
-                port
-                serverHost
-                sftpRootFolder
-                authenticationMethods
-              }
+    const response = await this.client._mutation<any>(
+      graphql`
+        mutation srcRevealSshUserPasswordMutation(
+          $input: RevealSshUserPasswordInput!
+        ) {
+          revealSshUserPassword(input: $input) {
+            password
+            sshUser {
+              id
+              username
+              port
+              serverHost
+              sftpRootFolder
+              authenticationMethods
             }
           }
-        `,
-        onCompleted: (payload, errors) => {
-          if (errors && errors.length > 0) {
-            reject(errors[0].message.toString());
-            return;
-          }
-          resolve(payload);
-        },
-        onError: (error) => reject(error.message.toString()),
-        variables: {
-          input: { sshUserId: userId },
-        },
-      });
-    });
-    const payload = response?.revealSshUserPassword;
-    if (!payload?.sshUser) {
-      throw new Error("Failed to reveal SSH user password.");
-    }
+        }
+      `,
+      {
+        input: { sshUserId: userId },
+      },
+      options,
+    );
+    const payload = requiredPayload(
+      response.revealSshUserPassword,
+      "Failed to reveal SSH user password.",
+      "srcRevealSshUserPasswordMutation",
+    );
     return {
       password: payload.password || null,
       sshUser: new SshUser(payload.sshUser),
@@ -729,44 +963,36 @@ class AppsSshUsersPasswordsResource {
 
   async rotate(
     userId: string,
+    options?: StackMachineRequestOptions,
   ): Promise<{ password: string; sshUser: SshUser }> {
-    const env = environment();
-    const response: any = await new Promise((resolve, reject) => {
-      commitMutation<any>(env, {
-        mutation: graphql`
-          mutation srcRotateSshUserPasswordMutation(
-            $input: RotateSshUserPasswordInput!
-          ) {
-            rotateSshUserPassword(input: $input) {
-              password
-              sshUser {
-                id
-                username
-                port
-                serverHost
-                sftpRootFolder
-                authenticationMethods
-              }
+    const response = await this.client._mutation<any>(
+      graphql`
+        mutation srcRotateSshUserPasswordMutation(
+          $input: RotateSshUserPasswordInput!
+        ) {
+          rotateSshUserPassword(input: $input) {
+            password
+            sshUser {
+              id
+              username
+              port
+              serverHost
+              sftpRootFolder
+              authenticationMethods
             }
           }
-        `,
-        onCompleted: (payload, errors) => {
-          if (errors && errors.length > 0) {
-            reject(errors[0].message.toString());
-            return;
-          }
-          resolve(payload);
-        },
-        onError: (error) => reject(error.message.toString()),
-        variables: {
-          input: { sshUserId: userId },
-        },
-      });
-    });
-    const payload = response?.rotateSshUserPassword;
-    if (!payload?.sshUser) {
-      throw new Error("Failed to rotate SSH user password.");
-    }
+        }
+      `,
+      {
+        input: { sshUserId: userId },
+      },
+      options,
+    );
+    const payload = requiredPayload(
+      response.rotateSshUserPassword,
+      "Failed to rotate SSH user password.",
+      "srcRotateSshUserPasswordMutation",
+    );
     return {
       password: payload.password,
       sshUser: new SshUser(payload.sshUser),
@@ -774,11 +1000,14 @@ class AppsSshUsersPasswordsResource {
   }
 }
 
-class AppsSshUsersAuthorizedKeysResource {
-  async list(input: { user: string }): Promise<SshAuthorizedKey[]> {
-    const env = environment();
-    const query = await fetchQuery<any>(
-      env,
+export class AppsSshUsersAuthorizedKeysResource {
+  constructor(private client: SdkContext) {}
+
+  async list(
+    input: AppsSshAuthorizedKeysListInput,
+    options?: StackMachineRequestOptions,
+  ): Promise<SshAuthorizedKey[]> {
+    const query = await this.client._query<any>(
       graphql`
         query srcGetSshAuthorizedKeysQuery($id: ID!) {
           node(id: $id) {
@@ -798,7 +1027,8 @@ class AppsSshUsersAuthorizedKeysResource {
         }
       `,
       { id: input.user },
-    ).toPromise();
+      options,
+    );
 
     return (
       query?.node?.authorizedKeys?.edges
@@ -808,98 +1038,85 @@ class AppsSshUsersAuthorizedKeysResource {
     );
   }
 
-  async create(input: {
-    user: string;
-    publicKey: string;
-    name?: string;
-  }): Promise<SshAuthorizedKey> {
-    const env = environment();
-    const response: any = await new Promise((resolve, reject) => {
-      commitMutation<any>(env, {
-        mutation: graphql`
-          mutation srcAddSshAuthorizedKeyMutation(
-            $input: AddSshAuthorizedKeyInput!
-          ) {
-            addSshAuthorizedKey(input: $input) {
-              authorizedKey {
-                id
-                name
-                publicKey
-                createdAt
-              }
+  async create(
+    input: AppsSshAuthorizedKeysCreateInput,
+    options?: StackMachineRequestOptions,
+  ): Promise<SshAuthorizedKey> {
+    const response = await this.client._mutation<any>(
+      graphql`
+        mutation srcAddSshAuthorizedKeyMutation(
+          $input: AddSshAuthorizedKeyInput!
+        ) {
+          addSshAuthorizedKey(input: $input) {
+            authorizedKey {
+              id
+              name
+              publicKey
+              createdAt
             }
           }
-        `,
-        onCompleted: (payload, errors) => {
-          if (errors && errors.length > 0) {
-            reject(errors[0].message.toString());
-            return;
-          }
-          resolve(payload);
+        }
+      `,
+      {
+        input: {
+          sshUserId: input.user,
+          publicKey: input.publicKey,
+          name: input.name,
         },
-        onError: (error) => reject(error.message.toString()),
-        variables: {
-          input: {
-            sshUserId: input.user,
-            publicKey: input.publicKey,
-            name: input.name,
-          },
-        },
-      });
-    });
-    const keyData = response?.addSshAuthorizedKey?.authorizedKey;
-    if (!keyData) {
-      throw new Error("Failed to add SSH authorized key.");
-    }
+      },
+      options,
+    );
+    const keyData = requiredPayload(
+      response.addSshAuthorizedKey?.authorizedKey,
+      "Failed to add SSH authorized key.",
+      "srcAddSshAuthorizedKeyMutation",
+    );
     return new SshAuthorizedKey(keyData);
   }
 
-  async del(input: { user: string; name: string }): Promise<void> {
-    const env = environment();
-    await new Promise((resolve, reject) => {
-      commitMutation<any>(env, {
-        mutation: graphql`
-          mutation srcDeleteSshAuthorizedKeyMutation(
-            $input: DeleteSshAuthorizedKeyInput!
-          ) {
-            deleteSshAuthorizedKey(input: $input) {
-              success
-            }
+  async del(
+    input: AppsSshAuthorizedKeysDeleteInput,
+    options?: StackMachineRequestOptions,
+  ): Promise<void> {
+    const response = await this.client._mutation<any>(
+      graphql`
+        mutation srcDeleteSshAuthorizedKeyMutation(
+          $input: DeleteSshAuthorizedKeyInput!
+        ) {
+          deleteSshAuthorizedKey(input: $input) {
+            success
           }
-        `,
-        onCompleted: (payload, errors) => {
-          if (errors && errors.length > 0) {
-            reject(errors[0].message.toString());
-            return;
-          }
-          if (payload?.deleteSshAuthorizedKey?.success) {
-            resolve(payload);
-            return;
-          }
-          reject(new Error("Failed to delete SSH authorized key."));
-        },
-        onError: (error) => reject(error.message.toString()),
-        variables: {
-          // TODO: support key deletion by authorized-key ID when backend exposes it.
-          input: { sshUserId: input.user, name: input.name },
-        },
+        }
+      `,
+      {
+        // TODO: support key deletion by authorized-key ID when backend exposes it.
+        input: { sshUserId: input.user, name: input.name },
+      },
+      options,
+    );
+    if (!response.deleteSshAuthorizedKey?.success) {
+      throw new StackMachineAPIError({
+        message: "Failed to delete SSH authorized key.",
+        operationName: "srcDeleteSshAuthorizedKeyMutation",
       });
-    });
+    }
   }
 }
 
-class AppsSshUsersResource {
+export class AppsSshUsersResource {
   passwords: AppsSshUsersPasswordsResource;
   authorizedKeys: AppsSshUsersAuthorizedKeysResource;
-  constructor() {
-    this.passwords = new AppsSshUsersPasswordsResource();
-    this.authorizedKeys = new AppsSshUsersAuthorizedKeysResource();
+
+  constructor(private client: SdkContext) {
+    this.passwords = new AppsSshUsersPasswordsResource(client);
+    this.authorizedKeys = new AppsSshUsersAuthorizedKeysResource(client);
   }
 
-  async list(input: { app: string }): Promise<SshUser[]> {
-    const env = environment();
-    const query = await fetchQuery<any>(
-      env,
+  async list(
+    input: AppsSshUsersListInput,
+    options?: StackMachineRequestOptions,
+  ): Promise<SshUser[]> {
+    const query = await this.client._query<any>(
       graphql`
         query srcGetAppSshUsersQuery($id: ID!) {
           node(id: $id) {
@@ -923,7 +1140,8 @@ class AppsSshUsersResource {
         }
       `,
       { id: input.app },
-    ).toPromise();
+      options,
+    );
 
     return (
       query?.node?.sshServer?.users?.edges
@@ -933,10 +1151,11 @@ class AppsSshUsersResource {
     );
   }
 
-  async retrieve(id: string): Promise<SshUser | null> {
-    const env = environment();
-    const query = await fetchQuery<any>(
-      env,
+  async retrieve(
+    id: string,
+    options?: StackMachineRequestOptions,
+  ): Promise<SshUser | null> {
+    const query = await this.client._query<any>(
       graphql`
         query srcGetSshUserByIdQuery($id: ID!) {
           node(id: $id) {
@@ -953,7 +1172,8 @@ class AppsSshUsersResource {
         }
       `,
       { id },
-    ).toPromise();
+      options,
+    );
     if (!query?.node || query.node.__typename !== "SshUser") {
       return null;
     }
@@ -962,102 +1182,90 @@ class AppsSshUsersResource {
 
   async update(
     id: string,
-    input: {
-      username?: string;
-      sftpRootFolder?: string;
-      authenticationMethods?: SshAuthenticationMethod[];
-    },
+    input: AppsSshUsersUpdateInput,
+    options?: StackMachineRequestOptions,
   ): Promise<SshUser> {
-    const env = environment();
-    const response: any = await new Promise((resolve, reject) => {
-      commitMutation<any>(env, {
-        mutation: graphql`
-          mutation srcEditSshUserMutation($input: EditSshUserInput!) {
-            editSshUser(input: $input) {
-              sshUser {
-                id
-                username
-                port
-                serverHost
-                sftpRootFolder
-                authenticationMethods
-              }
+    const response = await this.client._mutation<any>(
+      graphql`
+        mutation srcEditSshUserMutation($input: EditSshUserInput!) {
+          editSshUser(input: $input) {
+            sshUser {
+              id
+              username
+              port
+              serverHost
+              sftpRootFolder
+              authenticationMethods
             }
           }
-        `,
-        onCompleted: (payload, errors) => {
-          if (errors && errors.length > 0) {
-            reject(errors[0].message.toString());
-            return;
-          }
-          resolve(payload);
+        }
+      `,
+      {
+        input: {
+          id,
+          username: input.username,
+          sftpRootFolder: input.sftpRootFolder,
+          authenticationMethods: input.authenticationMethods,
         },
-        onError: (error) => reject(error.message.toString()),
-        variables: {
-          input: {
-            id,
-            username: input.username,
-            sftpRootFolder: input.sftpRootFolder,
-            authenticationMethods: input.authenticationMethods,
-          },
-        },
-      });
-    });
-    const userData = response?.editSshUser?.sshUser;
-    if (!userData) {
-      throw new Error("Failed to update SSH user.");
-    }
+      },
+      options,
+    );
+    const userData = requiredPayload(
+      response.editSshUser?.sshUser,
+      "Failed to update SSH user.",
+      "srcEditSshUserMutation",
+    );
     return new SshUser(userData);
   }
 }
 
-class AppsSshTokensResource {
-  async create(input: { app: string }): Promise<{ token: string }> {
-    const env = environment();
-    const response: any = await new Promise((resolve, reject) => {
-      commitMutation<any>(env, {
-        mutation: graphql`
-          mutation srcGenerateSshTokenMutation($input: GenerateSshTokenInput!) {
-            generateSshToken(input: $input) {
-              token
-            }
+export class AppsSshTokensResource {
+  constructor(private client: SdkContext) {}
+
+  async create(
+    input: { app: string },
+    options?: StackMachineRequestOptions,
+  ): Promise<{ token: string }> {
+    const response = await this.client._mutation<any>(
+      graphql`
+        mutation srcGenerateSshTokenMutation($input: GenerateSshTokenInput!) {
+          generateSshToken(input: $input) {
+            token
           }
-        `,
-        onCompleted: (payload, errors) => {
-          if (errors && errors.length > 0) {
-            reject(errors[0].message.toString());
-            return;
-          }
-          resolve(payload);
+        }
+      `,
+      {
+        input: {
+          appId: input.app,
         },
-        onError: (error) => reject(error.message.toString()),
-        variables: {
-          input: {
-            appId: input.app,
-          },
-        },
-      });
-    });
-    const token = response?.generateSshToken?.token;
+      },
+      options,
+    );
+    const token = response.generateSshToken?.token;
     if (!token) {
-      throw new Error("Failed to generate SSH token.");
+      throw new StackMachineAPIError({
+        message: "Failed to generate SSH token.",
+        operationName: "srcGenerateSshTokenMutation",
+      });
     }
     return { token };
   }
 }
 
-class AppsSshResource {
+export class AppsSshResource {
   tokens: AppsSshTokensResource;
   users: AppsSshUsersResource;
-  constructor() {
-    this.tokens = new AppsSshTokensResource();
-    this.users = new AppsSshUsersResource();
+
+  constructor(private client: SdkContext) {
+    this.tokens = new AppsSshTokensResource(client);
+    this.users = new AppsSshUsersResource(client);
   }
 
-  async retrieve(appId: string): Promise<AppSshServer | null> {
-    const env = environment();
-    const query = await fetchQuery<any>(
-      env,
+  async retrieve(
+    appId: string,
+    options?: StackMachineRequestOptions,
+  ): Promise<AppSshServer | null> {
+    const query = await this.client._query<any>(
       graphql`
         query srcGetAppSshServerQuery($id: ID!) {
           node(id: $id) {
@@ -1083,7 +1291,8 @@ class AppsSshResource {
         }
       `,
       { id: appId },
-    ).toPromise();
+      options,
+    );
     if (!query?.node?.sshServer) {
       return null;
     }
@@ -1092,71 +1301,65 @@ class AppsSshResource {
 
   async update(
     appId: string,
-    input: { enabled: boolean },
+    input: AppsSshServerUpdateInput,
+    options?: StackMachineRequestOptions,
   ): Promise<AppSshServer> {
-    const env = environment();
-    const response: any = await new Promise((resolve, reject) => {
-      commitMutation<any>(env, {
-        mutation: graphql`
-          mutation srcToggleSshServerMutation($input: ToggleSshServerInput!) {
-            toggleSshServer(input: $input) {
-              sshServer {
-                id
-                enabled
-                users(first: 100) {
-                  edges {
-                    node {
-                      id
-                      username
-                      port
-                      serverHost
-                      sftpRootFolder
-                      authenticationMethods
-                    }
+    const response = await this.client._mutation<any>(
+      graphql`
+        mutation srcToggleSshServerMutation($input: ToggleSshServerInput!) {
+          toggleSshServer(input: $input) {
+            sshServer {
+              id
+              enabled
+              users(first: 100) {
+                edges {
+                  node {
+                    id
+                    username
+                    port
+                    serverHost
+                    sftpRootFolder
+                    authenticationMethods
                   }
                 }
               }
             }
           }
-        `,
-        onCompleted: (payload, errors) => {
-          if (errors && errors.length > 0) {
-            reject(errors[0].message.toString());
-            return;
-          }
-          resolve(payload);
+        }
+      `,
+      {
+        input: {
+          appId,
+          enabled: input.enabled,
         },
-        onError: (error) => reject(error.message.toString()),
-        variables: {
-          input: {
-            appId,
-            enabled: input.enabled,
-          },
-        },
-      });
-    });
-    const sshServer = response?.toggleSshServer?.sshServer;
-    if (!sshServer) {
-      throw new Error("Failed to update SSH server.");
-    }
+      },
+      options,
+    );
+    const sshServer = requiredPayload(
+      response.toggleSshServer?.sshServer,
+      "Failed to update SSH server.",
+      "srcToggleSshServerMutation",
+    );
     return new AppSshServer(sshServer);
   }
 }
 
-class DeployAppsResource {
+export class DeployAppsResource {
   domains: AppsDomainsResource;
   versions: AppsVersionsResource;
   ssh: AppsSshResource;
-  constructor() {
-    this.domains = new AppsDomainsResource();
-    this.versions = new AppsVersionsResource();
-    this.ssh = new AppsSshResource();
+
+  constructor(private client: SdkContext) {
+    this.domains = new AppsDomainsResource(client);
+    this.versions = new AppsVersionsResource(client);
+    this.ssh = new AppsSshResource(client);
   }
 
-  async retrieve(id: string): Promise<DeployApp | null> {
-    const env = environment();
-    const query = await fetchQuery<srcGetAppByIdQuery>(
-      env,
+  async retrieve(
+    id: string,
+    options?: StackMachineRequestOptions,
+  ): Promise<DeployApp | null> {
+    const query = await this.client._query<srcGetAppByIdQuery>(
       graphql`
         query srcGetAppByIdQuery($id: ID!) {
           app: node(id: $id) {
@@ -1168,25 +1371,24 @@ class DeployAppsResource {
       {
         id,
       },
-    ).toPromise();
+      options,
+    );
     if (!query?.app || query.app.__typename !== "DeployApp") {
       return null;
     }
-    const appData = getFragmentData<srcDeployAppData$data>(
-      env,
+    const appData = this.client._getFragmentData<srcDeployAppData$data>(
       nodeApp,
       query.app,
     );
-    return new DeployApp(appData);
+    return new DeployApp(appData, this.client);
   }
 
   async retrieveByName(
     name: string,
     owner?: string,
+    options?: StackMachineRequestOptions,
   ): Promise<DeployApp | null> {
-    const env = environment();
-    const query = await fetchQuery<srcGetAppByNameQuery>(
-      env,
+    const query = await this.client._query<srcGetAppByNameQuery>(
       graphql`
         query srcGetAppByNameQuery($name: String!, $owner: String) {
           app: getDeployApp(name: $name, owner: $owner) {
@@ -1198,123 +1400,219 @@ class DeployAppsResource {
         name,
         owner,
       },
-    ).toPromise();
+      options,
+    );
     if (!query?.app) {
       return null;
     }
-    const appData = getFragmentData<srcDeployAppData$data>(
-      env,
+    const appData = this.client._getFragmentData<srcDeployAppData$data>(
       nodeApp,
       query.app,
     );
-    return new DeployApp(appData);
+    return new DeployApp(appData, this.client);
   }
 
-  async del(id: string): Promise<void> {
-    const env = environment();
-    await new Promise((resolve, reject) => {
-      commitMutation<srcDeleteAppMutation>(env, {
-        mutation: graphql`
-          mutation srcDeleteAppMutation($input: DeleteAppInput!) {
-            deleteApp(input: $input) {
-              success
-            }
+  async del(id: string, options?: StackMachineRequestOptions): Promise<void> {
+    const response = await this.client._mutation<srcDeleteAppMutation>(
+      graphql`
+        mutation srcDeleteAppMutation($input: DeleteAppInput!) {
+          deleteApp(input: $input) {
+            success
           }
-        `,
-        onCompleted: (response, errors) => {
-          if (errors && errors.length > 0) {
-            reject(
-              `The app could not be deleted: ${errors[0].message.toString()}`,
-            );
-            return;
-          }
-          resolve(response.deleteApp?.success);
-        },
-        onError: (error) => {
-          reject(`The app could not be deleted: ${error.message.toString()}`);
-        },
-        variables: {
-          input: { id },
-        },
+        }
+      `,
+      {
+        input: { id },
+      },
+      options,
+    );
+    if (!response.deleteApp?.success) {
+      throw new StackMachineAPIError({
+        message: "The app could not be deleted.",
+        operationName: "srcDeleteAppMutation",
       });
-    });
+    }
   }
 
   async autobuild(
-    input: srcAutobuildMutation$variables["input"],
+    input: DeployAppAutobuildInput,
+    options?: StackMachineRequestOptions,
   ): Promise<AutobuildApp> {
-    const env = environment();
-    const query: any = await new Promise((resolve, reject) => {
-      commitMutation<srcAutobuildMutation>(env, {
-        mutation: graphql`
-          mutation srcAutobuildMutation($input: DeployViaAutobuildInput!) {
-            deployViaAutobuild(input: $input) {
-              success
-              buildId
-            }
+    const response = await this.client._mutation<srcAutobuildMutation>(
+      graphql`
+        mutation srcAutobuildMutation($input: DeployViaAutobuildInput!) {
+          deployViaAutobuild(input: $input) {
+            success
+            buildId
           }
-        `,
-        onCompleted: (response, errors) => {
-          if (errors && errors.length > 0) {
-            reject(
-              `The app could not be built: ${errors[0].message.toString()}`,
-            );
-            return;
-          }
-          resolve(response);
-        },
-        onError: (error) => {
-          reject(`The app could not be built: ${error.message.toString()}`);
-        },
-        variables: {
-          input,
-        },
+        }
+      `,
+      {
+        input,
+      },
+      options,
+    );
+    const payload = requiredPayload(
+      response.deployViaAutobuild,
+      "The app could not be built.",
+      "srcAutobuildMutation",
+    );
+    if (!payload.success) {
+      throw new StackMachineAPIError({
+        message: "The app could not be built.",
+        operationName: "srcAutobuildMutation",
       });
-    });
-    return new AutobuildApp(query.deployViaAutobuild.buildId);
+    }
+    return new AutobuildApp(payload.buildId, this.client, options);
   }
 }
 
-class FilesResource {
+export class FilesResource {
+  constructor(private client: SdkContext) {}
+
   async upload(
     file: Blob,
     setUploadFilesProgress?: (progress: number) => void,
+    options?: StackMachineRequestOptions,
   ): Promise<string> {
-    const env = environment();
-    return handleUploadFileToCloud(env, file, setUploadFilesProgress);
+    return handleUploadFileToCloud(
+      this.client.environment,
+      file,
+      setUploadFilesProgress,
+      options,
+    );
   }
 }
 
-export class StackMachine {
+export class StackMachine implements SdkContext {
   environment: Environment;
   apps: DeployAppsResource;
   files: FilesResource;
-  private constructor(environment: Environment) {
-    this.environment = environment;
-    this.apps = new DeployAppsResource();
-    this.files = new FilesResource();
+  readonly apiUrl: string;
+  readonly timeout: number;
+  readonly maxNetworkRetries: number;
+
+  constructor(apiKey: string, config: StackMachineConfig = {}) {
+    this.apiUrl = config.apiUrl || DEFAULT_API_URL;
+    this.timeout = config.timeout ?? DEFAULT_TIMEOUT_MS;
+    this.maxNetworkRetries =
+      config.maxNetworkRetries ?? DEFAULT_MAX_NETWORK_RETRIES;
+
+    const environmentOptions: EnvironmentOptions = {
+      endpoint: this.apiUrl,
+      apiKey,
+      headers: config.headers,
+      timeout: this.timeout,
+      maxNetworkRetries: this.maxNetworkRetries,
+      fetch: config.fetch,
+    };
+    this.environment = createEnvironment(environmentOptions);
+    this.apps = new DeployAppsResource(this);
+    this.files = new FilesResource(this);
   }
+
   static async init(settings: StackMachineRegistryConfig) {
     if (!settings.apiKey && settings.token) {
-      console.log(
+      console.warn(
         "[stackmachine] `token` is deprecated. Please use `apiKey` instead.",
       );
     }
-    const authToken = settings.apiKey || settings.token;
-    const environment = createEnvironment({
-      endpoint: settings.apiUrl || DEFAULT_API_URL,
-      token: authToken,
-    });
-    config = {
-      environment,
-    };
-    return new StackMachine(environment);
+    const { apiKey, token, ...config } = settings;
+    return new StackMachine(apiKey || token || "", config);
   }
 
-  async viewer(): Promise<Viewer | null> {
-    const env = environment();
-    const query = await fetchQuery<srcViewerQuery>(
-      env,
+  _cacheConfig(options?: StackMachineRequestOptions): StackMachineCacheConfig {
+    return {
+      force: options?.force ?? true,
+      stackMachine: options,
+    };
+  }
+
+  async _query<
+    TQuery extends { response: unknown; variables: Record<string, unknown> },
+  >(
+    query: GraphQLTaggedNode,
+    variables: TQuery["variables"],
+    options?: StackMachineRequestOptions,
+  ): Promise<TQuery["response"]> {
+    const operationName = operationNameFromNode(query);
+    try {
+      const result = await fetchQuery<TQuery>(
+        this.environment,
+        query,
+        variables,
+        {
+          networkCacheConfig: this._cacheConfig(options),
+        },
+      ).toPromise();
+      return result as TQuery["response"];
+    } catch (error) {
+      throw stackMachineErrorFromUnknown(error, operationName);
+    }
+  }
+
+  async _mutation<TMutation extends MutationShape>(
+    mutation: GraphQLTaggedNode,
+    variables: TMutation["variables"],
+    options?: StackMachineRequestOptions,
+  ): Promise<TMutation["response"]> {
+    const operationName = operationNameFromNode(mutation);
+    const variablesWithClientMutationId = withClientMutationId(
+      variables,
+      options,
+    );
+
+    return new Promise<TMutation["response"]>((resolve, reject) => {
+      try {
+        commitMutation<any>(this.environment, {
+          mutation,
+          variables: variablesWithClientMutationId,
+          cacheConfig: this._cacheConfig(options),
+          onCompleted: (response, errors) => {
+            if (errors && errors.length > 0) {
+              reject(
+                stackMachineErrorFromGraphQLErrors(
+                  errors as StackMachineGraphQLErrorPayload[],
+                  operationName,
+                ),
+              );
+              return;
+            }
+            resolve(response as TMutation["response"]);
+          },
+          onError: (error) => {
+            reject(stackMachineErrorFromUnknown(error, operationName));
+          },
+        });
+      } catch (error) {
+        reject(stackMachineErrorFromUnknown(error, operationName));
+      }
+    });
+  }
+
+  _requestSubscription<TSubscription extends { response: unknown }>(
+    subscription: GraphQLTaggedNode,
+    variables: Record<string, unknown>,
+    handlers: SubscriptionHandlers<TSubscription>,
+    options?: StackMachineRequestOptions,
+  ) {
+    return requestSubscription<any>(this.environment, {
+      subscription,
+      variables,
+      cacheConfig: this._cacheConfig(options),
+      onNext: handlers.onNext,
+      onCompleted: handlers.onCompleted,
+      onError: handlers.onError,
+    });
+  }
+
+  _getFragmentData<T>(node: ReaderFragment, fetchedData: unknown): T {
+    const selector = getSelector(node, fetchedData);
+    return this.environment.lookup(selector as any).data as T;
+  }
+
+  async viewer(options?: StackMachineRequestOptions): Promise<Viewer | null> {
+    const query = await this._query<srcViewerQuery>(
       graphql`
         query srcViewerQuery {
           viewer {
@@ -1323,7 +1621,8 @@ export class StackMachine {
         }
       `,
       {},
-    ).toPromise();
+      options,
+    );
     if (!query?.viewer) {
       return null;
     }
@@ -1332,30 +1631,3 @@ export class StackMachine {
     };
   }
 }
-
-// export const init = async (settings: StackMachineRegistryConfig) => {
-//   const environment = createEnvironment({endpoint: settings.registryUrl || "https://registry.wasmer.wtf/graphql", token: settings.token});
-//   config = {
-//     environment
-//   };
-// }
-// const fetchFn: FetchFunction = function (request, variables) {
-//   return new Observable.create(source => {
-//     fetch('/my-graphql-api', {
-//       method: 'POST',
-//       body: JSON.stringify({
-//         text: request.text,
-//         variables,
-//       }),
-//     })
-//       .then(response => response.json())
-//       .then(data => source.next(data));
-//   });
-// };
-
-// const network = Network.create(fetchFn);
-// const store = new Store(new RecordSource());
-// const environment = new Environment({
-//   network,
-//   store,
-// });
