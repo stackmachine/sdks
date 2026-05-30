@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<287799b8515619c0fd0c0a5c4d1c55ab>>
+ * @generated SignedSource<<3229fb7972a566e71b4fcc0ec0d6ddd5>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,7 +18,7 @@ export type srcAppAlias$data = {
     readonly host: string;
     readonly recordType: string;
     readonly value: string;
-  } | null | undefined> | null | undefined;
+  }>;
   readonly firstCheckedAt: any | null | undefined;
   readonly hostname: string;
   readonly id: string;
@@ -26,7 +26,7 @@ export type srcAppAlias$data = {
   readonly redirectionHttpCode: HTTPRedirectType | null | undefined;
   readonly redirectsFrom: ReadonlyArray<{
     readonly id: string;
-  } | null | undefined> | null | undefined;
+  }>;
   readonly redirectsTo: {
     readonly id: string;
   } | null | undefined;

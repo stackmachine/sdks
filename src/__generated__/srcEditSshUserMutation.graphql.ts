@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<47dab2b0537161645b2be2f5e5083efb>>
+ * @generated SignedSource<<b27384ca1c3d0491a9ad8ac37a14ccaa>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -23,7 +23,7 @@ export type srcEditSshUserMutation$variables = {
 export type srcEditSshUserMutation$data = {
   readonly editSshUser: {
     readonly sshUser: {
-      readonly authenticationMethods: ReadonlyArray<SshAuthenticationMethod | null | undefined> | null | undefined;
+      readonly authenticationMethods: ReadonlyArray<SshAuthenticationMethod | null | undefined>;
       readonly id: string;
       readonly port: number;
       readonly serverHost: string;

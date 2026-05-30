@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<85aa88eec450ed4c0b4d4db7ea124e75>>
+ * @generated SignedSource<<c4ff383b56b0209cc389d9092ecc0fbc>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -26,8 +26,8 @@ export type srcListDeployAppsQuery$data = {
         readonly cursor: string;
         readonly node: {
           readonly " $fragmentSpreads": FragmentRefs<"srcDeployAppData">;
-        } | null | undefined;
-      } | null | undefined>;
+        };
+      }>;
       readonly pageInfo: {
         readonly endCursor: string | null | undefined;
         readonly hasNextPage: boolean;

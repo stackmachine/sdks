@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<fd4289038271a039792b28a124e371fd>>
+ * @generated SignedSource<<24806624bfb3dd3647f2dbc85660eb9b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -21,7 +21,7 @@ export type srcRotateSshUserPasswordMutation$data = {
   readonly rotateSshUserPassword: {
     readonly password: string;
     readonly sshUser: {
-      readonly authenticationMethods: ReadonlyArray<SshAuthenticationMethod | null | undefined> | null | undefined;
+      readonly authenticationMethods: ReadonlyArray<SshAuthenticationMethod | null | undefined>;
       readonly id: string;
       readonly port: number;
       readonly serverHost: string;

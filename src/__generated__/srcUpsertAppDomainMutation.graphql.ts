@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ac432e5cf4e1a508c9864d6c47401c81>>
+ * @generated SignedSource<<67d5416b64807318cc106e9b65ee1767>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -31,7 +31,7 @@ export type srcUpsertAppDomainMutation$data = {
   readonly upsertAppDomain: {
     readonly domains: ReadonlyArray<{
       readonly " $fragmentSpreads": FragmentRefs<"srcAppAlias">;
-    } | null | undefined> | null | undefined;
+    }>;
     readonly success: boolean;
   } | null | undefined;
 };

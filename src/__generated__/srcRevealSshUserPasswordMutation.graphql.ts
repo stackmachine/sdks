@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b4037752ca4b45ae967864c34da1e641>>
+ * @generated SignedSource<<5d4fc04e0d7a69e853898231380a2695>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -21,7 +21,7 @@ export type srcRevealSshUserPasswordMutation$data = {
   readonly revealSshUserPassword: {
     readonly password: string | null | undefined;
     readonly sshUser: {
-      readonly authenticationMethods: ReadonlyArray<SshAuthenticationMethod | null | undefined> | null | undefined;
+      readonly authenticationMethods: ReadonlyArray<SshAuthenticationMethod | null | undefined>;
       readonly id: string;
       readonly port: number;
       readonly serverHost: string;

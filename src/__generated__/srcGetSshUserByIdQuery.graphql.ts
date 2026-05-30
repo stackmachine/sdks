@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<fee6f184e1976d12af09bb69a8005b45>>
+ * @generated SignedSource<<9b37d453b266e953e58bd0f6d71b287b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,7 +16,7 @@ export type srcGetSshUserByIdQuery$variables = {
 export type srcGetSshUserByIdQuery$data = {
   readonly node: {
     readonly __typename: "SshUser";
-    readonly authenticationMethods: ReadonlyArray<SshAuthenticationMethod | null | undefined> | null | undefined;
+    readonly authenticationMethods: ReadonlyArray<SshAuthenticationMethod | null | undefined>;
     readonly id: string;
     readonly port: number;
     readonly serverHost: string;

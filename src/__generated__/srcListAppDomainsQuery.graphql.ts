@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c7a5f8c8b71b0e67599e43ad41a60df0>>
+ * @generated SignedSource<<9d0395069cfdffa1d70a7d003c86ceba>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -26,15 +26,15 @@ export type srcListAppDomainsQuery$data = {
         readonly cursor: string;
         readonly node: {
           readonly " $fragmentSpreads": FragmentRefs<"srcAppAlias">;
-        } | null | undefined;
-      } | null | undefined>;
+        };
+      }>;
       readonly pageInfo: {
         readonly endCursor: string | null | undefined;
         readonly hasNextPage: boolean;
         readonly hasPreviousPage: boolean;
         readonly startCursor: string | null | undefined;
       };
-      readonly totalCount: number | null | undefined;
+      readonly totalCount: number;
     };
   } | null | undefined;
 };

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5a0c26879f5d9aebf36c6451aaa75744>>
+ * @generated SignedSource<<516010fae1bef2e289d42d97fbc056e9>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -24,7 +24,7 @@ export type srcGetAppSshUsersQuery$data = {
         readonly edges: ReadonlyArray<{
           readonly cursor: string;
           readonly node: {
-            readonly authenticationMethods: ReadonlyArray<SshAuthenticationMethod | null | undefined> | null | undefined;
+            readonly authenticationMethods: ReadonlyArray<SshAuthenticationMethod | null | undefined>;
             readonly id: string;
             readonly port: number;
             readonly serverHost: string;
