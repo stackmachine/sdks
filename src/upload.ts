@@ -56,7 +56,7 @@ function validateChunkSize(value: number | undefined): number {
     chunkSize > MAX_CHUNK_SIZE
   ) {
     throw new StackMachineValidationError({
-      message: "`chunkSize` must be an integer between 1 and 536870912 bytes.",
+      message: `\`chunkSize\` must be an integer between 1 and ${MAX_CHUNK_SIZE} bytes.`,
       code: "invalid_upload_chunk_size",
       param: "chunkSize",
     });

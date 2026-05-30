@@ -466,7 +466,14 @@ test("files.upload validates chunk size before fetching", async () => {
 
   await assert.rejects(
     client.files.upload(new Blob(["invalid"]), { chunkSize: 0 }),
-    StackMachineValidationError,
+    (error) => {
+      assert.ok(error instanceof StackMachineValidationError);
+      assert.equal(
+        error.message,
+        "`chunkSize` must be an integer between 1 and 536870912 bytes.",
+      );
+      return true;
+    },
   );
   assert.equal(fetch.calls.length, 0);
 });
