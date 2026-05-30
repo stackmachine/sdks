@@ -28,7 +28,13 @@ const RETRYABLE_UPLOAD_STATUS_CODES = new Set([
 
 export type StackMachineUploadOptions = StackMachineRequestOptions & {
   chunkSize?: number;
-  onProgress?: (progress: number) => void;
+  onProgress?: (progress: StackMachineUploadProgress) => void;
+};
+
+export type StackMachineUploadProgress = {
+  loaded: number;
+  total: number;
+  percent: number;
 };
 
 export type StackMachineResolvedUploadOptions = StackMachineUploadOptions & {
@@ -262,15 +268,23 @@ function uploadedBytesFromRange(rangeHeader: string | null): number | null {
   return Number.parseInt(match[1], 10) + 1;
 }
 
-function createProgressReporter(onProgress?: (progress: number) => void) {
+function createProgressReporter(
+  total: number,
+  onProgress?: (progress: StackMachineUploadProgress) => void,
+) {
   let lastProgress = -1;
-  return (progress: number) => {
-    const normalized = Math.max(0, Math.min(1, progress));
-    if (normalized < lastProgress || normalized === lastProgress) {
+  return (loaded: number) => {
+    const normalizedLoaded = Math.max(0, Math.min(total, loaded));
+    const percent = total === 0 ? 1 : normalizedLoaded / total;
+    if (percent < lastProgress || percent === lastProgress) {
       return;
     }
-    lastProgress = normalized;
-    onProgress?.(normalized);
+    lastProgress = percent;
+    onProgress?.({
+      loaded: normalizedLoaded,
+      total,
+      percent,
+    });
   };
 }
 
@@ -297,7 +311,6 @@ export const createZip = async (files: {
 
 const initiateResumableUpload = async (
   url: string,
-  reportProgress: (progress: number) => void,
   options: StackMachineResolvedUploadOptions,
 ): Promise<string> => {
   const response = await retryUploadRequest(
@@ -327,7 +340,6 @@ const initiateResumableUpload = async (
       return response;
     },
   );
-  reportProgress(0.01);
 
   const uploadUrl = response.headers.get("Location");
   if (!uploadUrl) {
@@ -477,12 +489,12 @@ const uploadChunkWithResumeRetry = async (
 const uploadFileInChunks = async (
   uploadUrl: string,
   file: Blob,
-  reportProgress: (progress: number) => void,
+  reportProgress: (loaded: number) => void,
   options: StackMachineResolvedUploadOptions,
 ) => {
   const totalSize = file.size;
   if (totalSize === 0) {
-    reportProgress(1);
+    reportProgress(0);
     return;
   }
 
@@ -495,7 +507,7 @@ const uploadFileInChunks = async (
       start,
       totalSize,
       options,
-      (uploadedBytes) => reportProgress(uploadedBytes / totalSize),
+      reportProgress,
     );
 
     if (result.response.status === 308) {
@@ -510,10 +522,10 @@ const uploadFileInChunks = async (
         });
       }
       start = uploadedBytes;
-      reportProgress(start / totalSize);
+      reportProgress(start);
     } else if (result.response.ok) {
       start = totalSize;
-      reportProgress(1);
+      reportProgress(totalSize);
       break;
     }
   }
@@ -534,7 +546,10 @@ export const handleUploadFileToCloud = async (
   options: StackMachineResolvedUploadOptions,
 ) => {
   validateUploadFile(zipFile);
-  const reportProgress = createProgressReporter(options.onProgress);
+  const reportProgress = createProgressReporter(
+    zipFile.size,
+    options.onProgress,
+  );
   reportProgress(0);
 
   const networkCacheConfig: StackMachineCacheConfig = {
@@ -565,11 +580,7 @@ export const handleUploadFileToCloud = async (
 
   if (query?.getSignedUrl?.url) {
     const url = query?.getSignedUrl?.url;
-    const uploadUrl = await initiateResumableUpload(
-      url,
-      reportProgress,
-      options,
-    );
+    const uploadUrl = await initiateResumableUpload(url, options);
     await uploadFileInChunks(uploadUrl, zipFile, reportProgress, options);
     return url;
   } else {

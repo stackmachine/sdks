@@ -373,35 +373,33 @@ test("files.upload supports options object progress, chunk size, and injected fe
       .map((call) => call.headers.get("content-range")),
     ["bytes 0-3/10", "bytes 4-7/10", "bytes 8-9/10"],
   );
-  assert.deepEqual(progress, [0, 0.01, 0.4, 0.8, 1]);
+  assert.deepEqual(progress, [
+    { loaded: 0, total: 10, percent: 0 },
+    { loaded: 4, total: 10, percent: 0.4 },
+    { loaded: 8, total: 10, percent: 0.8 },
+    { loaded: 10, total: 10, percent: 1 },
+  ]);
 });
 
-test("files.upload keeps the legacy progress callback signature", async () => {
-  const progress = [];
-  const fetch = mockFetch((call) => {
-    if (call.body?.operationName === "uploadQuery") {
-      return uploadQueryResponse();
-    }
-    if (call.init.method === "POST") {
-      return uploadSessionResponse();
-    }
-    if (call.init.method === "PUT") {
-      return uploadCompleteResponse();
-    }
-    throw new Error(`Unexpected upload call ${call.init.method} ${call.url}`);
-  });
+test("files.upload rejects the removed positional progress callback signature", async () => {
+  const fetch = mockFetch(() => uploadQueryResponse());
   const client = new StackMachine("key", {
     apiUrl: "https://api.example.test/graphql",
     fetch,
   });
 
-  await client.files.upload(
-    new Blob(["legacy"]),
-    (value) => progress.push(value),
-    { maxNetworkRetries: 0 },
+  await assert.rejects(
+    client.files.upload(new Blob(["legacy"]), () => {}),
+    (error) => {
+      assert.ok(error instanceof StackMachineValidationError);
+      assert.equal(
+        error.message,
+        "`client.files.upload` progress must be passed as `options.onProgress`.",
+      );
+      return true;
+    },
   );
-
-  assert.deepEqual(progress, [0, 0.01, 1]);
+  assert.equal(fetch.calls.length, 0);
 });
 
 test("files.upload retries retryable chunk failures and resumes from server range", async () => {
@@ -454,7 +452,12 @@ test("files.upload retries retryable chunk failures and resumes from server rang
     "bytes */8",
     "bytes 6-7/8",
   ]);
-  assert.deepEqual(progress, [0, 0.01, 0.5, 0.75, 1]);
+  assert.deepEqual(progress, [
+    { loaded: 0, total: 8, percent: 0 },
+    { loaded: 4, total: 8, percent: 0.5 },
+    { loaded: 6, total: 8, percent: 0.75 },
+    { loaded: 8, total: 8, percent: 1 },
+  ]);
 });
 
 test("files.upload validates chunk size before fetching", async () => {

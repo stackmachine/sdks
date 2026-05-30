@@ -7,8 +7,8 @@ const client = new StackMachine(STACKMACHINE_API_KEY);
 
 const zip = new Blob([readFileSync("test.zip")]);
 const uploadUrl = await client.files.upload(zip, {
-  onProgress: (progress) => {
-    console.log("Uploading files... ", progress * 100, "%");
+  onProgress: ({ percent }) => {
+    console.log("Uploading files... ", percent * 100, "%");
   },
 });
 

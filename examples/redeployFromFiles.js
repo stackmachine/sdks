@@ -7,8 +7,8 @@ const zip = await createZip({
   "index.php": "<html><body><h1>Hello World!</h1></body></html>",
 });
 const uploadUrl = await client.files.upload(zip, {
-  onProgress: (progress) => {
-    console.log("Uploading files... ", progress * 100, "%");
+  onProgress: ({ percent }) => {
+    console.log("Uploading files... ", percent * 100, "%");
   },
 });
 

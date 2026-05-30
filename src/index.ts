@@ -61,6 +61,7 @@ import {
   handleUploadFileToCloud,
   resolveUploadOptions,
   type StackMachineUploadOptions,
+  type StackMachineUploadProgress,
 } from "./upload";
 
 const {
@@ -92,6 +93,7 @@ export {
   type StackMachineListPromise,
   type StackMachinePaginationParams,
   type StackMachineUploadOptions,
+  type StackMachineUploadProgress,
 };
 
 export type StackMachineConfig = {
@@ -118,8 +120,6 @@ type SubscriptionHandlers<TSubscription extends { response: unknown }> = {
   onCompleted?: () => void;
   onError?: (error: Error) => void;
 };
-
-type StackMachineUploadProgressCallback = (progress: number) => void;
 
 type StackMachineUploadConfig = {
   fetch: typeof fetch;
@@ -1995,30 +1995,19 @@ export class FilesResource {
   async upload(
     file: Blob,
     options?: StackMachineUploadOptions,
-  ): Promise<string>;
-  async upload(
-    file: Blob,
-    setUploadFilesProgress?: StackMachineUploadProgressCallback,
-    options?: StackMachineRequestOptions,
-  ): Promise<string>;
-  async upload(
-    file: Blob,
-    optionsOrProgress?:
-      | StackMachineUploadOptions
-      | StackMachineUploadProgressCallback,
-    options?: StackMachineRequestOptions,
   ): Promise<string> {
-    const uploadOptions =
-      typeof optionsOrProgress === "function"
-        ? {
-            ...options,
-            onProgress: optionsOrProgress,
-          }
-        : (optionsOrProgress ?? options);
+    if (typeof (options as unknown) === "function") {
+      throw new StackMachineValidationError({
+        message:
+          "`client.files.upload` progress must be passed as `options.onProgress`.",
+        code: "invalid_upload_options",
+        param: "options",
+      });
+    }
     return handleUploadFileToCloud(
       this.client.environment,
       file,
-      resolveUploadOptions(uploadOptions, this.uploadConfig),
+      resolveUploadOptions(options, this.uploadConfig),
     );
   }
 }

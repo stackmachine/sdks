@@ -107,8 +107,8 @@ test(
 
         const uploadProgress = [];
         const uploadUrl = await client.files.upload(zip, {
-          onProgress: (progress) => {
-            uploadProgress.push(progress);
+          onProgress: (entry) => {
+            uploadProgress.push(entry);
           },
         });
 
@@ -117,8 +117,10 @@ test(
           uploadProgress.length >= 2,
           "upload progress callback should be invoked more than once",
         );
-        assert.ok(uploadProgress.some((value) => value > 0 && value < 1));
-        assert.equal(uploadProgress.at(-1), 1);
+        assert.equal(uploadProgress[0].loaded, 0);
+        assert.equal(uploadProgress[0].percent, 0);
+        assert.equal(uploadProgress.at(-1).percent, 1);
+        assert.equal(uploadProgress.at(-1).loaded, uploadProgress.at(-1).total);
 
         const deployment = await client.deployments.create({
           appName,
