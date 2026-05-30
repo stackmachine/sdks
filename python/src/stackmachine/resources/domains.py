@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Optional
 
+from typing_extensions import Unpack
+
 from .._errors import StackMachineAPIError
 from .._graphql import operations as gql
 from .._models import AppAlias
@@ -13,6 +15,7 @@ from .._pagination import (
     create_async_list,
     create_list,
 )
+from .._types import AppAliasSortBy, PaginationOptions, RequestOptionsLike
 from ._shared import page_variables, required_payload, resource_missing_error
 
 
@@ -21,7 +24,7 @@ class AppsDomainsResource:
         self._client = client
 
     def retrieve_many(
-        self, ids: list[str], *, request_options: Optional[Mapping[str, Any]] = None
+        self, ids: list[str], *, request_options: Optional[RequestOptionsLike] = None
     ) -> list[Optional[AppAlias]]:
         if not ids:
             return []
@@ -40,7 +43,7 @@ class AppsDomainsResource:
         return result
 
     def retrieve(
-        self, id: str, *, request_options: Optional[Mapping[str, Any]] = None
+        self, id: str, *, request_options: Optional[RequestOptionsLike] = None
     ) -> AppAlias:
         alias = self.retrieve_many([id], request_options=request_options)[0]
         if not alias:
@@ -51,9 +54,9 @@ class AppsDomainsResource:
         self,
         *,
         app: str,
-        sort_by: str = "NEWEST",
-        request_options: Optional[Mapping[str, Any]] = None,
-        **pagination: Any,
+        sort_by: AppAliasSortBy = "NEWEST",
+        request_options: Optional[RequestOptionsLike] = None,
+        **pagination: Unpack[PaginationOptions],
     ) -> StackMachineList[AppAlias]:
         params = {"app": app, "sort_by": sort_by, **pagination}
 
@@ -86,7 +89,7 @@ class AppsDomainsResource:
         app: str,
         hostname: str,
         is_default: Optional[bool] = None,
-        request_options: Optional[Mapping[str, Any]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> AppAlias:
         response = self._client._mutation(
             gql.UPSERT_APP_DOMAIN_MUTATION,
@@ -125,7 +128,7 @@ class AppsDomainsResource:
         )
 
     def verify(
-        self, id: str, *, request_options: Optional[Mapping[str, Any]] = None
+        self, id: str, *, request_options: Optional[RequestOptionsLike] = None
     ) -> bool:
         response = self._client._mutation(
             gql.VERIFY_APP_DOMAIN_MUTATION,
@@ -140,7 +143,7 @@ class AppsDomainsResource:
         return bool(payload.get("verified"))
 
     def delete(
-        self, id: str, *, request_options: Optional[Mapping[str, Any]] = None
+        self, id: str, *, request_options: Optional[RequestOptionsLike] = None
     ) -> None:
         response = self._client._mutation(
             gql.DELETE_APP_DOMAIN_MUTATION,
@@ -162,7 +165,7 @@ class AsyncAppsDomainsResource:
         self._client = client
 
     async def retrieve_many(
-        self, ids: list[str], *, request_options: Optional[Mapping[str, Any]] = None
+        self, ids: list[str], *, request_options: Optional[RequestOptionsLike] = None
     ) -> list[Optional[AppAlias]]:
         if not ids:
             return []
@@ -181,7 +184,7 @@ class AsyncAppsDomainsResource:
         return result
 
     async def retrieve(
-        self, id: str, *, request_options: Optional[Mapping[str, Any]] = None
+        self, id: str, *, request_options: Optional[RequestOptionsLike] = None
     ) -> AppAlias:
         alias = (await self.retrieve_many([id], request_options=request_options))[0]
         if not alias:
@@ -192,9 +195,9 @@ class AsyncAppsDomainsResource:
         self,
         *,
         app: str,
-        sort_by: str = "NEWEST",
-        request_options: Optional[Mapping[str, Any]] = None,
-        **pagination: Any,
+        sort_by: AppAliasSortBy = "NEWEST",
+        request_options: Optional[RequestOptionsLike] = None,
+        **pagination: Unpack[PaginationOptions],
     ) -> AsyncStackMachineListRequest[AppAlias]:
         params = {"app": app, "sort_by": sort_by, **pagination}
 
@@ -227,7 +230,7 @@ class AsyncAppsDomainsResource:
         app: str,
         hostname: str,
         is_default: Optional[bool] = None,
-        request_options: Optional[Mapping[str, Any]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> AppAlias:
         response = await self._client._mutation(
             gql.UPSERT_APP_DOMAIN_MUTATION,
@@ -266,7 +269,7 @@ class AsyncAppsDomainsResource:
         )
 
     async def verify(
-        self, id: str, *, request_options: Optional[Mapping[str, Any]] = None
+        self, id: str, *, request_options: Optional[RequestOptionsLike] = None
     ) -> bool:
         response = await self._client._mutation(
             gql.VERIFY_APP_DOMAIN_MUTATION,
@@ -281,7 +284,7 @@ class AsyncAppsDomainsResource:
         return bool(payload.get("verified"))
 
     async def delete(
-        self, id: str, *, request_options: Optional[Mapping[str, Any]] = None
+        self, id: str, *, request_options: Optional[RequestOptionsLike] = None
     ) -> None:
         response = await self._client._mutation(
             gql.DELETE_APP_DOMAIN_MUTATION,

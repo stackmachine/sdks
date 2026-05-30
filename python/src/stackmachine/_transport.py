@@ -10,12 +10,7 @@ from urllib.parse import urlparse, urlunparse
 
 import httpx
 
-from ._config import (
-    DEFAULT_MAX_NETWORK_RETRIES,
-    DEFAULT_TIMEOUT,
-    ClientConfig,
-    RequestOptions,
-)
+from ._config import DEFAULT_MAX_NETWORK_RETRIES, DEFAULT_TIMEOUT, ClientConfig
 from ._errors import (
     GraphQLErrorPayload,
     StackMachineAPIError,
@@ -27,13 +22,14 @@ from ._errors import (
     StackMachineValidationError,
     stackmachine_error_from_graphql_errors,
 )
+from ._types import RequestOptionsLike
 from ._utils import operation_name
 
 RETRYABLE_STATUS_CODES = {408, 409, 425, 429, 500, 502, 503, 504}
 
 
 def _request_options_dict(
-    request_options: Optional[RequestOptions | Mapping[str, Any]],
+    request_options: Optional[RequestOptionsLike],
 ) -> Dict[str, Any]:
     if request_options is None:
         return {}
@@ -53,7 +49,7 @@ def _request_options_dict(
 def _headers(
     api_key: str,
     config: ClientConfig,
-    request_options: Optional[RequestOptions | Mapping[str, Any]],
+    request_options: Optional[RequestOptionsLike],
 ) -> Dict[str, str]:
     options = _request_options_dict(request_options)
     headers: Dict[str, str] = {"Accept": "application/json"}
@@ -71,7 +67,7 @@ def _headers(
 
 def _timeout(
     config: ClientConfig,
-    request_options: Optional[RequestOptions | Mapping[str, Any]],
+    request_options: Optional[RequestOptionsLike],
 ) -> float:
     options = _request_options_dict(request_options)
     return float(options.get("timeout") or config.timeout or DEFAULT_TIMEOUT)
@@ -79,7 +75,7 @@ def _timeout(
 
 def _max_retries(
     config: ClientConfig,
-    request_options: Optional[RequestOptions | Mapping[str, Any]],
+    request_options: Optional[RequestOptionsLike],
 ) -> int:
     options = _request_options_dict(request_options)
     return int(
@@ -183,7 +179,7 @@ def _api_error(
 
 def _variables_with_client_mutation_id(
     variables: Mapping[str, Any],
-    request_options: Optional[RequestOptions | Mapping[str, Any]],
+    request_options: Optional[RequestOptionsLike],
 ) -> Dict[str, Any]:
     resolved = dict(variables)
     options = _request_options_dict(request_options)
@@ -255,7 +251,7 @@ class SyncTransport:
         query: str,
         variables: Optional[Mapping[str, Any]] = None,
         *,
-        request_options: Optional[RequestOptions | Mapping[str, Any]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
         mutation: bool = False,
     ) -> Any:
         op_name = operation_name(query)
@@ -315,7 +311,7 @@ class SyncTransport:
         query: str,
         variables: Optional[Mapping[str, Any]] = None,
         *,
-        request_options: Optional[RequestOptions | Mapping[str, Any]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> Iterator[Any]:
         import websocket
 
@@ -405,7 +401,7 @@ class AsyncTransport:
         query: str,
         variables: Optional[Mapping[str, Any]] = None,
         *,
-        request_options: Optional[RequestOptions | Mapping[str, Any]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
         mutation: bool = False,
     ) -> Any:
         op_name = operation_name(query)
@@ -465,7 +461,7 @@ class AsyncTransport:
         query: str,
         variables: Optional[Mapping[str, Any]] = None,
         *,
-        request_options: Optional[RequestOptions | Mapping[str, Any]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> AsyncIterator[Any]:
         import websockets
 

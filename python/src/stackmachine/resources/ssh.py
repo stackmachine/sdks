@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Optional, Sequence
 
+from typing_extensions import Unpack
+
 from .._errors import StackMachineAPIError
 from .._graphql import operations as gql
 from .._models import AppSshServer, SshAuthorizedKey, SshUser
@@ -13,6 +15,14 @@ from .._pagination import (
     create_async_list,
     create_list,
 )
+from .._types import (
+    PaginationOptions,
+    RequestOptionsLike,
+    SshAuthenticationMethod,
+    SshTokenCreateResult,
+    SshUserPasswordRevealResult,
+    SshUserPasswordRotateResult,
+)
 from ._shared import page_variables, required_payload, resource_missing_error
 
 
@@ -21,8 +31,8 @@ class AppsSshUsersPasswordsResource:
         self._client = client
 
     def reveal(
-        self, user_id: str, *, request_options: Optional[Mapping[str, Any]] = None
-    ) -> dict[str, Any]:
+        self, user_id: str, *, request_options: Optional[RequestOptionsLike] = None
+    ) -> SshUserPasswordRevealResult:
         response = self._client._mutation(
             gql.REVEAL_SSH_USER_PASSWORD_MUTATION,
             {"input": {"sshUserId": user_id}},
@@ -40,8 +50,8 @@ class AppsSshUsersPasswordsResource:
         }
 
     def rotate(
-        self, user_id: str, *, request_options: Optional[Mapping[str, Any]] = None
-    ) -> dict[str, Any]:
+        self, user_id: str, *, request_options: Optional[RequestOptionsLike] = None
+    ) -> SshUserPasswordRotateResult:
         response = self._client._mutation(
             gql.ROTATE_SSH_USER_PASSWORD_MUTATION,
             {"input": {"sshUserId": user_id}},
@@ -61,8 +71,8 @@ class AsyncAppsSshUsersPasswordsResource:
         self._client = client
 
     async def reveal(
-        self, user_id: str, *, request_options: Optional[Mapping[str, Any]] = None
-    ) -> dict[str, Any]:
+        self, user_id: str, *, request_options: Optional[RequestOptionsLike] = None
+    ) -> SshUserPasswordRevealResult:
         response = await self._client._mutation(
             gql.REVEAL_SSH_USER_PASSWORD_MUTATION,
             {"input": {"sshUserId": user_id}},
@@ -77,8 +87,8 @@ class AsyncAppsSshUsersPasswordsResource:
         return {"password": payload.get("password"), "ssh_user": user, "sshUser": user}
 
     async def rotate(
-        self, user_id: str, *, request_options: Optional[Mapping[str, Any]] = None
-    ) -> dict[str, Any]:
+        self, user_id: str, *, request_options: Optional[RequestOptionsLike] = None
+    ) -> SshUserPasswordRotateResult:
         response = await self._client._mutation(
             gql.ROTATE_SSH_USER_PASSWORD_MUTATION,
             {"input": {"sshUserId": user_id}},
@@ -101,8 +111,8 @@ class AppsSshUsersAuthorizedKeysResource:
         self,
         *,
         user: str,
-        request_options: Optional[Mapping[str, Any]] = None,
-        **pagination: Any,
+        request_options: Optional[RequestOptionsLike] = None,
+        **pagination: Unpack[PaginationOptions],
     ) -> StackMachineList[SshAuthorizedKey]:
         params = {"user": user, **pagination}
 
@@ -131,7 +141,7 @@ class AppsSshUsersAuthorizedKeysResource:
         user: str,
         public_key: str,
         name: Optional[str] = None,
-        request_options: Optional[Mapping[str, Any]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> SshAuthorizedKey:
         response = self._client._mutation(
             gql.ADD_SSH_AUTHORIZED_KEY_MUTATION,
@@ -152,7 +162,7 @@ class AppsSshUsersAuthorizedKeysResource:
         *,
         user: str,
         name: str,
-        request_options: Optional[Mapping[str, Any]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> None:
         response = self._client._mutation(
             gql.DELETE_SSH_AUTHORIZED_KEY_MUTATION,
@@ -176,8 +186,8 @@ class AsyncAppsSshUsersAuthorizedKeysResource:
         self,
         *,
         user: str,
-        request_options: Optional[Mapping[str, Any]] = None,
-        **pagination: Any,
+        request_options: Optional[RequestOptionsLike] = None,
+        **pagination: Unpack[PaginationOptions],
     ) -> AsyncStackMachineListRequest[SshAuthorizedKey]:
         params = {"user": user, **pagination}
 
@@ -208,7 +218,7 @@ class AsyncAppsSshUsersAuthorizedKeysResource:
         user: str,
         public_key: str,
         name: Optional[str] = None,
-        request_options: Optional[Mapping[str, Any]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> SshAuthorizedKey:
         response = await self._client._mutation(
             gql.ADD_SSH_AUTHORIZED_KEY_MUTATION,
@@ -229,7 +239,7 @@ class AsyncAppsSshUsersAuthorizedKeysResource:
         *,
         user: str,
         name: str,
-        request_options: Optional[Mapping[str, Any]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> None:
         response = await self._client._mutation(
             gql.DELETE_SSH_AUTHORIZED_KEY_MUTATION,
@@ -256,8 +266,8 @@ class AppsSshUsersResource:
         self,
         *,
         app: str,
-        request_options: Optional[Mapping[str, Any]] = None,
-        **pagination: Any,
+        request_options: Optional[RequestOptionsLike] = None,
+        **pagination: Unpack[PaginationOptions],
     ) -> StackMachineList[SshUser]:
         params = {"app": app, **pagination}
 
@@ -282,7 +292,7 @@ class AppsSshUsersResource:
         return create_list(params, "/v1/apps/ssh/users", fetch_page)
 
     def retrieve(
-        self, id: str, *, request_options: Optional[Mapping[str, Any]] = None
+        self, id: str, *, request_options: Optional[RequestOptionsLike] = None
     ) -> SshUser:
         response = self._client._query(
             gql.GET_SSH_USER_BY_ID_QUERY,
@@ -295,7 +305,7 @@ class AppsSshUsersResource:
         return SshUser.from_graphql(node)
 
     def retrieve_many(
-        self, ids: list[str], *, request_options: Optional[Mapping[str, Any]] = None
+        self, ids: list[str], *, request_options: Optional[RequestOptionsLike] = None
     ) -> list[Optional[SshUser]]:
         if not ids:
             return []
@@ -321,8 +331,8 @@ class AppsSshUsersResource:
         *,
         username: Optional[str] = None,
         sftp_root_folder: Optional[str] = None,
-        authentication_methods: Optional[Sequence[str]] = None,
-        request_options: Optional[Mapping[str, Any]] = None,
+        authentication_methods: Optional[Sequence[SshAuthenticationMethod]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> SshUser:
         response = self._client._mutation(
             gql.EDIT_SSH_USER_MUTATION,
@@ -357,8 +367,8 @@ class AsyncAppsSshUsersResource:
         self,
         *,
         app: str,
-        request_options: Optional[Mapping[str, Any]] = None,
-        **pagination: Any,
+        request_options: Optional[RequestOptionsLike] = None,
+        **pagination: Unpack[PaginationOptions],
     ) -> AsyncStackMachineListRequest[SshUser]:
         params = {"app": app, **pagination}
 
@@ -383,7 +393,7 @@ class AsyncAppsSshUsersResource:
         return create_async_list(params, "/v1/apps/ssh/users", fetch_page)
 
     async def retrieve(
-        self, id: str, *, request_options: Optional[Mapping[str, Any]] = None
+        self, id: str, *, request_options: Optional[RequestOptionsLike] = None
     ) -> SshUser:
         response = await self._client._query(
             gql.GET_SSH_USER_BY_ID_QUERY,
@@ -396,7 +406,7 @@ class AsyncAppsSshUsersResource:
         return SshUser.from_graphql(node)
 
     async def retrieve_many(
-        self, ids: list[str], *, request_options: Optional[Mapping[str, Any]] = None
+        self, ids: list[str], *, request_options: Optional[RequestOptionsLike] = None
     ) -> list[Optional[SshUser]]:
         if not ids:
             return []
@@ -422,8 +432,8 @@ class AsyncAppsSshUsersResource:
         *,
         username: Optional[str] = None,
         sftp_root_folder: Optional[str] = None,
-        authentication_methods: Optional[Sequence[str]] = None,
-        request_options: Optional[Mapping[str, Any]] = None,
+        authentication_methods: Optional[Sequence[SshAuthenticationMethod]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> SshUser:
         response = await self._client._mutation(
             gql.EDIT_SSH_USER_MUTATION,
@@ -452,8 +462,8 @@ class AppsSshTokensResource:
         self._client = client
 
     def create(
-        self, *, app: str, request_options: Optional[Mapping[str, Any]] = None
-    ) -> dict[str, str]:
+        self, *, app: str, request_options: Optional[RequestOptionsLike] = None
+    ) -> SshTokenCreateResult:
         response = self._client._mutation(
             gql.GENERATE_SSH_TOKEN_MUTATION,
             {"input": {"appId": app}},
@@ -473,8 +483,8 @@ class AsyncAppsSshTokensResource:
         self._client = client
 
     async def create(
-        self, *, app: str, request_options: Optional[Mapping[str, Any]] = None
-    ) -> dict[str, str]:
+        self, *, app: str, request_options: Optional[RequestOptionsLike] = None
+    ) -> SshTokenCreateResult:
         response = await self._client._mutation(
             gql.GENERATE_SSH_TOKEN_MUTATION,
             {"input": {"appId": app}},
@@ -496,7 +506,7 @@ class AppsSshResource:
         self.users = AppsSshUsersResource(client)
 
     def retrieve(
-        self, app_id: str, *, request_options: Optional[Mapping[str, Any]] = None
+        self, app_id: str, *, request_options: Optional[RequestOptionsLike] = None
     ) -> AppSshServer:
         response = self._client._query(
             gql.GET_APP_SSH_SERVER_QUERY,
@@ -513,7 +523,10 @@ class AppsSshResource:
         return AppSshServer.from_graphql(ssh_server)
 
     def retrieve_many(
-        self, app_ids: list[str], *, request_options: Optional[Mapping[str, Any]] = None
+        self,
+        app_ids: list[str],
+        *,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> list[Optional[AppSshServer]]:
         if not app_ids:
             return []
@@ -542,7 +555,7 @@ class AppsSshResource:
         app_id: str,
         *,
         enabled: bool,
-        request_options: Optional[Mapping[str, Any]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> AppSshServer:
         response = self._client._mutation(
             gql.TOGGLE_SSH_SERVER_MUTATION,
@@ -568,7 +581,7 @@ class AsyncAppsSshResource:
         self.users = AsyncAppsSshUsersResource(client)
 
     async def retrieve(
-        self, app_id: str, *, request_options: Optional[Mapping[str, Any]] = None
+        self, app_id: str, *, request_options: Optional[RequestOptionsLike] = None
     ) -> AppSshServer:
         response = await self._client._query(
             gql.GET_APP_SSH_SERVER_QUERY,
@@ -585,7 +598,10 @@ class AsyncAppsSshResource:
         return AppSshServer.from_graphql(ssh_server)
 
     async def retrieve_many(
-        self, app_ids: list[str], *, request_options: Optional[Mapping[str, Any]] = None
+        self,
+        app_ids: list[str],
+        *,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> list[Optional[AppSshServer]]:
         if not app_ids:
             return []
@@ -614,7 +630,7 @@ class AsyncAppsSshResource:
         app_id: str,
         *,
         enabled: bool,
-        request_options: Optional[Mapping[str, Any]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> AppSshServer:
         response = await self._client._mutation(
             gql.TOGGLE_SSH_SERVER_MUTATION,

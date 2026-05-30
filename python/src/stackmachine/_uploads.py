@@ -5,7 +5,7 @@ import io
 import random
 import time
 import zipfile
-from typing import Any, Callable, Mapping, Optional
+from typing import Awaitable, Callable, Optional
 
 import httpx
 
@@ -16,6 +16,7 @@ from ._errors import (
 )
 from ._models import UploadProgress
 from ._transport import AsyncTransport, SyncTransport
+from ._types import CreateZipFiles, FileInput, UploadProgressCallback
 from ._utils import read_file_bytes
 
 DEFAULT_CHUNK_SIZE = 1024 * 1024
@@ -23,7 +24,7 @@ MAX_CHUNK_SIZE = 512 * 1024 * 1024
 RETRYABLE_UPLOAD_STATUS_CODES = {408, 409, 425, 429, 500, 502, 503, 504}
 
 
-def create_zip(files: Mapping[str, Any]) -> bytes:
+def create_zip(files: CreateZipFiles) -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for name, value in files.items():
@@ -49,7 +50,7 @@ def _short_name() -> str:
 
 def _progress_reporter(
     total: int,
-    on_progress: Optional[Callable[[UploadProgress], None]],
+    on_progress: Optional[UploadProgressCallback],
 ) -> Callable[[int], None]:
     last_percent = -1.0
 
@@ -105,10 +106,10 @@ class SyncUploader:
     def upload(
         self,
         signed_url: str,
-        file: Any,
+        file: FileInput,
         *,
         chunk_size: Optional[int] = None,
-        on_progress: Optional[Callable[[UploadProgress], None]] = None,
+        on_progress: Optional[UploadProgressCallback] = None,
         timeout: Optional[float] = None,
         max_network_retries: Optional[int] = None,
     ) -> None:
@@ -242,10 +243,10 @@ class AsyncUploader:
     async def upload(
         self,
         signed_url: str,
-        file: Any,
+        file: FileInput,
         *,
         chunk_size: Optional[int] = None,
-        on_progress: Optional[Callable[[UploadProgress], None]] = None,
+        on_progress: Optional[UploadProgressCallback] = None,
         timeout: Optional[float] = None,
         max_network_retries: Optional[int] = None,
     ) -> None:
@@ -288,7 +289,7 @@ class AsyncUploader:
         self,
         operation_name: str,
         max_retries: int,
-        request: Callable[[], Any],
+        request: Callable[[], Awaitable[httpx.Response]],
     ) -> httpx.Response:
         attempt = 0
         while True:

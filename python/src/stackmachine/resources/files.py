@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Callable, Mapping, Optional
+from typing import Any, Optional
 
 from .._errors import StackMachineAPIError
 from .._graphql import operations as gql
-from .._models import UploadProgress
+from .._types import FileInput, RequestOptionsLike, UploadProgressCallback
 from .._uploads import AsyncUploader, SyncUploader, _short_name
 
 
@@ -15,13 +15,13 @@ class FilesResource:
 
     def upload(
         self,
-        file: Any,
+        file: FileInput,
         *,
         chunk_size: Optional[int] = None,
-        on_progress: Optional[Callable[[UploadProgress], None]] = None,
+        on_progress: Optional[UploadProgressCallback] = None,
         timeout: Optional[float] = None,
         max_network_retries: Optional[int] = None,
-        request_options: Optional[Mapping[str, Any]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> str:
         response = self._client._query(
             gql.UPLOAD_QUERY,
@@ -52,13 +52,13 @@ class AsyncFilesResource:
 
     async def upload(
         self,
-        file: Any,
+        file: FileInput,
         *,
         chunk_size: Optional[int] = None,
-        on_progress: Optional[Callable[[UploadProgress], None]] = None,
+        on_progress: Optional[UploadProgressCallback] = None,
         timeout: Optional[float] = None,
         max_network_retries: Optional[int] = None,
-        request_options: Optional[Mapping[str, Any]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> str:
         response = await self._client._query(
             gql.UPLOAD_QUERY,

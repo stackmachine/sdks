@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Optional
 
+from typing_extensions import Unpack
+
 from .._errors import StackMachineAPIError
 from .._graphql import operations as gql
 from .._models import DeployApp
@@ -13,9 +15,20 @@ from .._pagination import (
     create_async_list,
     create_list,
 )
+from .._types import (
+    DeployAppAutobuildInput,
+    DeployAppsSortBy,
+    PaginationOptions,
+    RequestOptionsLike,
+)
 from .._utils import camelize, merge_input
 from ._shared import page_variables, resource_missing_error
-from .deployments import AsyncDeploymentsResource, DeploymentsResource
+from .deployments import (
+    AsyncDeployment,
+    AsyncDeploymentsResource,
+    Deployment,
+    DeploymentsResource,
+)
 from .domains import AppsDomainsResource, AsyncAppsDomainsResource
 from .ssh import AppsSshResource, AsyncAppsSshResource
 from .versions import AppsVersionsResource, AsyncAppsVersionsResource
@@ -33,9 +46,9 @@ class DeployAppsResource:
         self,
         *,
         collaborating: Optional[bool] = None,
-        sort_by: str = "NEWEST",
-        request_options: Optional[Mapping[str, Any]] = None,
-        **pagination: Any,
+        sort_by: DeployAppsSortBy = "NEWEST",
+        request_options: Optional[RequestOptionsLike] = None,
+        **pagination: Unpack[PaginationOptions],
     ) -> StackMachineList[DeployApp]:
         params = {
             "collaborating": collaborating,
@@ -63,7 +76,7 @@ class DeployAppsResource:
         return create_list(params, "/v1/apps", fetch_page)
 
     def retrieve(
-        self, id: str, *, request_options: Optional[Mapping[str, Any]] = None
+        self, id: str, *, request_options: Optional[RequestOptionsLike] = None
     ) -> DeployApp:
         response = self._client._query(
             gql.GET_APP_BY_ID_QUERY,
@@ -76,7 +89,7 @@ class DeployAppsResource:
         return DeployApp.from_graphql(app)
 
     def retrieve_many(
-        self, ids: list[str], *, request_options: Optional[Mapping[str, Any]] = None
+        self, ids: list[str], *, request_options: Optional[RequestOptionsLike] = None
     ) -> list[Optional[DeployApp]]:
         if not ids:
             return []
@@ -101,7 +114,7 @@ class DeployAppsResource:
         name: str,
         owner: Optional[str] = None,
         *,
-        request_options: Optional[Mapping[str, Any]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> DeployApp:
         response = self._client._query(
             gql.GET_APP_BY_NAME_QUERY,
@@ -117,7 +130,7 @@ class DeployAppsResource:
         return DeployApp.from_graphql(app)
 
     def delete(
-        self, id: str, *, request_options: Optional[Mapping[str, Any]] = None
+        self, id: str, *, request_options: Optional[RequestOptionsLike] = None
     ) -> None:
         response = self._client._mutation(
             gql.DELETE_APP_MUTATION,
@@ -132,11 +145,11 @@ class DeployAppsResource:
 
     def autobuild(
         self,
-        input: Optional[Mapping[str, Any]] = None,
+        input: Optional[DeployAppAutobuildInput] = None,
         *,
-        request_options: Optional[Mapping[str, Any]] = None,
-        **kwargs: Any,
-    ):
+        request_options: Optional[RequestOptionsLike] = None,
+        **kwargs: Unpack[DeployAppAutobuildInput],
+    ) -> Deployment:
         return self._deployments.create(
             camelize(merge_input(input, **kwargs)), request_options=request_options
         )
@@ -158,9 +171,9 @@ class AsyncDeployAppsResource:
         self,
         *,
         collaborating: Optional[bool] = None,
-        sort_by: str = "NEWEST",
-        request_options: Optional[Mapping[str, Any]] = None,
-        **pagination: Any,
+        sort_by: DeployAppsSortBy = "NEWEST",
+        request_options: Optional[RequestOptionsLike] = None,
+        **pagination: Unpack[PaginationOptions],
     ) -> AsyncStackMachineListRequest[DeployApp]:
         params = {
             "collaborating": collaborating,
@@ -188,7 +201,7 @@ class AsyncDeployAppsResource:
         return create_async_list(params, "/v1/apps", fetch_page)
 
     async def retrieve(
-        self, id: str, *, request_options: Optional[Mapping[str, Any]] = None
+        self, id: str, *, request_options: Optional[RequestOptionsLike] = None
     ) -> DeployApp:
         response = await self._client._query(
             gql.GET_APP_BY_ID_QUERY,
@@ -201,7 +214,7 @@ class AsyncDeployAppsResource:
         return DeployApp.from_graphql(app)
 
     async def retrieve_many(
-        self, ids: list[str], *, request_options: Optional[Mapping[str, Any]] = None
+        self, ids: list[str], *, request_options: Optional[RequestOptionsLike] = None
     ) -> list[Optional[DeployApp]]:
         if not ids:
             return []
@@ -226,7 +239,7 @@ class AsyncDeployAppsResource:
         name: str,
         owner: Optional[str] = None,
         *,
-        request_options: Optional[Mapping[str, Any]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> DeployApp:
         response = await self._client._query(
             gql.GET_APP_BY_NAME_QUERY,
@@ -242,7 +255,7 @@ class AsyncDeployAppsResource:
         return DeployApp.from_graphql(app)
 
     async def delete(
-        self, id: str, *, request_options: Optional[Mapping[str, Any]] = None
+        self, id: str, *, request_options: Optional[RequestOptionsLike] = None
     ) -> None:
         response = await self._client._mutation(
             gql.DELETE_APP_MUTATION,
@@ -257,11 +270,11 @@ class AsyncDeployAppsResource:
 
     async def autobuild(
         self,
-        input: Optional[Mapping[str, Any]] = None,
+        input: Optional[DeployAppAutobuildInput] = None,
         *,
-        request_options: Optional[Mapping[str, Any]] = None,
-        **kwargs: Any,
-    ):
+        request_options: Optional[RequestOptionsLike] = None,
+        **kwargs: Unpack[DeployAppAutobuildInput],
+    ) -> AsyncDeployment:
         return await self._deployments.create(
             camelize(merge_input(input, **kwargs)), request_options=request_options
         )

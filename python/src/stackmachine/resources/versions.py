@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Mapping, Optional, Sequence
 
+from typing_extensions import Unpack
+
 from .._graphql import operations as gql
 from .._models import DeployAppVersion, Log
 from .._pagination import (
@@ -12,6 +14,12 @@ from .._pagination import (
     connection_to_page_data,
     create_async_list,
     create_list,
+)
+from .._types import (
+    DeployAppVersionsSortBy,
+    LogStream,
+    PaginationOptions,
+    RequestOptionsLike,
 )
 from ._shared import page_variables
 
@@ -32,10 +40,10 @@ class AppsVersionsLogsResource:
         until: Optional[datetime] = None,
         instance_id: Optional[str] = None,
         request_id: Optional[str] = None,
-        streams: Optional[Sequence[str]] = None,
+        streams: Optional[Sequence[LogStream]] = None,
         text_search: Optional[str] = None,
-        request_options: Optional[Mapping[str, Any]] = None,
-        **pagination: Any,
+        request_options: Optional[RequestOptionsLike] = None,
+        **pagination: Unpack[PaginationOptions],
     ) -> StackMachineList[Log]:
         params = {
             "version": version,
@@ -85,10 +93,10 @@ class AsyncAppsVersionsLogsResource:
         until: Optional[datetime] = None,
         instance_id: Optional[str] = None,
         request_id: Optional[str] = None,
-        streams: Optional[Sequence[str]] = None,
+        streams: Optional[Sequence[LogStream]] = None,
         text_search: Optional[str] = None,
-        request_options: Optional[Mapping[str, Any]] = None,
-        **pagination: Any,
+        request_options: Optional[RequestOptionsLike] = None,
+        **pagination: Unpack[PaginationOptions],
     ) -> AsyncStackMachineListRequest[Log]:
         params = {
             "version": version,
@@ -136,9 +144,9 @@ class AppsVersionsResource:
         *,
         app: str,
         created_after: Optional[datetime] = None,
-        sort_by: str = "NEWEST",
-        request_options: Optional[Mapping[str, Any]] = None,
-        **pagination: Any,
+        sort_by: DeployAppVersionsSortBy = "NEWEST",
+        request_options: Optional[RequestOptionsLike] = None,
+        **pagination: Unpack[PaginationOptions],
     ) -> StackMachineList[DeployAppVersion]:
         params = {
             "app": app,
@@ -178,9 +186,9 @@ class AsyncAppsVersionsResource:
         *,
         app: str,
         created_after: Optional[datetime] = None,
-        sort_by: str = "NEWEST",
-        request_options: Optional[Mapping[str, Any]] = None,
-        **pagination: Any,
+        sort_by: DeployAppVersionsSortBy = "NEWEST",
+        request_options: Optional[RequestOptionsLike] = None,
+        **pagination: Unpack[PaginationOptions],
     ) -> AsyncStackMachineListRequest[DeployAppVersion]:
         params = {
             "app": app,

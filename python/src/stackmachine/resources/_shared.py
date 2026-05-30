@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import Any, Mapping, TypeVar
+from typing import Any, Mapping, Optional, TypeVar
 
 from .._errors import StackMachineAPIError, StackMachineInvalidRequestError
+from .._pagination import NormalizedPagination
 
 T = TypeVar("T")
 
@@ -27,7 +28,7 @@ def resource_missing_error(
     )
 
 
-def page_variables(pagination: Any) -> dict[str, Any]:
+def page_variables(pagination: NormalizedPagination) -> dict[str, Optional[int | str]]:
     return {
         "first": pagination.first,
         "after": pagination.after,

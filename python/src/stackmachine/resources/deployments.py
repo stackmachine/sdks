@@ -5,9 +5,16 @@ import threading
 import warnings
 from typing import Any, Callable, Mapping, Optional
 
+from typing_extensions import Unpack
+
 from .._errors import StackMachineAPIError
 from .._graphql import operations as gql
 from .._models import DeployAppVersion, DeploymentProgress
+from .._types import (
+    DeployAppAutobuildInput,
+    DeploymentProgressCallback,
+    RequestOptionsLike,
+)
 from .._utils import camelize, merge_input
 from ._shared import required_payload, resource_missing_error
 
@@ -22,7 +29,7 @@ class Deployment:
         *,
         status: Optional[str] = None,
         app_version: Optional[DeployAppVersion] = None,
-        request_options: Optional[Mapping[str, Any]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> None:
         self.build_id = build_id
         self.buildId = build_id
@@ -65,8 +72,8 @@ class Deployment:
     def wait(
         self,
         *,
-        on_progress: Optional[Callable[[DeploymentProgress], None]] = None,
-        request_options: Optional[Mapping[str, Any]] = None,
+        on_progress: Optional[DeploymentProgressCallback] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> DeployAppVersion:
         self._set_progress_callback(on_progress)
         if self.app_version and self.status == "SUCCESS":
@@ -132,7 +139,7 @@ class AsyncDeployment:
         *,
         status: Optional[str] = None,
         app_version: Optional[DeployAppVersion] = None,
-        request_options: Optional[Mapping[str, Any]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> None:
         self.build_id = build_id
         self.buildId = build_id
@@ -175,8 +182,8 @@ class AsyncDeployment:
     async def wait(
         self,
         *,
-        on_progress: Optional[Callable[[DeploymentProgress], None]] = None,
-        request_options: Optional[Mapping[str, Any]] = None,
+        on_progress: Optional[DeploymentProgressCallback] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> DeployAppVersion:
         self._set_progress_callback(on_progress)
         if self.app_version and self.status == "SUCCESS":
@@ -237,7 +244,7 @@ class DeploymentsResource:
         self._client = client
 
     def _from_status(
-        self, data: Mapping[str, Any], request_options: Optional[Mapping[str, Any]]
+        self, data: Mapping[str, Any], request_options: Optional[RequestOptionsLike]
     ) -> Deployment:
         app_version = (
             DeployAppVersion.from_graphql(data["appVersion"])
@@ -253,7 +260,7 @@ class DeploymentsResource:
         )
 
     def _retrieve_or_none(
-        self, build_id: str, request_options: Optional[Mapping[str, Any]] = None
+        self, build_id: str, request_options: Optional[RequestOptionsLike] = None
     ) -> Optional[Deployment]:
         data = self._client._query(
             gql.GET_DEPLOYMENT_STATUS_QUERY,
@@ -265,10 +272,10 @@ class DeploymentsResource:
 
     def create(
         self,
-        input: Optional[Mapping[str, Any]] = None,
+        input: Optional[DeployAppAutobuildInput] = None,
         *,
-        request_options: Optional[Mapping[str, Any]] = None,
-        **kwargs: Any,
+        request_options: Optional[RequestOptionsLike] = None,
+        **kwargs: Unpack[DeployAppAutobuildInput],
     ) -> Deployment:
         response = self._client._mutation(
             gql.AUTOBUILD_MUTATION,
@@ -292,7 +299,7 @@ class DeploymentsResource:
         )
 
     def retrieve(
-        self, build_id: str, *, request_options: Optional[Mapping[str, Any]] = None
+        self, build_id: str, *, request_options: Optional[RequestOptionsLike] = None
     ) -> Deployment:
         deployment = self._retrieve_or_none(build_id, request_options)
         if not deployment:
@@ -305,7 +312,7 @@ class DeploymentsResource:
         self,
         build_ids: list[str],
         *,
-        request_options: Optional[Mapping[str, Any]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> list[Optional[Deployment]]:
         return [
             self._retrieve_or_none(build_id, request_options)
@@ -320,7 +327,7 @@ class AsyncDeploymentsResource:
         self._client = client
 
     def _from_status(
-        self, data: Mapping[str, Any], request_options: Optional[Mapping[str, Any]]
+        self, data: Mapping[str, Any], request_options: Optional[RequestOptionsLike]
     ) -> AsyncDeployment:
         app_version = (
             DeployAppVersion.from_graphql(data["appVersion"])
@@ -336,7 +343,7 @@ class AsyncDeploymentsResource:
         )
 
     async def _retrieve_or_none(
-        self, build_id: str, request_options: Optional[Mapping[str, Any]] = None
+        self, build_id: str, request_options: Optional[RequestOptionsLike] = None
     ) -> Optional[AsyncDeployment]:
         data = await self._client._query(
             gql.GET_DEPLOYMENT_STATUS_QUERY,
@@ -348,10 +355,10 @@ class AsyncDeploymentsResource:
 
     async def create(
         self,
-        input: Optional[Mapping[str, Any]] = None,
+        input: Optional[DeployAppAutobuildInput] = None,
         *,
-        request_options: Optional[Mapping[str, Any]] = None,
-        **kwargs: Any,
+        request_options: Optional[RequestOptionsLike] = None,
+        **kwargs: Unpack[DeployAppAutobuildInput],
     ) -> AsyncDeployment:
         response = await self._client._mutation(
             gql.AUTOBUILD_MUTATION,
@@ -375,7 +382,7 @@ class AsyncDeploymentsResource:
         )
 
     async def retrieve(
-        self, build_id: str, *, request_options: Optional[Mapping[str, Any]] = None
+        self, build_id: str, *, request_options: Optional[RequestOptionsLike] = None
     ) -> AsyncDeployment:
         deployment = await self._retrieve_or_none(build_id, request_options)
         if not deployment:
@@ -388,7 +395,7 @@ class AsyncDeploymentsResource:
         self,
         build_ids: list[str],
         *,
-        request_options: Optional[Mapping[str, Any]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> list[Optional[AsyncDeployment]]:
         return [
             await self._retrieve_or_none(build_id, request_options)

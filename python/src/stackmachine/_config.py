@@ -11,11 +11,15 @@ DEFAULT_MAX_NETWORK_RETRIES = 1
 @dataclass
 class RequestOptions:
     api_key: Optional[str] = None
+    apiKey: Optional[str] = None
     headers: Optional[Mapping[str, str]] = None
     timeout: Optional[float] = None
     max_network_retries: Optional[int] = None
+    maxNetworkRetries: Optional[int] = None
     idempotency_key: Optional[str] = None
+    idempotencyKey: Optional[str] = None
     client_mutation_id: Optional[str] = None
+    clientMutationId: Optional[str] = None
     force: Optional[bool] = None
 
 

@@ -3,7 +3,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
+
+from ._types import FileInput
 
 
 def parse_datetime(value: Any) -> Optional[datetime]:
@@ -48,16 +50,16 @@ def camelize(value: Any) -> Any:
 
 
 def merge_input(
-    input_data: Optional[Mapping[str, Any]], **kwargs: Any
-) -> Dict[str, Any]:
-    merged: Dict[str, Any] = {}
+    input_data: Optional[Mapping[str, object]], **kwargs: object
+) -> dict[str, object]:
+    merged: dict[str, object] = {}
     if input_data:
         merged.update(input_data)
     merged.update({key: value for key, value in kwargs.items() if value is not None})
     return merged
 
 
-def read_file_bytes(file: Any) -> bytes:
+def read_file_bytes(file: FileInput) -> bytes:
     if isinstance(file, bytes):
         return file
     if isinstance(file, bytearray):

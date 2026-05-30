@@ -13,6 +13,7 @@ from ._config import (
 from ._graphql import operations as gql
 from ._models import Viewer
 from ._transport import AsyncTransport
+from ._types import AsyncStackMachineInitSettings, Headers, RequestOptionsLike
 from ._uploads import AsyncUploader
 from .resources.apps import AsyncDeployAppsResource
 from .resources.deployments import AsyncDeploymentsResource
@@ -25,7 +26,7 @@ class AsyncStackMachine:
         api_key: str,
         *,
         api_url: str = DEFAULT_API_URL,
-        headers: Optional[Mapping[str, str]] = None,
+        headers: Optional[Headers] = None,
         timeout: float = DEFAULT_TIMEOUT,
         max_network_retries: int = DEFAULT_MAX_NETWORK_RETRIES,
         http_client: Optional[httpx.AsyncClient] = None,
@@ -56,16 +57,72 @@ class AsyncStackMachine:
     @classmethod
     def init(
         cls,
-        settings: Optional[Mapping[str, Any]] = None,
-        **kwargs: Any,
+        settings: Optional[AsyncStackMachineInitSettings] = None,
+        *,
+        api_key: Optional[str] = None,
+        apiKey: Optional[str] = None,
+        token: Optional[str] = None,
+        api_url: Optional[str] = None,
+        apiUrl: Optional[str] = None,
+        headers: Optional[Headers] = None,
+        timeout: Optional[float] = None,
+        max_network_retries: Optional[int] = None,
+        maxNetworkRetries: Optional[int] = None,
+        http_client: Optional[httpx.AsyncClient] = None,
+        http_transport: Optional[httpx.AsyncBaseTransport] = None,
     ) -> "AsyncStackMachine":
-        values = {**dict(settings or {}), **kwargs}
-        api_key = values.pop("api_key", None) or values.pop("token", None) or ""
-        if "apiUrl" in values:
-            values["api_url"] = values.pop("apiUrl")
-        if "maxNetworkRetries" in values:
-            values["max_network_retries"] = values.pop("maxNetworkRetries")
-        return cls(api_key, **values)
+        values = dict(settings or {})
+        resolved_api_key = (
+            api_key
+            if api_key is not None
+            else apiKey
+            if apiKey is not None
+            else token
+            if token is not None
+            else values.get("api_key")
+            or values.get("apiKey")
+            or values.get("token")
+            or ""
+        )
+        resolved_api_url = (
+            api_url
+            if api_url is not None
+            else apiUrl
+            if apiUrl is not None
+            else values.get("api_url")
+            or values.get("apiUrl")
+            or DEFAULT_API_URL
+        )
+        resolved_max_retries = (
+            max_network_retries
+            if max_network_retries is not None
+            else maxNetworkRetries
+            if maxNetworkRetries is not None
+            else values.get("max_network_retries")
+            if values.get("max_network_retries") is not None
+            else values.get("maxNetworkRetries")
+            if values.get("maxNetworkRetries") is not None
+            else DEFAULT_MAX_NETWORK_RETRIES
+        )
+        return cls(
+            resolved_api_key,
+            api_url=resolved_api_url,
+            headers=headers if headers is not None else values.get("headers"),
+            timeout=(
+                timeout
+                if timeout is not None
+                else values.get("timeout", DEFAULT_TIMEOUT)
+            ),
+            max_network_retries=resolved_max_retries,
+            http_client=(
+                http_client if http_client is not None else values.get("http_client")
+            ),
+            http_transport=(
+                http_transport
+                if http_transport is not None
+                else values.get("http_transport")
+            ),
+        )
 
     async def close(self) -> None:
         await self._transport.close()
@@ -81,7 +138,7 @@ class AsyncStackMachine:
         query: str,
         variables: Optional[Mapping[str, Any]] = None,
         *,
-        request_options: Optional[Mapping[str, Any]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> Any:
         return await self._transport.execute(
             query,
@@ -94,7 +151,7 @@ class AsyncStackMachine:
         query: str,
         variables: Optional[Mapping[str, Any]] = None,
         *,
-        request_options: Optional[Mapping[str, Any]] = None,
+        request_options: Optional[RequestOptionsLike] = None,
     ) -> Any:
         return await self._transport.execute(
             query,
@@ -104,7 +161,7 @@ class AsyncStackMachine:
         )
 
     def _subscribe_deployment(
-        self, build_id: str, request_options: Optional[Mapping[str, Any]] = None
+        self, build_id: str, request_options: Optional[RequestOptionsLike] = None
     ):
         return self._transport.subscribe(
             gql.AUTOBUILD_SUBSCRIPTION,
@@ -113,7 +170,7 @@ class AsyncStackMachine:
         )
 
     async def viewer(
-        self, *, request_options: Optional[Mapping[str, Any]] = None
+        self, *, request_options: Optional[RequestOptionsLike] = None
     ) -> Optional[Viewer]:
         response = await self._query(
             gql.VIEWER_QUERY, {}, request_options=request_options

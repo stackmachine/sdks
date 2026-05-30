@@ -4,7 +4,7 @@ import json
 import zipfile
 from importlib.metadata import version
 from io import BytesIO
-from typing import Any
+from typing import Any, Optional, get_type_hints
 
 import httpx
 import pytest
@@ -18,6 +18,7 @@ from stackmachine import (
     StackMachineValidationError,
     create_zip,
 )
+from stackmachine.resources.files import FilesResource
 
 
 def app_payload(id: str = "app_1") -> dict[str, Any]:
@@ -46,6 +47,22 @@ def test_exports_clients_and_models() -> None:
     assert stackmachine.AsyncStackMachine is AsyncStackMachine
     assert "StackMachine" in stackmachine.__all__
     assert "AsyncStackMachine" in stackmachine.__all__
+
+
+def test_exports_public_input_types() -> None:
+    assert "DeployAppAutobuildInput" in stackmachine.__all__
+    assert "RequestOptionsInput" in stackmachine.__all__
+    assert "FileInput" in stackmachine.__all__
+    assert stackmachine.DeployAppAutobuildInput.__name__ == "DeployAppAutobuildInput"
+    assert stackmachine.RequestOptionsInput.__name__ == "RequestOptionsInput"
+
+
+def test_file_upload_signature_uses_public_types() -> None:
+    hints = get_type_hints(FilesResource.upload)
+
+    assert hints["file"] == stackmachine.FileInput
+    assert hints["on_progress"] == Optional[stackmachine.UploadProgressCallback]
+    assert hints["request_options"] == Optional[stackmachine.RequestOptionsLike]
 
 
 def test_client_init_accepts_js_style_aliases() -> None:

@@ -289,6 +289,7 @@ version = "0.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
+    { name = "typing-extensions" },
     { name = "websocket-client" },
     { name = "websockets" },
 ]
@@ -305,6 +306,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "httpx", specifier = ">=0.27,<1" },
+    { name = "typing-extensions", specifier = ">=4.10,<5" },
     { name = "websocket-client", specifier = ">=1.8,<2" },
     { name = "websockets", specifier = ">=12,<16" },
 ]
