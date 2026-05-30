@@ -65,9 +65,10 @@ def test_file_upload_signature_uses_public_types() -> None:
     assert hints["request_options"] == Optional[stackmachine.RequestOptionsLike]
 
 
-def test_client_init_accepts_js_style_aliases() -> None:
-    client = StackMachine.init(
-        {"token": "token-1", "apiUrl": "https://api.example/graphql"},
+def test_client_constructor_accepts_configuration_aliases() -> None:
+    client = StackMachine(
+        "token-1",
+        apiUrl="https://api.example/graphql",
         maxNetworkRetries=3,
         http_transport=httpx.MockTransport(lambda _: graphql_response({})),
     )
@@ -77,6 +78,20 @@ def test_client_init_accepts_js_style_aliases() -> None:
         assert client.apiUrl == "https://api.example/graphql"
         assert client.max_network_retries == 3
         assert client.maxNetworkRetries == 3
+    finally:
+        client.close()
+
+
+def test_client_init_accepts_mapping_settings() -> None:
+    client = StackMachine.init(
+        {"token": "token-1", "apiUrl": "https://api.example/graphql"},
+        maxNetworkRetries=3,
+        http_transport=httpx.MockTransport(lambda _: graphql_response({})),
+    )
+    try:
+        assert client.api_key == "token-1"
+        assert client.api_url == "https://api.example/graphql"
+        assert client.max_network_retries == 3
     finally:
         client.close()
 

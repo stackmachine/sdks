@@ -39,11 +39,11 @@ stackmachine = StackMachine("sk_stackmachine_...")
 async_stackmachine = AsyncStackMachine("sk_stackmachine_...")
 ```
 
-Both clients accept JavaScript-style aliases during initialization:
+Both clients accept configuration options during initialization:
 
 ```python
-stackmachine = StackMachine.init(
-    token="sk_stackmachine_...",
+stackmachine = StackMachine(
+    "sk_stackmachine_...",
     apiUrl="https://api.stackmachine.com/graphql",
     maxNetworkRetries=2,
 )

@@ -25,24 +25,36 @@ class StackMachine:
         self,
         api_key: str,
         *,
-        api_url: str = DEFAULT_API_URL,
+        api_url: Optional[str] = None,
+        apiUrl: Optional[str] = None,
         headers: Optional[Headers] = None,
         timeout: float = DEFAULT_TIMEOUT,
-        max_network_retries: int = DEFAULT_MAX_NETWORK_RETRIES,
+        max_network_retries: Optional[int] = None,
+        maxNetworkRetries: Optional[int] = None,
         http_client: Optional[httpx.Client] = None,
         http_transport: Optional[httpx.BaseTransport] = None,
     ) -> None:
+        resolved_api_url = (
+            api_url if api_url is not None else apiUrl or DEFAULT_API_URL
+        )
+        resolved_max_retries = (
+            max_network_retries
+            if max_network_retries is not None
+            else maxNetworkRetries
+            if maxNetworkRetries is not None
+            else DEFAULT_MAX_NETWORK_RETRIES
+        )
         self.api_key = api_key
-        self.api_url = api_url
-        self.apiUrl = api_url
+        self.api_url = resolved_api_url
+        self.apiUrl = resolved_api_url
         self.timeout = timeout
-        self.max_network_retries = max_network_retries
-        self.maxNetworkRetries = max_network_retries
+        self.max_network_retries = resolved_max_retries
+        self.maxNetworkRetries = resolved_max_retries
         self._config = ClientConfig(
-            api_url=api_url,
+            api_url=resolved_api_url,
             headers=headers,
             timeout=timeout,
-            max_network_retries=max_network_retries,
+            max_network_retries=resolved_max_retries,
         )
         self._transport = SyncTransport(
             api_key,
