@@ -73,6 +73,16 @@ const appVersion = await deployment.wait({
 const app = await client.apps.retrieve(appVersion.app.id);
 ```
 
+Resources with `retrieve(...)` also expose `retrieveMany(...)`, preserving input order and returning `null` for missing IDs:
+
+```js
+const [firstApp, missingApp, secondApp] = await client.apps.retrieveMany([
+  firstAppId,
+  missingAppId,
+  secondAppId,
+]);
+```
+
 `client.apps.autobuild(...)` is still supported as a deprecated compatibility alias for `client.deployments.create(...)`; its returned deployment still supports the old `.finish()` and `.subscribeToProgress(...)` methods.
 
 Resume an existing deployment by build ID:

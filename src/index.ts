@@ -851,6 +851,56 @@ export { Deployment as AutobuildApp };
 export class DeploymentsResource {
   constructor(private client: SdkContext) {}
 
+  private deploymentFromStatus(
+    status: NonNullable<
+      srcGetDeploymentStatusQuery["response"]["autobuildDeploymentStatus"]
+    >,
+    options?: StackMachineRequestOptions,
+  ): Deployment {
+    const appVersionData = status.appVersion
+      ? this.client._getFragmentData<srcDeployAppVersionData$data>(
+          nodeAppVersion,
+          status.appVersion,
+        )
+      : null;
+    const appVersion = appVersionData
+      ? new DeployAppVersion(appVersionData, this.client)
+      : null;
+
+    return new Deployment(
+      status.buildId,
+      this.client,
+      {
+        status: status.status,
+        appVersion,
+      },
+      options,
+    );
+  }
+
+  private async retrieveOrNull(
+    buildId: string,
+    options?: StackMachineRequestOptions,
+  ): Promise<Deployment | null> {
+    const query = await this.client._query<srcGetDeploymentStatusQuery>(
+      graphql`
+        query srcGetDeploymentStatusQuery($buildId: UUID!) {
+          autobuildDeploymentStatus(buildId: $buildId) {
+            buildId
+            status
+            appVersion {
+              ...srcDeployAppVersionData
+            }
+          }
+        }
+      `,
+      { buildId },
+      options,
+    );
+    const status = query?.autobuildDeploymentStatus;
+    return status ? this.deploymentFromStatus(status, options) : null;
+  }
+
   async create(
     input: DeployAppAutobuildInput,
     options?: StackMachineRequestOptions,
@@ -887,23 +937,8 @@ export class DeploymentsResource {
     buildId: string,
     options?: StackMachineRequestOptions,
   ): Promise<Deployment> {
-    const query = await this.client._query<srcGetDeploymentStatusQuery>(
-      graphql`
-        query srcGetDeploymentStatusQuery($buildId: UUID!) {
-          autobuildDeploymentStatus(buildId: $buildId) {
-            buildId
-            status
-            appVersion {
-              ...srcDeployAppVersionData
-            }
-          }
-        }
-      `,
-      { buildId },
-      options,
-    );
-    const status = query?.autobuildDeploymentStatus;
-    if (!status) {
+    const deployment = await this.retrieveOrNull(buildId, options);
+    if (!deployment) {
       throw resourceMissingError(
         "deployment",
         buildId,
@@ -912,24 +947,15 @@ export class DeploymentsResource {
       );
     }
 
-    const appVersionData = status.appVersion
-      ? this.client._getFragmentData<srcDeployAppVersionData$data>(
-          nodeAppVersion,
-          status.appVersion,
-        )
-      : null;
-    const appVersion = appVersionData
-      ? new DeployAppVersion(appVersionData, this.client)
-      : null;
+    return deployment;
+  }
 
-    return new Deployment(
-      status.buildId,
-      this.client,
-      {
-        status: status.status,
-        appVersion,
-      },
-      options,
+  async retrieveMany(
+    buildIds: string[],
+    options?: StackMachineRequestOptions,
+  ): Promise<(Deployment | null)[]> {
+    return Promise.all(
+      buildIds.map((buildId) => this.retrieveOrNull(buildId, options)),
     );
   }
 }
@@ -937,14 +963,19 @@ export class DeploymentsResource {
 export class AppsDomainsResource {
   constructor(private client: SdkContext) {}
 
-  private async retrieveMany(
+  async retrieveMany(
     ids: string[],
     options?: StackMachineRequestOptions,
-  ): Promise<AppAlias[]> {
+  ): Promise<(AppAlias | null)[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
     const query = await this.client._query<srcGetAppAliasesQuery>(
       graphql`
         query srcGetAppAliasesQuery($ids: [ID!]!) {
           nodes(ids: $ids) {
+            __typename
             ...srcAppAlias
           }
         }
@@ -954,19 +985,16 @@ export class AppsDomainsResource {
       },
       options,
     );
-    return (
-      query?.nodes
-        ?.filter((node: unknown) => !!node)
-        .map(
-          (node: any) =>
-            new AppAlias(
-              this.client._getFragmentData<srcAppAlias$data>(
-                nodeAppAlias,
-                node,
-              ),
-            ),
-        ) || []
-    );
+    const nodes = query?.nodes ?? [];
+    return ids.map((_, index) => {
+      const node = nodes[index] as any;
+      if (!node || node.__typename !== "AppAlias") {
+        return null;
+      }
+      return new AppAlias(
+        this.client._getFragmentData<srcAppAlias$data>(nodeAppAlias, node),
+      );
+    });
   }
 
   async retrieve(
@@ -1668,6 +1696,40 @@ export class AppsSshUsersResource {
     return new SshUser(query.node);
   }
 
+  async retrieveMany(
+    ids: string[],
+    options?: StackMachineRequestOptions,
+  ): Promise<(SshUser | null)[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const query = await this.client._query<any>(
+      graphql`
+        query srcGetSshUsersByIdsQuery($ids: [ID!]!) {
+          nodes(ids: $ids) {
+            __typename
+            ... on SshUser {
+              id
+              username
+              port
+              serverHost
+              sftpRootFolder
+              authenticationMethods
+            }
+          }
+        }
+      `,
+      { ids },
+      options,
+    );
+    const nodes = query?.nodes ?? [];
+    return ids.map((_, index) => {
+      const node = nodes[index];
+      return node?.__typename === "SshUser" ? new SshUser(node) : null;
+    });
+  }
+
   async update(
     id: string,
     input: AppsSshUsersUpdateInput,
@@ -1778,6 +1840,41 @@ export class AppsSshResource {
       );
     }
     return new AppSshServer(query.node.sshServer);
+  }
+
+  async retrieveMany(
+    appIds: string[],
+    options?: StackMachineRequestOptions,
+  ): Promise<(AppSshServer | null)[]> {
+    if (appIds.length === 0) {
+      return [];
+    }
+
+    const query = await this.client._query<any>(
+      graphql`
+        query srcGetAppSshServersQuery($ids: [ID!]!) {
+          nodes(ids: $ids) {
+            __typename
+            ... on DeployApp {
+              id
+              sshServer {
+                id
+                enabled
+              }
+            }
+          }
+        }
+      `,
+      { ids: appIds },
+      options,
+    );
+    const nodes = query?.nodes ?? [];
+    return appIds.map((_, index) => {
+      const node = nodes[index];
+      return node?.__typename === "DeployApp" && node.sshServer
+        ? new AppSshServer(node.sshServer)
+        : null;
+    });
   }
 
   async update(
@@ -1920,6 +2017,40 @@ export class DeployAppsResource {
       query.app,
     );
     return new DeployApp(appData, this.client);
+  }
+
+  async retrieveMany(
+    ids: string[],
+    options?: StackMachineRequestOptions,
+  ): Promise<(DeployApp | null)[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const query = await this.client._query<any>(
+      graphql`
+        query srcGetAppsByIdsQuery($ids: [ID!]!) {
+          nodes(ids: $ids) {
+            __typename
+            ...srcDeployAppData
+          }
+        }
+      `,
+      { ids },
+      options,
+    );
+    const nodes = query?.nodes ?? [];
+    return ids.map((_, index) => {
+      const node = nodes[index];
+      if (!node || node.__typename !== "DeployApp") {
+        return null;
+      }
+      const appData = this.client._getFragmentData<srcDeployAppData$data>(
+        nodeApp,
+        node,
+      );
+      return new DeployApp(appData, this.client);
+    });
   }
 
   async retrieveByName(

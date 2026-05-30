@@ -56,6 +56,38 @@ const appNode = (id) => ({
   screenshot: null,
 });
 
+const appAliasNode = (id) => ({
+  __typename: "AppAlias",
+  id,
+  hostname: `${id}.example.test`,
+  url: `https://${id}.example.test`,
+  state: "VERIFIED",
+  redirectionHttpCode: null,
+  redirectsFrom: [],
+  redirectsTo: null,
+  expectedDnsRecords: [
+    {
+      host: `${id}.example.test`,
+      recordType: "CNAME",
+      value: "stackmachine.example.test",
+    },
+  ],
+  firstCheckedAt: null,
+  lastCheckedAt: null,
+  updatedAt: "2026-01-01T00:00:00Z",
+  createdAt: "2026-01-01T00:00:00Z",
+});
+
+const sshUserNode = (id) => ({
+  __typename: "SshUser",
+  id,
+  username: `user-${id}`,
+  port: 2222,
+  serverHost: "ssh.example.test",
+  sftpRootFolder: "/",
+  authenticationMethods: ["PUBLIC_KEY"],
+});
+
 const appVersionNode = (id = "version_1", appId = "app_1") => ({
   id,
   app: appNode(appId),
@@ -631,6 +663,179 @@ test("retrieve methods throw resource_missing errors instead of returning null",
       return true;
     });
   }
+});
+
+test("retrieveMany methods preserve input order and return null for missing ids", async () => {
+  const fetch = mockFetch((call) => {
+    switch (call.body.operationName) {
+      case "srcGetDeploymentStatusQuery": {
+        const { buildId } = call.body.variables;
+        return deploymentStatusResponse(
+          buildId === "build_missing"
+            ? null
+            : {
+                buildId,
+                status: "RUNNING",
+                appVersion: null,
+              },
+        );
+      }
+      case "srcGetAppsByIdsQuery":
+        return jsonResponse({
+          data: {
+            nodes: [
+              appNode("app_1"),
+              null,
+              sshUserNode("ssh_wrong_for_apps"),
+              appNode("app_2"),
+            ],
+          },
+        });
+      case "srcGetAppAliasesQuery":
+        return jsonResponse({
+          data: {
+            nodes: [
+              appAliasNode("domain_1"),
+              null,
+              appNode("app_wrong_for_domains"),
+              appAliasNode("domain_2"),
+            ],
+          },
+        });
+      case "srcGetSshUsersByIdsQuery":
+        return jsonResponse({
+          data: {
+            nodes: [
+              sshUserNode("ssh_1"),
+              null,
+              appNode("app_wrong_for_ssh_users"),
+              sshUserNode("ssh_2"),
+            ],
+          },
+        });
+      case "srcGetAppSshServersQuery":
+        return jsonResponse({
+          data: {
+            nodes: [
+              {
+                __typename: "DeployApp",
+                id: "app_1",
+                sshServer: { id: "ssh_server_1", enabled: true },
+              },
+              {
+                __typename: "DeployApp",
+                id: "app_without_ssh",
+                sshServer: null,
+              },
+              sshUserNode("ssh_wrong_for_servers"),
+              {
+                __typename: "DeployApp",
+                id: "app_2",
+                sshServer: { id: "ssh_server_2", enabled: false },
+              },
+            ],
+          },
+        });
+      default:
+        throw new Error(`Unexpected operation ${call.body.operationName}`);
+    }
+  });
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+  const options = { apiKey: "request-key" };
+
+  const deployments = await client.deployments.retrieveMany(
+    ["build_1", "build_missing", "build_2"],
+    options,
+  );
+  assert.deepEqual(
+    deployments.map((deployment) => deployment?.buildId ?? null),
+    ["build_1", null, "build_2"],
+  );
+
+  const apps = await client.apps.retrieveMany(
+    ["app_1", "app_missing", "wrong_type", "app_2"],
+    options,
+  );
+  assert.deepEqual(
+    apps.map((app) => app?.id ?? null),
+    ["app_1", null, null, "app_2"],
+  );
+
+  const domains = await client.apps.domains.retrieveMany(
+    ["domain_1", "domain_missing", "wrong_type", "domain_2"],
+    options,
+  );
+  assert.deepEqual(
+    domains.map((domain) => domain?.id ?? null),
+    ["domain_1", null, null, "domain_2"],
+  );
+
+  const sshUsers = await client.apps.ssh.users.retrieveMany(
+    ["ssh_1", "ssh_missing", "wrong_type", "ssh_2"],
+    options,
+  );
+  assert.deepEqual(
+    sshUsers.map((user) => user?.id ?? null),
+    ["ssh_1", null, null, "ssh_2"],
+  );
+
+  const sshServers = await client.apps.ssh.retrieveMany(
+    ["app_1", "app_without_ssh", "wrong_type", "app_2"],
+    options,
+  );
+  assert.deepEqual(
+    sshServers.map((server) => server?.id ?? null),
+    ["ssh_server_1", null, null, "ssh_server_2"],
+  );
+
+  const callsBeforeEmptyBatches = fetch.calls.length;
+  assert.deepEqual(await client.deployments.retrieveMany([], options), []);
+  assert.deepEqual(await client.apps.retrieveMany([], options), []);
+  assert.deepEqual(await client.apps.domains.retrieveMany([], options), []);
+  assert.deepEqual(await client.apps.ssh.users.retrieveMany([], options), []);
+  assert.deepEqual(await client.apps.ssh.retrieveMany([], options), []);
+  assert.equal(fetch.calls.length, callsBeforeEmptyBatches);
+
+  assert.deepEqual(
+    fetch.calls
+      .filter(
+        (call) => call.body.operationName === "srcGetDeploymentStatusQuery",
+      )
+      .map((call) => call.body.variables.buildId),
+    ["build_1", "build_missing", "build_2"],
+  );
+  assert.deepEqual(
+    fetch.calls.find(
+      (call) => call.body.operationName === "srcGetAppsByIdsQuery",
+    ).body.variables.ids,
+    ["app_1", "app_missing", "wrong_type", "app_2"],
+  );
+  assert.deepEqual(
+    fetch.calls.find(
+      (call) => call.body.operationName === "srcGetAppAliasesQuery",
+    ).body.variables.ids,
+    ["domain_1", "domain_missing", "wrong_type", "domain_2"],
+  );
+  assert.deepEqual(
+    fetch.calls.find(
+      (call) => call.body.operationName === "srcGetSshUsersByIdsQuery",
+    ).body.variables.ids,
+    ["ssh_1", "ssh_missing", "wrong_type", "ssh_2"],
+  );
+  assert.deepEqual(
+    fetch.calls.find(
+      (call) => call.body.operationName === "srcGetAppSshServersQuery",
+    ).body.variables.ids,
+    ["app_1", "app_without_ssh", "wrong_type", "app_2"],
+  );
+  assert.ok(
+    fetch.calls.every(
+      (call) => call.headers.get("authorization") === "Bearer request-key",
+    ),
+  );
 });
 
 test("deployment.wait emits progress, resolves on complete, and preserves request options", async () => {

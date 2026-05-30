@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<9f956708c8f315c9a9cb17ad3ec15825>>
+ * @generated SignedSource<<df5b05bd70b4096658dc3a248939757b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,18 +10,18 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
-export type srcGetAppAliasesQuery$variables = {
+export type srcGetAppsByIdsQuery$variables = {
   ids: ReadonlyArray<string>;
 };
-export type srcGetAppAliasesQuery$data = {
+export type srcGetAppsByIdsQuery$data = {
   readonly nodes: ReadonlyArray<{
     readonly __typename: string;
-    readonly " $fragmentSpreads": FragmentRefs<"srcAppAlias">;
+    readonly " $fragmentSpreads": FragmentRefs<"srcDeployAppData">;
   } | null | undefined>;
 };
-export type srcGetAppAliasesQuery = {
-  response: srcGetAppAliasesQuery$data;
-  variables: srcGetAppAliasesQuery$variables;
+export type srcGetAppsByIdsQuery = {
+  response: srcGetAppsByIdsQuery$data;
+  variables: srcGetAppsByIdsQuery$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -52,16 +52,13 @@ v3 = {
   "kind": "ScalarField",
   "name": "id",
   "storageKey": null
-},
-v4 = [
-  (v3/*: any*/)
-];
+};
 return {
   "fragment": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "srcGetAppAliasesQuery",
+    "name": "srcGetAppsByIdsQuery",
     "selections": [
       {
         "alias": null,
@@ -75,7 +72,7 @@ return {
           {
             "args": null,
             "kind": "FragmentSpread",
-            "name": "srcAppAlias"
+            "name": "srcDeployAppData"
           }
         ],
         "storageKey": null
@@ -88,7 +85,7 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "srcGetAppAliasesQuery",
+    "name": "srcGetAppsByIdsQuery",
     "selections": [
       {
         "alias": null,
@@ -107,7 +104,14 @@ return {
                 "alias": null,
                 "args": null,
                 "kind": "ScalarField",
-                "name": "hostname",
+                "name": "willPerishAt",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "name",
                 "storageKey": null
               },
               {
@@ -121,65 +125,18 @@ return {
                 "alias": null,
                 "args": null,
                 "kind": "ScalarField",
-                "name": "state",
+                "name": "adminUrl",
                 "storageKey": null
               },
               {
                 "alias": null,
                 "args": null,
-                "kind": "ScalarField",
-                "name": "redirectionHttpCode",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "concreteType": "AppAlias",
+                "concreteType": "DeployAppVersion",
                 "kind": "LinkedField",
-                "name": "redirectsFrom",
-                "plural": true,
-                "selections": (v4/*: any*/),
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "concreteType": "AppAlias",
-                "kind": "LinkedField",
-                "name": "redirectsTo",
+                "name": "activeVersion",
                 "plural": false,
-                "selections": (v4/*: any*/),
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "concreteType": "AppAliasDNSRecord",
-                "kind": "LinkedField",
-                "name": "expectedDnsRecords",
-                "plural": true,
                 "selections": [
-                  {
-                    "alias": null,
-                    "args": null,
-                    "kind": "ScalarField",
-                    "name": "host",
-                    "storageKey": null
-                  },
-                  {
-                    "alias": null,
-                    "args": null,
-                    "kind": "ScalarField",
-                    "name": "recordType",
-                    "storageKey": null
-                  },
-                  {
-                    "alias": null,
-                    "args": null,
-                    "kind": "ScalarField",
-                    "name": "value",
-                    "storageKey": null
-                  }
+                  (v3/*: any*/)
                 ],
                 "storageKey": null
               },
@@ -187,32 +144,18 @@ return {
                 "alias": null,
                 "args": null,
                 "kind": "ScalarField",
-                "name": "firstCheckedAt",
+                "name": "favicon",
                 "storageKey": null
               },
               {
                 "alias": null,
                 "args": null,
                 "kind": "ScalarField",
-                "name": "lastCheckedAt",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "updatedAt",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "createdAt",
+                "name": "screenshot",
                 "storageKey": null
               }
             ],
-            "type": "AppAlias",
+            "type": "DeployApp",
             "abstractKey": null
           }
         ],
@@ -221,16 +164,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "96ca05c5eaeb8c57d2dd9e4c798b6f62",
+    "cacheID": "1777ed2e5122c06eb1f56437c339ace7",
     "id": null,
     "metadata": {},
-    "name": "srcGetAppAliasesQuery",
+    "name": "srcGetAppsByIdsQuery",
     "operationKind": "query",
-    "text": "query srcGetAppAliasesQuery(\n  $ids: [ID!]!\n) {\n  nodes(ids: $ids) {\n    __typename\n    ...srcAppAlias\n    id\n  }\n}\n\nfragment srcAppAlias on AppAlias {\n  id\n  hostname\n  url\n  state\n  redirectionHttpCode\n  redirectsFrom {\n    id\n  }\n  redirectsTo {\n    id\n  }\n  expectedDnsRecords {\n    host\n    recordType\n    value\n  }\n  firstCheckedAt\n  lastCheckedAt\n  updatedAt\n  createdAt\n}\n"
+    "text": "query srcGetAppsByIdsQuery(\n  $ids: [ID!]!\n) {\n  nodes(ids: $ids) {\n    __typename\n    ...srcDeployAppData\n    id\n  }\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  name\n  url\n  adminUrl\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n"
   }
 };
 })();
 
-(node as any).hash = "142148d82b80b22f287b2706d0bc0847";
+(node as any).hash = "f3f43c412d24a981818ac5bb9b4d7137";
 
 export default node;
