@@ -11,12 +11,11 @@ on:
         required: true
         default: false
         type: boolean
-
-permissions:
-  contents: write
-  issues: write
-  pull-requests: write
-  id-token: write
+      publish_existing_python_version:
+        description: Publish the pyproject.toml version already on main
+        required: true
+        default: false
+        type: boolean
 
 concurrency:
   group: release-${{ github.ref }}
@@ -26,7 +25,13 @@ jobs:
   release:
     if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
-    environment: npm
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      js_release_created: ${{ steps.release.outputs['js--release_created'] }}
+      python_release_created: ${{ steps.release.outputs['python--release_created'] }}
     steps:
       - name: Create release
         id: release
@@ -36,57 +41,14 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-      - name: Check out repository
-        if: ${{ steps.release.outputs.release_created == 'true' }}
-        uses: actions/checkout@v6
-
-      - name: Set up Node.js
-        if: ${{ steps.release.outputs.release_created == 'true' }}
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          registry-url: https://registry.npmjs.org
-          package-manager-cache: false
-
-      - name: Install dependencies
-        if: ${{ steps.release.outputs.release_created == 'true' }}
-        run: npm ci
-        working-directory: js
-
-      - name: Check formatting
-        if: ${{ steps.release.outputs.release_created == 'true' }}
-        run: npm run format:check
-        working-directory: js
-
-      - name: Type check
-        if: ${{ steps.release.outputs.release_created == 'true' }}
-        run: npm run typecheck
-        working-directory: js
-
-      - name: Build package
-        if: ${{ steps.release.outputs.release_created == 'true' }}
-        run: npm run build
-        working-directory: js
-
-      - name: Check schema
-        if: ${{ steps.release.outputs.release_created == 'true' }}
-        run: npm run check-schema
-        working-directory: js
-
-      - name: Verify package contents
-        if: ${{ steps.release.outputs.release_created == 'true' }}
-        run: npm pack --dry-run
-        working-directory: js
-
-      - name: Publish to npm
-        if: ${{ steps.release.outputs.release_created == 'true' }}
-        run: npm publish
-        working-directory: js
-
-  publish-existing:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_existing_version }}
+  publish-js:
+    if: ${{ github.event_name == 'push' && needs.release.outputs.js_release_created == 'true' }}
+    needs: release
     runs-on: ubuntu-latest
     environment: npm
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -125,3 +87,132 @@ jobs:
       - name: Publish to npm
         run: npm publish
         working-directory: js
+
+  publish-python:
+    if: ${{ github.event_name == 'push' && needs.release.outputs.python_release_created == 'true' }}
+    needs: release
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8
+        with:
+          enable-cache: true
+          cache-dependency-glob: python/uv.lock
+
+      - name: Install Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --locked --dev --python 3.12
+
+      - name: Lint
+        run: uv run --frozen ruff check src examples tests
+
+      - name: Test
+        run: uv run --frozen pytest
+
+      - name: Build package
+        run: uv build --no-sources
+
+      - name: Verify package contents
+        run: uvx twine check dist/*
+
+      - name: Publish to PyPI
+        run: uv publish
+
+  publish-existing:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_existing_version }}
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: js
+
+      - name: Check formatting
+        run: npm run format:check
+        working-directory: js
+
+      - name: Type check
+        run: npm run typecheck
+        working-directory: js
+
+      - name: Build package
+        run: npm run build
+        working-directory: js
+
+      - name: Check schema
+        run: npm run check-schema
+        working-directory: js
+
+      - name: Verify package contents
+        run: npm pack --dry-run
+        working-directory: js
+
+      - name: Publish to npm
+        run: npm publish
+        working-directory: js
+
+  publish-existing-python:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_existing_python_version }}
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8
+        with:
+          enable-cache: true
+          cache-dependency-glob: python/uv.lock
+
+      - name: Install Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --locked --dev --python 3.12
+
+      - name: Lint
+        run: uv run --frozen ruff check src examples tests
+
+      - name: Test
+        run: uv run --frozen pytest
+
+      - name: Build package
+        run: uv build --no-sources
+
+      - name: Verify package contents
+        run: uvx twine check dist/*
+
+      - name: Publish to PyPI
+        run: uv publish

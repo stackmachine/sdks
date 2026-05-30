@@ -6,6 +6,19 @@
       "release-type": "node",
       "package-name": "stackmachine",
       "include-v-in-tag": true
+    },
+    "python": {
+      "release-type": "python",
+      "package-name": "stackmachine",
+      "component": "stackmachine-python",
+      "include-v-in-tag": true,
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "uv.lock",
+          "jsonpath": "$.package[?(@.name==\"stackmachine\")].version"
+        }
+      ]
     }
   }
 }
