@@ -1,5 +1,12 @@
 dist
 build
 node_modules
+*.egg-info
+*.py[cod]
+__pycache__
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.venv
 
 .env
