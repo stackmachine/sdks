@@ -28,9 +28,23 @@ export STACKMACHINE_API_KEY=your_api_key_here
 Initialize the client:
 
 ```js
+import StackMachine from "stackmachine";
+
+const client = new StackMachine(process.env.STACKMACHINE_API_KEY);
+```
+
+Named imports and CommonJS are also supported:
+
+```js
 import { StackMachine } from "stackmachine";
 
 const client = new StackMachine(process.env.STACKMACHINE_API_KEY);
+```
+
+```js
+const StackMachine = require("stackmachine");
+
+const client = StackMachine(process.env.STACKMACHINE_API_KEY);
 ```
 
 `StackMachine.init({ apiKey, apiUrl })` is still supported for existing code. Pass constructor config such as `apiUrl`, `timeout`, or `maxNetworkRetries` only when you need to override the defaults.
@@ -41,7 +55,12 @@ Use the resource clients for app and file operations:
 const zip = await createZip({
   "index.php": "<html><body><h1>Hello StackMachine</h1></body></html>",
 });
-const uploadUrl = await client.files.upload(zip);
+const uploadUrl = await client.files.upload(zip, {
+  chunkSize: 8 * 1024 * 1024,
+  onProgress: (progress) => {
+    console.log("Uploading", progress * 100, "%");
+  },
+});
 const deployment = await client.deployments.create({
   appName: "hello-stackmachine",
   owner: "stackmachine",

@@ -56,7 +56,12 @@ import {
   type StackMachineListPromise,
   type StackMachinePaginationParams,
 } from "./pagination";
-import { createZip, handleUploadFileToCloud } from "./upload";
+import {
+  createZip,
+  handleUploadFileToCloud,
+  resolveUploadOptions,
+  type StackMachineUploadOptions,
+} from "./upload";
 
 const {
   graphql,
@@ -86,6 +91,7 @@ export {
   type StackMachineList,
   type StackMachineListPromise,
   type StackMachinePaginationParams,
+  type StackMachineUploadOptions,
 };
 
 export type StackMachineConfig = {
@@ -111,6 +117,14 @@ type SubscriptionHandlers<TSubscription extends { response: unknown }> = {
   onNext?: (data: TSubscription["response"]) => void;
   onCompleted?: () => void;
   onError?: (error: Error) => void;
+};
+
+type StackMachineUploadProgressCallback = (progress: number) => void;
+
+type StackMachineUploadConfig = {
+  fetch: typeof fetch;
+  timeout: number;
+  maxNetworkRetries: number;
 };
 
 type SdkContext = {
@@ -332,6 +346,16 @@ function resolveClientMutationId(
     return inputClientMutationId;
   }
   return generateClientMutationId();
+}
+
+function resolveRuntimeFetch(fetchFn?: typeof fetch): typeof fetch {
+  const resolvedFetch = fetchFn ?? globalThis.fetch;
+  if (!resolvedFetch) {
+    throw new StackMachineConnectionError({
+      message: "`fetch` is not available in this runtime.",
+    });
+  }
+  return resolvedFetch.bind(globalThis) as typeof fetch;
 }
 
 function withClientMutationId<TVariables extends Record<string, unknown>>(
@@ -1963,18 +1987,38 @@ export class DeployAppsResource {
 }
 
 export class FilesResource {
-  constructor(private client: SdkContext) {}
+  constructor(
+    private client: SdkContext,
+    private uploadConfig: StackMachineUploadConfig,
+  ) {}
 
   async upload(
     file: Blob,
-    setUploadFilesProgress?: (progress: number) => void,
+    options?: StackMachineUploadOptions,
+  ): Promise<string>;
+  async upload(
+    file: Blob,
+    setUploadFilesProgress?: StackMachineUploadProgressCallback,
+    options?: StackMachineRequestOptions,
+  ): Promise<string>;
+  async upload(
+    file: Blob,
+    optionsOrProgress?:
+      | StackMachineUploadOptions
+      | StackMachineUploadProgressCallback,
     options?: StackMachineRequestOptions,
   ): Promise<string> {
+    const uploadOptions =
+      typeof optionsOrProgress === "function"
+        ? {
+            ...options,
+            onProgress: optionsOrProgress,
+          }
+        : (optionsOrProgress ?? options);
     return handleUploadFileToCloud(
       this.client.environment,
       file,
-      setUploadFilesProgress,
-      options,
+      resolveUploadOptions(uploadOptions, this.uploadConfig),
     );
   }
 }
@@ -1987,12 +2031,14 @@ export class StackMachine implements SdkContext {
   readonly apiUrl: string;
   readonly timeout: number;
   readonly maxNetworkRetries: number;
+  private readonly fetch: typeof fetch;
 
   constructor(apiKey: string, config: StackMachineConfig = {}) {
     this.apiUrl = config.apiUrl || DEFAULT_API_URL;
     this.timeout = config.timeout ?? DEFAULT_TIMEOUT_MS;
     this.maxNetworkRetries =
       config.maxNetworkRetries ?? DEFAULT_MAX_NETWORK_RETRIES;
+    this.fetch = resolveRuntimeFetch(config.fetch);
 
     const environmentOptions: EnvironmentOptions = {
       endpoint: this.apiUrl,
@@ -2000,12 +2046,16 @@ export class StackMachine implements SdkContext {
       headers: config.headers,
       timeout: this.timeout,
       maxNetworkRetries: this.maxNetworkRetries,
-      fetch: config.fetch,
+      fetch: this.fetch,
     };
     this.environment = createEnvironment(environmentOptions);
     this.deployments = new DeploymentsResource(this);
     this.apps = new DeployAppsResource(this, this.deployments);
-    this.files = new FilesResource(this);
+    this.files = new FilesResource(this, {
+      fetch: this.fetch,
+      timeout: this.timeout,
+      maxNetworkRetries: this.maxNetworkRetries,
+    });
   }
 
   static async init(settings: StackMachineRegistryConfig) {

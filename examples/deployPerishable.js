@@ -10,8 +10,11 @@ const zip = await createZip({
   "index.php":
     "<html><body><h1>This app will perish in 2 hours</h1></body></html>",
 });
-const uploadUrl = await client.files.upload(zip, (progress) => {
-  console.log("Uploading files... ", progress * 100, "%");
+const uploadUrl = await client.files.upload(zip, {
+  chunkSize: 8 * 1024 * 1024,
+  onProgress: (progress) => {
+    console.log("Uploading files... ", progress * 100, "%");
+  },
 });
 
 const deployment = await client.deployments.create({

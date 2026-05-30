@@ -7,6 +7,7 @@ import type {
 import {
   StackMachineAPIError,
   StackMachineConnectionError,
+  StackMachineValidationError,
   stackMachineErrorFromUnknown,
 } from "./errors";
 import {
@@ -18,26 +19,259 @@ import {
 } from "@zip.js/zip.js";
 import { uploadQuery } from "__generated__/uploadQuery.graphql";
 
-const CHUNK_SIZE = 1 * 1024 * 1024; // 1MB chunks
+const DEFAULT_CHUNK_SIZE = 1 * 1024 * 1024; // 1MB chunks
+const MAX_CHUNK_SIZE = 512 * 1024 * 1024;
+
+const RETRYABLE_UPLOAD_STATUS_CODES = new Set([
+  408, 409, 425, 429, 500, 502, 503, 504,
+]);
+
+export type StackMachineUploadOptions = StackMachineRequestOptions & {
+  chunkSize?: number;
+  onProgress?: (progress: number) => void;
+};
+
+export type StackMachineResolvedUploadOptions = StackMachineUploadOptions & {
+  fetch: typeof fetch;
+  timeout: number;
+  maxNetworkRetries: number;
+  chunkSize: number;
+};
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
 }
 
+function isRetryableUploadStatus(statusCode?: number): boolean {
+  return (
+    statusCode !== undefined && RETRYABLE_UPLOAD_STATUS_CODES.has(statusCode)
+  );
+}
+
+function validateChunkSize(value: number | undefined): number {
+  const chunkSize = value ?? DEFAULT_CHUNK_SIZE;
+  if (
+    !Number.isInteger(chunkSize) ||
+    chunkSize < 1 ||
+    chunkSize > MAX_CHUNK_SIZE
+  ) {
+    throw new StackMachineValidationError({
+      message: "`chunkSize` must be an integer between 1 and 536870912 bytes.",
+      code: "invalid_upload_chunk_size",
+      param: "chunkSize",
+    });
+  }
+  return chunkSize;
+}
+
+function validateUploadFile(file: Blob) {
+  if (!file || typeof file.size !== "number" || file.size < 0) {
+    throw new StackMachineValidationError({
+      message: "`file` must be a Blob-like object with a valid size.",
+      code: "invalid_upload_file",
+      param: "file",
+    });
+  }
+}
+
+export function resolveUploadOptions(
+  options: StackMachineUploadOptions | undefined,
+  defaults: {
+    fetch: typeof fetch;
+    timeout: number;
+    maxNetworkRetries: number;
+  },
+): StackMachineResolvedUploadOptions {
+  return {
+    ...options,
+    fetch: defaults.fetch,
+    timeout: options?.timeout ?? defaults.timeout,
+    maxNetworkRetries: options?.maxNetworkRetries ?? defaults.maxNetworkRetries,
+    chunkSize: validateChunkSize(options?.chunkSize),
+  };
+}
+
+function createUploadSignal(
+  signal?: AbortSignal,
+  timeout?: number,
+): {
+  signal?: AbortSignal;
+  cleanup: () => void;
+  timedOut: () => boolean;
+  userAborted: () => boolean;
+} {
+  if (!signal && (!timeout || timeout <= 0)) {
+    return {
+      signal: undefined,
+      cleanup: () => {},
+      timedOut: () => false,
+      userAborted: () => false,
+    };
+  }
+
+  const controller = new AbortController();
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  let timedOut = false;
+  let userAborted = false;
+
+  const abortFromSignal = () => {
+    userAborted = true;
+    controller.abort(signal?.reason);
+  };
+
+  if (signal) {
+    if (signal.aborted) {
+      abortFromSignal();
+    } else {
+      signal.addEventListener("abort", abortFromSignal, { once: true });
+    }
+  }
+
+  if (timeout && timeout > 0) {
+    timeoutId = setTimeout(() => {
+      timedOut = true;
+      controller.abort(new Error(`Upload timed out after ${timeout}ms.`));
+    }, timeout);
+  }
+
+  return {
+    signal: controller.signal,
+    cleanup: () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      signal?.removeEventListener("abort", abortFromSignal);
+    },
+    timedOut: () => timedOut,
+    userAborted: () => userAborted,
+  };
+}
+
 function uploadConnectionError(
   error: unknown,
   operationName: string,
+  signal?: ReturnType<typeof createUploadSignal>,
 ): StackMachineConnectionError {
+  const userAborted = signal?.userAborted() ?? false;
+  const timedOut = signal?.timedOut() ?? false;
   return new StackMachineConnectionError({
-    message: isAbortError(error)
+    message: userAborted
       ? "StackMachine upload was aborted."
-      : error instanceof Error
-        ? error.message
-        : "StackMachine upload failed.",
+      : timedOut
+        ? "StackMachine upload timed out."
+        : error instanceof Error
+          ? error.message
+          : "StackMachine upload failed.",
     operationName,
-    code: isAbortError(error) ? "request_aborted" : undefined,
+    code: userAborted
+      ? "request_aborted"
+      : timedOut || isAbortError(error)
+        ? "request_timeout"
+        : undefined,
     cause: error,
   });
+}
+
+function uploadApiError(
+  response: Response,
+  operationName: string,
+  fallback: string,
+) {
+  return new StackMachineAPIError({
+    message: `${fallback}: ${response.statusText || response.status}`,
+    operationName,
+    statusCode: response.status,
+  });
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function retryDelayMs(attempt: number): number {
+  const base = Math.min(100 * 2 ** attempt, 2_000);
+  return Math.round(base / 2 + Math.random() * (base / 2));
+}
+
+function shouldRetryUploadError(
+  error: unknown,
+  attempt: number,
+  maxRetries: number,
+): boolean {
+  if (attempt >= maxRetries) {
+    return false;
+  }
+  if (
+    error instanceof StackMachineConnectionError &&
+    error.code !== "request_aborted"
+  ) {
+    return true;
+  }
+  if (error instanceof StackMachineAPIError) {
+    return isRetryableUploadStatus(error.statusCode);
+  }
+  return false;
+}
+
+async function retryUploadRequest<T>(
+  operationName: string,
+  options: StackMachineResolvedUploadOptions,
+  request: () => Promise<T>,
+): Promise<T> {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await request();
+    } catch (error) {
+      if (!shouldRetryUploadError(error, attempt, options.maxNetworkRetries)) {
+        throw error;
+      }
+      await sleep(retryDelayMs(attempt));
+      attempt += 1;
+    }
+  }
+}
+
+async function uploadFetch(
+  url: string,
+  init: RequestInit,
+  operationName: string,
+  options: StackMachineResolvedUploadOptions,
+): Promise<Response> {
+  const signal = createUploadSignal(options.signal, options.timeout);
+  try {
+    return await options.fetch(url, {
+      ...init,
+      signal: signal.signal,
+    });
+  } catch (error) {
+    throw uploadConnectionError(error, operationName, signal);
+  } finally {
+    signal.cleanup();
+  }
+}
+
+function uploadedBytesFromRange(rangeHeader: string | null): number | null {
+  if (!rangeHeader) {
+    return null;
+  }
+  const match = /bytes=0-(\d+)/.exec(rangeHeader);
+  if (!match) {
+    return null;
+  }
+  return Number.parseInt(match[1], 10) + 1;
+}
+
+function createProgressReporter(onProgress?: (progress: number) => void) {
+  let lastProgress = -1;
+  return (progress: number) => {
+    const normalized = Math.max(0, Math.min(1, progress));
+    if (normalized < lastProgress || normalized === lastProgress) {
+      return;
+    }
+    lastProgress = normalized;
+    onProgress?.(normalized);
+  };
 }
 
 export const createZip = async (files: {
@@ -63,32 +297,37 @@ export const createZip = async (files: {
 
 const initiateResumableUpload = async (
   url: string,
-  setUploadFilesProgress?: (progress: number) => void,
-  options?: StackMachineRequestOptions,
+  reportProgress: (progress: number) => void,
+  options: StackMachineResolvedUploadOptions,
 ): Promise<string> => {
-  let response: Response;
-  try {
-    response = await globalThis.fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/octet-stream",
-        "x-goog-resumable": "start",
-        "Content-Length": "0",
-      },
-      signal: options?.signal,
-    });
-  } catch (error) {
-    throw uploadConnectionError(error, "initiateResumableUpload");
-  }
-  setUploadFilesProgress?.(0.01);
-
-  if (!response.ok) {
-    throw new StackMachineAPIError({
-      message: `Failed to initiate upload: ${response.statusText}`,
-      operationName: "initiateResumableUpload",
-      statusCode: response.status,
-    });
-  }
+  const response = await retryUploadRequest(
+    "initiateResumableUpload",
+    options,
+    async () => {
+      const response = await uploadFetch(
+        url,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/octet-stream",
+            "x-goog-resumable": "start",
+            "Content-Length": "0",
+          },
+        },
+        "initiateResumableUpload",
+        options,
+      );
+      if (!response.ok) {
+        throw uploadApiError(
+          response,
+          "initiateResumableUpload",
+          "Failed to initiate upload",
+        );
+      }
+      return response;
+    },
+  );
+  reportProgress(0.01);
 
   const uploadUrl = response.headers.get("Location");
   if (!uploadUrl) {
@@ -108,11 +347,11 @@ const uploadChunk = async (
   start: number,
   end: number,
   total: number,
-  options?: StackMachineRequestOptions,
+  options: StackMachineResolvedUploadOptions,
 ) => {
-  let response: Response;
-  try {
-    response = await globalThis.fetch(uploadUrl, {
+  const response = await uploadFetch(
+    uploadUrl,
+    {
       method: "PUT",
       headers: {
         "Content-Type": "application/octet-stream",
@@ -120,54 +359,161 @@ const uploadChunk = async (
         "Content-Length": chunk.size.toString(),
       },
       body: chunk,
-      signal: options?.signal,
-    });
-  } catch (error) {
-    throw uploadConnectionError(error, "uploadChunk");
-  }
+    },
+    "uploadChunk",
+    options,
+  );
 
   if (!response.ok && response.status !== 308) {
-    throw new StackMachineAPIError({
-      message: `Upload failed: ${response.statusText}`,
-      operationName: "uploadChunk",
-      statusCode: response.status,
-    });
+    throw uploadApiError(response, "uploadChunk", "Upload failed");
   }
 
   return response;
 };
 
+const queryUploadedBytes = async (
+  uploadUrl: string,
+  total: number,
+  options: StackMachineResolvedUploadOptions,
+): Promise<number | null> => {
+  const response = await uploadFetch(
+    uploadUrl,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Range": `bytes */${total}`,
+        "Content-Length": "0",
+      },
+    },
+    "queryUploadStatus",
+    options,
+  );
+
+  if (response.status === 308) {
+    return uploadedBytesFromRange(response.headers.get("Range")) ?? 0;
+  }
+  if (response.ok) {
+    return total;
+  }
+  throw uploadApiError(
+    response,
+    "queryUploadStatus",
+    "Failed to resume upload",
+  );
+};
+
+const queryUploadedBytesSafely = async (
+  uploadUrl: string,
+  total: number,
+  options: StackMachineResolvedUploadOptions,
+): Promise<number | null> => {
+  try {
+    return await queryUploadedBytes(uploadUrl, total, options);
+  } catch (error) {
+    if (
+      error instanceof StackMachineConnectionError &&
+      error.code === "request_aborted"
+    ) {
+      throw error;
+    }
+    return null;
+  }
+};
+
+const uploadChunkWithResumeRetry = async (
+  uploadUrl: string,
+  file: Blob,
+  start: number,
+  total: number,
+  options: StackMachineResolvedUploadOptions,
+  reportUploadedBytes: (uploadedBytes: number) => void,
+) => {
+  let attempt = 0;
+  let currentStart = start;
+
+  while (true) {
+    const currentEnd = Math.min(currentStart + options.chunkSize, total);
+    const chunk = file.slice(currentStart, currentEnd);
+    try {
+      const response = await uploadChunk(
+        uploadUrl,
+        chunk,
+        currentStart,
+        currentEnd,
+        total,
+        options,
+      );
+      return {
+        response,
+        start: currentStart,
+        end: currentEnd,
+      };
+    } catch (error) {
+      if (!shouldRetryUploadError(error, attempt, options.maxNetworkRetries)) {
+        throw error;
+      }
+      const uploadedBytes = await queryUploadedBytesSafely(
+        uploadUrl,
+        total,
+        options,
+      );
+      if (uploadedBytes !== null && uploadedBytes > currentStart) {
+        currentStart = uploadedBytes;
+        reportUploadedBytes(currentStart);
+        if (currentStart >= total) {
+          return {
+            response: new Response(null, { status: 200 }),
+            start,
+            end: total,
+          };
+        }
+      }
+      await sleep(retryDelayMs(attempt));
+      attempt += 1;
+    }
+  }
+};
+
 const uploadFileInChunks = async (
   uploadUrl: string,
   file: Blob,
-  setUploadFilesProgress?: (progress: number) => void,
-  options?: StackMachineRequestOptions,
+  reportProgress: (progress: number) => void,
+  options: StackMachineResolvedUploadOptions,
 ) => {
   const totalSize = file.size;
+  if (totalSize === 0) {
+    reportProgress(1);
+    return;
+  }
 
   let start = 0;
-  let end = Math.min(CHUNK_SIZE, totalSize);
 
   while (start < totalSize) {
-    const chunk = file.slice(start, end);
-    const response = await uploadChunk(
+    const result = await uploadChunkWithResumeRetry(
       uploadUrl,
-      chunk,
+      file,
       start,
-      end,
       totalSize,
       options,
+      (uploadedBytes) => reportProgress(uploadedBytes / totalSize),
     );
-    if (response.status === 308) {
-      const rangeHeader = response.headers.get("Range");
-      if (rangeHeader) {
-        const uploadedBytes = parseInt(rangeHeader.split("-")[1]) + 1;
-        setUploadFilesProgress?.(uploadedBytes / totalSize);
-        start = uploadedBytes;
-        end = Math.min(start + CHUNK_SIZE, totalSize);
+
+    if (result.response.status === 308) {
+      const uploadedBytes =
+        uploadedBytesFromRange(result.response.headers.get("Range")) ??
+        result.end;
+      if (uploadedBytes <= start) {
+        throw new StackMachineAPIError({
+          message: "Upload did not report progress after chunk upload.",
+          operationName: "uploadChunk",
+          statusCode: result.response.status,
+        });
       }
-    } else if (response.ok) {
-      setUploadFilesProgress?.(1);
+      start = uploadedBytes;
+      reportProgress(start / totalSize);
+    } else if (result.response.ok) {
+      start = totalSize;
+      reportProgress(1);
       break;
     }
   }
@@ -185,11 +531,14 @@ export const generateShortRandomName = () => {
 export const handleUploadFileToCloud = async (
   environment: Environment,
   zipFile: Blob,
-  setUploadFilesProgress?: (progress: number) => void,
-  options?: StackMachineRequestOptions,
+  options: StackMachineResolvedUploadOptions,
 ) => {
+  validateUploadFile(zipFile);
+  const reportProgress = createProgressReporter(options.onProgress);
+  reportProgress(0);
+
   const networkCacheConfig: StackMachineCacheConfig = {
-    force: options?.force ?? true,
+    force: options.force ?? true,
     stackMachine: options,
   };
   let query: uploadQuery["response"] | null | undefined;
@@ -216,18 +565,12 @@ export const handleUploadFileToCloud = async (
 
   if (query?.getSignedUrl?.url) {
     const url = query?.getSignedUrl?.url;
-    // console.log("FileUploaded", url);
     const uploadUrl = await initiateResumableUpload(
       url,
-      setUploadFilesProgress,
+      reportProgress,
       options,
     );
-    await uploadFileInChunks(
-      uploadUrl,
-      zipFile,
-      setUploadFilesProgress,
-      options,
-    );
+    await uploadFileInChunks(uploadUrl, zipFile, reportProgress, options);
     return url;
   } else {
     throw new StackMachineAPIError({

@@ -78,6 +78,35 @@ const deploymentStatusResponse = (status) =>
     },
   });
 
+const uploadQueryResponse = (url = "https://storage.example.test/upload.zip") =>
+  jsonResponse({
+    data: {
+      getSignedUrl: {
+        url,
+      },
+    },
+  });
+
+const uploadSessionResponse = (
+  uploadUrl = "https://storage.example.test/session",
+) =>
+  new Response(null, {
+    status: 200,
+    headers: {
+      location: uploadUrl,
+    },
+  });
+
+const uploadRangeResponse = (endByte) =>
+  new Response(null, {
+    status: 308,
+    headers: {
+      range: `bytes=0-${endByte}`,
+    },
+  });
+
+const uploadCompleteResponse = () => new Response(null, { status: 200 });
+
 const appsListResponse = (
   items,
   pageInfo = {
@@ -296,6 +325,150 @@ test("package supports default import and CommonJS callable construction", async
     fetch: mockFetch(() => viewerResponse("named")),
   });
   assert.ok(namedClient instanceof StackMachineCjs.StackMachine);
+});
+
+test("files.upload supports options object progress, chunk size, and injected fetch", async () => {
+  const progress = [];
+  const fetch = mockFetch((call) => {
+    if (call.body?.operationName === "uploadQuery") {
+      return uploadQueryResponse();
+    }
+    if (
+      call.url === "https://storage.example.test/upload.zip" &&
+      call.init.method === "POST"
+    ) {
+      return uploadSessionResponse();
+    }
+    if (
+      call.url === "https://storage.example.test/session" &&
+      call.init.method === "PUT"
+    ) {
+      const range = call.headers.get("content-range");
+      if (range === "bytes 0-3/10") {
+        return uploadRangeResponse(3);
+      }
+      if (range === "bytes 4-7/10") {
+        return uploadRangeResponse(7);
+      }
+      if (range === "bytes 8-9/10") {
+        return uploadCompleteResponse();
+      }
+    }
+    throw new Error(`Unexpected upload call ${call.init.method} ${call.url}`);
+  });
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  const uploadUrl = await client.files.upload(new Blob(["0123456789"]), {
+    chunkSize: 4,
+    onProgress: (value) => progress.push(value),
+  });
+
+  assert.equal(uploadUrl, "https://storage.example.test/upload.zip");
+  assert.deepEqual(
+    fetch.calls
+      .filter((call) => call.url === "https://storage.example.test/session")
+      .map((call) => call.headers.get("content-range")),
+    ["bytes 0-3/10", "bytes 4-7/10", "bytes 8-9/10"],
+  );
+  assert.deepEqual(progress, [0, 0.01, 0.4, 0.8, 1]);
+});
+
+test("files.upload keeps the legacy progress callback signature", async () => {
+  const progress = [];
+  const fetch = mockFetch((call) => {
+    if (call.body?.operationName === "uploadQuery") {
+      return uploadQueryResponse();
+    }
+    if (call.init.method === "POST") {
+      return uploadSessionResponse();
+    }
+    if (call.init.method === "PUT") {
+      return uploadCompleteResponse();
+    }
+    throw new Error(`Unexpected upload call ${call.init.method} ${call.url}`);
+  });
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  await client.files.upload(
+    new Blob(["legacy"]),
+    (value) => progress.push(value),
+    { maxNetworkRetries: 0 },
+  );
+
+  assert.deepEqual(progress, [0, 0.01, 1]);
+});
+
+test("files.upload retries retryable chunk failures and resumes from server range", async () => {
+  const progress = [];
+  const ranges = [];
+  let failedSecondChunk = false;
+  const fetch = mockFetch((call) => {
+    if (call.body?.operationName === "uploadQuery") {
+      return uploadQueryResponse();
+    }
+    if (call.init.method === "POST") {
+      return uploadSessionResponse();
+    }
+    if (call.init.method === "PUT") {
+      const range = call.headers.get("content-range");
+      ranges.push(range);
+      if (range === "bytes 0-3/8") {
+        return uploadRangeResponse(3);
+      }
+      if (range === "bytes 4-7/8" && !failedSecondChunk) {
+        failedSecondChunk = true;
+        return new Response("retry later", {
+          status: 503,
+          statusText: "Unavailable",
+        });
+      }
+      if (range === "bytes */8") {
+        return uploadRangeResponse(5);
+      }
+      if (range === "bytes 6-7/8") {
+        return uploadCompleteResponse();
+      }
+    }
+    throw new Error(`Unexpected upload call ${call.init.method} ${call.url}`);
+  });
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  await client.files.upload(new Blob(["12345678"]), {
+    chunkSize: 4,
+    maxNetworkRetries: 1,
+    onProgress: (value) => progress.push(value),
+  });
+
+  assert.deepEqual(ranges, [
+    "bytes 0-3/8",
+    "bytes 4-7/8",
+    "bytes */8",
+    "bytes 6-7/8",
+  ]);
+  assert.deepEqual(progress, [0, 0.01, 0.5, 0.75, 1]);
+});
+
+test("files.upload validates chunk size before fetching", async () => {
+  const fetch = mockFetch(() => uploadQueryResponse());
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  await assert.rejects(
+    client.files.upload(new Blob(["invalid"]), { chunkSize: 0 }),
+    StackMachineValidationError,
+  );
+  assert.equal(fetch.calls.length, 0);
 });
 
 test("deployments.create uses the autobuild mutation and apps.autobuild remains an alias", async () => {
