@@ -5,3 +5,4 @@ src/__generated__
 schema.graphql
 tsconfig.tsbuildinfo
 bundle.js
+CHANGELOG.md
