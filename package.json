@@ -11,7 +11,8 @@
   "type": "module",
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "schema.graphql"
   ],
   "publishConfig": {
     "registry": "https://registry.npmjs.org"
