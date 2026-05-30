@@ -42,6 +42,7 @@ const deleteAppResponse = (success = true) =>
   });
 
 const appNode = (id) => ({
+  __typename: "DeployApp",
   id,
   willPerishAt: null,
   name: `app-${id}`,
@@ -314,23 +315,18 @@ test("deployments.create uses the autobuild mutation and apps.autobuild remains 
   assert.equal(aliasFetch.calls[0].body.operationName, "srcAutobuildMutation");
 });
 
-test("deployments.retrieve maps status/appVersion and returns null for missing deployments", async () => {
-  const fetch = mockFetch((_, index) => {
-    if (index === 0) {
-      return deploymentStatusResponse(null);
-    }
-    return deploymentStatusResponse({
+test("deployments.retrieve maps status/appVersion and throws for missing deployments", async () => {
+  const fetch = mockFetch(() =>
+    deploymentStatusResponse({
       buildId: "build_found",
       status: "SUCCESS",
       appVersion: appVersionNode("version_1", "app_1"),
-    });
-  });
+    }),
+  );
   const client = new StackMachine("key", {
     apiUrl: "https://api.example.test/graphql",
     fetch,
   });
-
-  assert.equal(await client.deployments.retrieve("build_missing"), null);
 
   const deployment = await client.deployments.retrieve("build_found", {
     apiKey: "request-key",
@@ -346,12 +342,76 @@ test("deployments.retrieve maps status/appVersion and returns null for missing d
     fetch.calls[0].body.operationName,
     "srcGetDeploymentStatusQuery",
   );
-  assert.equal(fetch.calls[0].body.variables.buildId, "build_missing");
-  assert.equal(fetch.calls[1].body.variables.buildId, "build_found");
+  assert.equal(fetch.calls[0].body.variables.buildId, "build_found");
   assert.equal(
-    fetch.calls[1].headers.get("authorization"),
+    fetch.calls[0].headers.get("authorization"),
     "Bearer request-key",
   );
+
+  const missingFetch = mockFetch(() => deploymentStatusResponse(null));
+  const missingClient = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch: missingFetch,
+  });
+
+  await assert.rejects(
+    missingClient.deployments.retrieve("build_missing"),
+    (error) => {
+      assert.ok(error instanceof StackMachineInvalidRequestError);
+      assert.equal(error.statusCode, 404);
+      assert.equal(error.code, "resource_missing");
+      assert.equal(error.param, "buildId");
+      return true;
+    },
+  );
+});
+
+test("retrieve methods throw resource_missing errors instead of returning null", async () => {
+  const fetch = mockFetch((call) => {
+    switch (call.body.operationName) {
+      case "srcGetAppByIdQuery":
+        return jsonResponse({ data: { app: null } });
+      case "srcGetAppByNameQuery":
+        return jsonResponse({ data: { app: null } });
+      case "srcGetAppAliasesQuery":
+        return jsonResponse({ data: { nodes: [null] } });
+      case "srcGetSshUserByIdQuery":
+        return jsonResponse({ data: { node: null } });
+      case "srcGetAppSshServerQuery":
+        return jsonResponse({
+          data: {
+            node: {
+              __typename: "DeployApp",
+              id: "app_missing",
+              sshServer: null,
+            },
+          },
+        });
+      default:
+        throw new Error(`Unexpected operation ${call.body.operationName}`);
+    }
+  });
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  const cases = [
+    () => client.apps.retrieve("app_missing"),
+    () => client.apps.retrieveByName("app-name", "owner"),
+    () => client.apps.domains.retrieve("domain_missing"),
+    () => client.apps.ssh.users.retrieve("ssh_user_missing"),
+    () => client.apps.ssh.retrieve("app_missing"),
+  ];
+
+  for (const retrieve of cases) {
+    await assert.rejects(retrieve(), (error) => {
+      assert.ok(error instanceof StackMachineInvalidRequestError);
+      assert.equal(error.statusCode, 404);
+      assert.equal(error.code, "resource_missing");
+      return true;
+    });
+  }
 });
 
 test("deployment.wait emits progress, resolves on complete, and preserves request options", async () => {

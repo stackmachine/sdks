@@ -10,9 +10,6 @@ if (!buildId) {
 const client = new StackMachine(STACKMACHINE_API_KEY);
 
 const deployment = await client.deployments.retrieve(buildId);
-if (!deployment) {
-  throw new Error("Deployment not found");
-}
 
 const appVersion = await deployment.wait({
   onProgress: ({ kind, message, datetime, stream }) => {

@@ -61,9 +61,7 @@ Resume an existing deployment by build ID:
 
 ```js
 const deployment = await client.deployments.retrieve(buildId);
-if (deployment) {
-  const appVersion = await deployment.wait();
-}
+const appVersion = await deployment.wait();
 ```
 
 List APIs return Stripe-style paginated list objects:

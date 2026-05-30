@@ -7,7 +7,11 @@ import {
   Uint8ArrayWriter,
   ZipReader,
 } from "@zip.js/zip.js";
-import { StackMachine, createZip } from "../dist/index.js";
+import {
+  StackMachine,
+  StackMachineInvalidRequestError,
+  createZip,
+} from "../dist/index.js";
 
 const optionalEnv = (name) => process.env[name];
 
@@ -231,17 +235,26 @@ test(
         await client.apps.del(deployedAppId);
         deployedAppId = null;
 
-        const deletedApp = await client.apps.retrieve(appVersion.app.id);
-        assert.equal(deletedApp, null);
+        await assert.rejects(
+          client.apps.retrieve(appVersion.app.id),
+          StackMachineInvalidRequestError,
+        );
       },
     );
 
-    await t.test("missing apps return null", async () => {
-      const missing = await client.apps.retrieveByName(
-        `missing-${Date.now().toString(36)}`,
-        viewer.username,
+    await t.test("missing apps throw resource_missing errors", async () => {
+      await assert.rejects(
+        client.apps.retrieveByName(
+          `missing-${Date.now().toString(36)}`,
+          viewer.username,
+        ),
+        (error) => {
+          assert.ok(error instanceof StackMachineInvalidRequestError);
+          assert.equal(error.statusCode, 404);
+          assert.equal(error.code, "resource_missing");
+          return true;
+        },
       );
-      assert.equal(missing, null);
     });
   },
 );

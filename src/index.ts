@@ -266,6 +266,21 @@ function requiredPayload<T>(
   return value;
 }
 
+function resourceMissingError(
+  resource: string,
+  identifier: string,
+  operationName?: string,
+  param = "id",
+) {
+  return new StackMachineInvalidRequestError({
+    message: `No such ${resource}: ${identifier}.`,
+    operationName,
+    statusCode: 404,
+    code: "resource_missing",
+    param,
+  });
+}
+
 function operationNameFromNode(node: GraphQLTaggedNode): string | undefined {
   return (node as any)?.params?.name ?? (node as any)?.default?.params?.name;
 }
@@ -847,7 +862,7 @@ export class DeploymentsResource {
   async retrieve(
     buildId: string,
     options?: StackMachineRequestOptions,
-  ): Promise<Deployment | null> {
+  ): Promise<Deployment> {
     const query = await this.client._query<srcGetDeploymentStatusQuery>(
       graphql`
         query srcGetDeploymentStatusQuery($buildId: UUID!) {
@@ -865,7 +880,12 @@ export class DeploymentsResource {
     );
     const status = query?.autobuildDeploymentStatus;
     if (!status) {
-      return null;
+      throw resourceMissingError(
+        "deployment",
+        buildId,
+        "srcGetDeploymentStatusQuery",
+        "buildId",
+      );
     }
 
     const appVersionData = status.appVersion
@@ -911,21 +931,30 @@ export class AppsDomainsResource {
       options,
     );
     return (
-      query?.nodes?.map(
-        (node: any) =>
-          new AppAlias(
-            this.client._getFragmentData<srcAppAlias$data>(nodeAppAlias, node),
-          ),
-      ) || []
+      query?.nodes
+        ?.filter((node: unknown) => !!node)
+        .map(
+          (node: any) =>
+            new AppAlias(
+              this.client._getFragmentData<srcAppAlias$data>(
+                nodeAppAlias,
+                node,
+              ),
+            ),
+        ) || []
     );
   }
 
   async retrieve(
     id: string,
     options?: StackMachineRequestOptions,
-  ): Promise<AppAlias | null> {
+  ): Promise<AppAlias> {
     const aliases = await this.retrieveMany([id], options);
-    return aliases[0] || null;
+    const alias = aliases[0];
+    if (!alias) {
+      throw resourceMissingError("domain", id, "srcGetAppAliasesQuery");
+    }
+    return alias;
   }
 
   list(
@@ -1589,7 +1618,7 @@ export class AppsSshUsersResource {
   async retrieve(
     id: string,
     options?: StackMachineRequestOptions,
-  ): Promise<SshUser | null> {
+  ): Promise<SshUser> {
     const query = await this.client._query<any>(
       graphql`
         query srcGetSshUserByIdQuery($id: ID!) {
@@ -1610,7 +1639,7 @@ export class AppsSshUsersResource {
       options,
     );
     if (!query?.node || query.node.__typename !== "SshUser") {
-      return null;
+      throw resourceMissingError("SSH user", id, "srcGetSshUserByIdQuery");
     }
     return new SshUser(query.node);
   }
@@ -1699,7 +1728,7 @@ export class AppsSshResource {
   async retrieve(
     appId: string,
     options?: StackMachineRequestOptions,
-  ): Promise<AppSshServer | null> {
+  ): Promise<AppSshServer> {
     const query = await this.client._query<any>(
       graphql`
         query srcGetAppSshServerQuery($id: ID!) {
@@ -1717,7 +1746,12 @@ export class AppsSshResource {
       options,
     );
     if (!query?.node?.sshServer) {
-      return null;
+      throw resourceMissingError(
+        "SSH server",
+        appId,
+        "srcGetAppSshServerQuery",
+        "app",
+      );
     }
     return new AppSshServer(query.node.sshServer);
   }
@@ -1839,7 +1873,7 @@ export class DeployAppsResource {
   async retrieve(
     id: string,
     options?: StackMachineRequestOptions,
-  ): Promise<DeployApp | null> {
+  ): Promise<DeployApp> {
     const query = await this.client._query<srcGetAppByIdQuery>(
       graphql`
         query srcGetAppByIdQuery($id: ID!) {
@@ -1855,7 +1889,7 @@ export class DeployAppsResource {
       options,
     );
     if (!query?.app || query.app.__typename !== "DeployApp") {
-      return null;
+      throw resourceMissingError("app", id, "srcGetAppByIdQuery");
     }
     const appData = this.client._getFragmentData<srcDeployAppData$data>(
       nodeApp,
@@ -1868,7 +1902,7 @@ export class DeployAppsResource {
     name: string,
     owner?: string,
     options?: StackMachineRequestOptions,
-  ): Promise<DeployApp | null> {
+  ): Promise<DeployApp> {
     const query = await this.client._query<srcGetAppByNameQuery>(
       graphql`
         query srcGetAppByNameQuery($name: String!, $owner: String) {
@@ -1884,7 +1918,12 @@ export class DeployAppsResource {
       options,
     );
     if (!query?.app) {
-      return null;
+      throw resourceMissingError(
+        "app",
+        owner ? `${owner}/${name}` : name,
+        "srcGetAppByNameQuery",
+        "name",
+      );
     }
     const appData = this.client._getFragmentData<srcDeployAppData$data>(
       nodeApp,
