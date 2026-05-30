@@ -1,0 +1,11 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "9d26537bc0437895d0f9dcc3f9d4ca1259bfd973",
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "package-name": "stackmachine",
+      "include-v-in-tag": true
+    }
+  }
+}
