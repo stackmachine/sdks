@@ -1,0 +1,25 @@
+import { StackMachine } from "stackmachine";
+
+const STACKMACHINE_API_KEY = process.env.STACKMACHINE_API_KEY || "wap_sm_demo";
+
+const client = new StackMachine(STACKMACHINE_API_KEY);
+
+const appId = "da_XYZ";
+const users = await client.apps.ssh.users.list({ app: appId, limit: 10 });
+
+console.log("Users:", users.data);
+if (users.data.length === 0) {
+  throw new Error("No SSH users found for app");
+}
+
+const user = users.data[0];
+const updatedUser = await client.apps.ssh.users.update(user.id, {
+  authenticationMethods: ["PASSWORD", "PUBLIC_KEY"],
+});
+console.log("Updated user:", updatedUser);
+
+const revealed = await client.apps.ssh.users.passwords.reveal(user.id);
+console.log("Revealed password:", revealed.password);
+
+const rotated = await client.apps.ssh.users.passwords.rotate(user.id);
+console.log("Rotated password:", rotated.password);

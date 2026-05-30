@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<14ded1af2ce8b66de099f95284afc189>>
+ * @generated SignedSource<<ee6400021a18f3c7398e63d858a6e9e8>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,31 +9,23 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type LogStream = "RUNTIME" | "STDERR" | "STDOUT" | "%future added value";
-export type srcGetAppLogsQuery$variables = {
+export type srcGetSshAuthorizedKeysQuery$variables = {
   after?: string | null | undefined;
-  appId: string;
   before?: string | null | undefined;
   first?: number | null | undefined;
-  instanceId?: string | null | undefined;
+  id: string;
   last?: number | null | undefined;
-  requestId?: string | null | undefined;
-  since?: any | null | undefined;
-  streams?: ReadonlyArray<LogStream | null | undefined> | null | undefined;
-  textSearch?: string | null | undefined;
-  until?: any | null | undefined;
 };
-export type srcGetAppLogsQuery$data = {
+export type srcGetSshAuthorizedKeysQuery$data = {
   readonly node: {
-    readonly logs?: {
+    readonly authorizedKeys?: {
       readonly edges: ReadonlyArray<{
         readonly cursor: string;
         readonly node: {
-          readonly datetime: any;
-          readonly instanceId: string;
-          readonly message: string;
-          readonly stream: LogStream | null | undefined;
-          readonly timestamp: number;
+          readonly createdAt: any;
+          readonly id: string;
+          readonly name: string | null | undefined;
+          readonly publicKey: string;
         } | null | undefined;
       } | null | undefined>;
       readonly pageInfo: {
@@ -42,12 +34,13 @@ export type srcGetAppLogsQuery$data = {
         readonly hasPreviousPage: boolean;
         readonly startCursor: string | null | undefined;
       };
+      readonly totalCount: number | null | undefined;
     };
   } | null | undefined;
 };
-export type srcGetAppLogsQuery = {
-  response: srcGetAppLogsQuery$data;
-  variables: srcGetAppLogsQuery$variables;
+export type srcGetSshAuthorizedKeysQuery = {
+  response: srcGetSshAuthorizedKeysQuery$data;
+  variables: srcGetSshAuthorizedKeysQuery$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -59,61 +52,38 @@ var v0 = {
 v1 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "appId"
+  "name": "before"
 },
 v2 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "before"
+  "name": "first"
 },
 v3 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "first"
+  "name": "id"
 },
 v4 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "instanceId"
-},
-v5 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
   "name": "last"
 },
-v6 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "requestId"
-},
-v7 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "since"
-},
-v8 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "streams"
-},
-v9 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "textSearch"
-},
-v10 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "until"
-},
-v11 = [
+v5 = [
   {
     "kind": "Variable",
     "name": "id",
-    "variableName": "appId"
+    "variableName": "id"
   }
 ],
-v12 = {
+v6 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "id",
+  "storageKey": null
+},
+v7 = {
   "kind": "InlineFragment",
   "selections": [
     {
@@ -131,54 +101,24 @@ v12 = {
         },
         {
           "kind": "Variable",
-          "name": "end",
-          "variableName": "until"
-        },
-        {
-          "kind": "Variable",
           "name": "first",
           "variableName": "first"
         },
         {
           "kind": "Variable",
-          "name": "instanceId",
-          "variableName": "instanceId"
-        },
-        {
-          "kind": "Variable",
           "name": "last",
           "variableName": "last"
-        },
-        {
-          "kind": "Variable",
-          "name": "requestId",
-          "variableName": "requestId"
-        },
-        {
-          "kind": "Variable",
-          "name": "startingFromISO",
-          "variableName": "since"
-        },
-        {
-          "kind": "Variable",
-          "name": "streams",
-          "variableName": "streams"
-        },
-        {
-          "kind": "Variable",
-          "name": "textSearch",
-          "variableName": "textSearch"
         }
       ],
-      "concreteType": "LogConnection",
+      "concreteType": "SshAuthorizedKeyConnection",
       "kind": "LinkedField",
-      "name": "logs",
+      "name": "authorizedKeys",
       "plural": false,
       "selections": [
         {
           "alias": null,
           "args": null,
-          "concreteType": "LogEdge",
+          "concreteType": "SshAuthorizedKeyEdge",
           "kind": "LinkedField",
           "name": "edges",
           "plural": true,
@@ -193,44 +133,31 @@ v12 = {
             {
               "alias": null,
               "args": null,
-              "concreteType": "Log",
+              "concreteType": "SshAuthorizedKey",
               "kind": "LinkedField",
               "name": "node",
               "plural": false,
               "selections": [
+                (v6/*: any*/),
                 {
                   "alias": null,
                   "args": null,
                   "kind": "ScalarField",
-                  "name": "datetime",
+                  "name": "name",
                   "storageKey": null
                 },
                 {
                   "alias": null,
                   "args": null,
                   "kind": "ScalarField",
-                  "name": "instanceId",
+                  "name": "publicKey",
                   "storageKey": null
                 },
                 {
                   "alias": null,
                   "args": null,
                   "kind": "ScalarField",
-                  "name": "message",
-                  "storageKey": null
-                },
-                {
-                  "alias": null,
-                  "args": null,
-                  "kind": "ScalarField",
-                  "name": "stream",
-                  "storageKey": null
-                },
-                {
-                  "alias": null,
-                  "args": null,
-                  "kind": "ScalarField",
-                  "name": "timestamp",
+                  "name": "createdAt",
                   "storageKey": null
                 }
               ],
@@ -277,12 +204,19 @@ v12 = {
             }
           ],
           "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "totalCount",
+          "storageKey": null
         }
       ],
       "storageKey": null
     }
   ],
-  "type": "DeployAppVersion",
+  "type": "SshUser",
   "abstractKey": null
 };
 return {
@@ -292,27 +226,21 @@ return {
       (v1/*: any*/),
       (v2/*: any*/),
       (v3/*: any*/),
-      (v4/*: any*/),
-      (v5/*: any*/),
-      (v6/*: any*/),
-      (v7/*: any*/),
-      (v8/*: any*/),
-      (v9/*: any*/),
-      (v10/*: any*/)
+      (v4/*: any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
-    "name": "srcGetAppLogsQuery",
+    "name": "srcGetSshAuthorizedKeysQuery",
     "selections": [
       {
         "alias": null,
-        "args": (v11/*: any*/),
+        "args": (v5/*: any*/),
         "concreteType": null,
         "kind": "LinkedField",
         "name": "node",
         "plural": false,
         "selections": [
-          (v12/*: any*/)
+          (v7/*: any*/)
         ],
         "storageKey": null
       }
@@ -323,24 +251,18 @@ return {
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v1/*: any*/),
-      (v7/*: any*/),
-      (v10/*: any*/),
-      (v4/*: any*/),
-      (v6/*: any*/),
-      (v8/*: any*/),
-      (v9/*: any*/),
       (v3/*: any*/),
+      (v2/*: any*/),
       (v0/*: any*/),
-      (v5/*: any*/),
-      (v2/*: any*/)
+      (v4/*: any*/),
+      (v1/*: any*/)
     ],
     "kind": "Operation",
-    "name": "srcGetAppLogsQuery",
+    "name": "srcGetSshAuthorizedKeysQuery",
     "selections": [
       {
         "alias": null,
-        "args": (v11/*: any*/),
+        "args": (v5/*: any*/),
         "concreteType": null,
         "kind": "LinkedField",
         "name": "node",
@@ -353,30 +275,24 @@ return {
             "name": "__typename",
             "storageKey": null
           },
-          (v12/*: any*/),
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "id",
-            "storageKey": null
-          }
+          (v7/*: any*/),
+          (v6/*: any*/)
         ],
         "storageKey": null
       }
     ]
   },
   "params": {
-    "cacheID": "659d708599603f8570223e70e9b2ae9a",
+    "cacheID": "72b261902fa5fa4786a176302f2f6aaf",
     "id": null,
     "metadata": {},
-    "name": "srcGetAppLogsQuery",
+    "name": "srcGetSshAuthorizedKeysQuery",
     "operationKind": "query",
-    "text": "query srcGetAppLogsQuery(\n  $appId: ID!\n  $since: DateTime\n  $until: DateTime\n  $instanceId: String\n  $requestId: String\n  $streams: [LogStream]\n  $textSearch: String\n  $first: Int\n  $after: String\n  $last: Int\n  $before: String\n) {\n  node(id: $appId) {\n    __typename\n    ... on DeployAppVersion {\n      logs(startingFromISO: $since, end: $until, instanceId: $instanceId, requestId: $requestId, streams: $streams, textSearch: $textSearch, first: $first, after: $after, last: $last, before: $before) {\n        edges {\n          cursor\n          node {\n            datetime\n            instanceId\n            message\n            stream\n            timestamp\n          }\n        }\n        pageInfo {\n          hasNextPage\n          hasPreviousPage\n          endCursor\n          startCursor\n        }\n      }\n    }\n    id\n  }\n}\n"
+    "text": "query srcGetSshAuthorizedKeysQuery(\n  $id: ID!\n  $first: Int\n  $after: String\n  $last: Int\n  $before: String\n) {\n  node(id: $id) {\n    __typename\n    ... on SshUser {\n      authorizedKeys(first: $first, after: $after, last: $last, before: $before) {\n        edges {\n          cursor\n          node {\n            id\n            name\n            publicKey\n            createdAt\n          }\n        }\n        pageInfo {\n          hasNextPage\n          hasPreviousPage\n          endCursor\n          startCursor\n        }\n        totalCount\n      }\n    }\n    id\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "7afcf17c431a7ff6cb224337ceb35218";
+(node as any).hash = "256263e8a1ba3e04d6b2009899a9622c";
 
 export default node;

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ede1edb10667d4e14b254e44ad1c3af6>>
+ * @generated SignedSource<<423cc250535ab58e80e95b685803f57c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,7 +16,7 @@ export type srcGetAppAliasesQuery$variables = {
 export type srcGetAppAliasesQuery$data = {
   readonly nodes: ReadonlyArray<{
     readonly " $fragmentSpreads": FragmentRefs<"srcAppAlias">;
-  } | null | undefined> | null | undefined;
+  } | null | undefined>;
 };
 export type srcGetAppAliasesQuery = {
   response: srcGetAppAliasesQuery$data;

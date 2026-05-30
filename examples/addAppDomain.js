@@ -1,22 +1,24 @@
 import { StackMachine } from "stackmachine";
 
-const STACKMACHINE_TOKEN = process.env.STACKMACHINE_TOKEN;
+const STACKMACHINE_API_KEY = process.env.STACKMACHINE_API_KEY || "wap_sm_demo";
 
-const client = await StackMachine.init({
-  token: STACKMACHINE_TOKEN || "wap_sm_demo",
+const client = new StackMachine(STACKMACHINE_API_KEY);
+
+const app = await client.apps.retrieve("da_XYZ");
+if (!app) {
+  throw new Error("App not found");
+}
+
+const domain = await client.apps.domains.create({
+  app: app.id,
+  hostname: "mydomainspecial5.com",
 });
-
-const app = await client.getApp({
-  id: "da_XYZ",
-});
-
-const domain = await app.upsertDomain("mydomainspecial5.com");
 console.log(domain);
 
 if (domain.redirectsToId) {
-  let redirectsTo = await domain.redirectsTo;
+  let redirectsTo = await client.apps.domains.retrieve(domain.redirectsToId);
   console.log("Redirects to:", redirectsTo);
 }
 console.log("Waiting for domain to be verified...");
-const verified = await domain.verify();
+const verified = await client.apps.domains.verify(domain.id);
 console.log("Domain verified: ", verified);

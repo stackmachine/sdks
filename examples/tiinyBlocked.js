@@ -1,32 +1,30 @@
 import { StackMachine, createZip } from "stackmachine";
 
-const client = await StackMachine.init({
-  token: "wap_XYZ",
-});
+const client = new StackMachine("wap_XYZ");
 
 async function execWasmerDeploy(deployPath, subdomain) {
   try {
     const zip = await createZip(deployPath);
 
-    const upload = await client.uploadFile(zip);
+    const upload = await client.files.upload(zip);
 
-    const build = await client.deployApp({
+    const deployment = await client.deployments.create({
       appName: subdomain,
-      owner: "syrusakbary",
+      owner: "tiinyhost",
       uploadUrl: upload,
-      // THIS MAKE THINGS HALT
-      // domains: [`${subdomain}-syrus.wasmer.app`]
+      domains: [`${subdomain}-syrus.wasmer.app`],
     });
     console.log(upload);
     console.log(`Deploy: ${deployPath}`);
     console.debug(`App successfully deployed: ${subdomain}`);
     console.log("Deploying app...");
-    build.subscribeToProgress(({ kind, message, datetime, stream }) => {
-      console.log(datetime, stream, kind, message);
-    });
     let startTime = new Date();
     console.log("Waiting for the app to be built...");
-    const app = await build.finish();
+    const app = await deployment.wait({
+      onProgress: ({ kind, message, datetime, stream }) => {
+        console.log(datetime, stream, kind, message);
+      },
+    });
     console.log("App built!", app);
     console.log(app.kind);
     console.log(
@@ -42,5 +40,5 @@ async function execWasmerDeploy(deployPath, subdomain) {
 
 execWasmerDeploy(
   { "index.php": "<html><body><h1>Hello World!</h1></body></html>" },
-  "test-my-app-syrus7",
+  "test-my-app-syrus9",
 );

@@ -9,21 +9,25 @@ import {
 } from "@zip.js/zip.js";
 import { StackMachine, createZip } from "../dist/index.js";
 
-const requireEnv = (name) => {
-  const value = process.env[name];
-  assert.ok(value, `${name} must be set before running tests`);
-  return value;
-};
+const optionalEnv = (name) => process.env[name];
 
 test(
   "stackmachine public sdk integration",
   { timeout: 240_000, concurrency: false },
   async (t) => {
-    const token = requireEnv("STACKMACHINE_TOKEN");
-    const apiUrl = requireEnv("STACKMACHINE_URL");
-    const client = await StackMachine.init({ token, apiUrl });
+    const apiKey = optionalEnv("STACKMACHINE_API_KEY");
+    const apiUrl = optionalEnv("STACKMACHINE_URL");
+    if (!apiKey || !apiUrl) {
+      t.skip("requires STACKMACHINE_API_KEY and STACKMACHINE_URL");
+      return;
+    }
+
+    const client = new StackMachine(apiKey, { apiUrl });
+    const initClient = await StackMachine.init({ apiKey, apiUrl });
+    const initViewer = await initClient.viewer();
     const viewer = await client.viewer();
 
+    assert.ok(initViewer, "StackMachine.init should remain compatible");
     assert.ok(viewer, "viewer() should return the authenticated user");
     assert.equal(typeof viewer.username, "string");
     assert.notEqual(viewer.username.length, 0);
@@ -79,14 +83,16 @@ test(
 
         t.after(async () => {
           if (aliasId && deployedAppId) {
-            const app = await client.getApp({ id: deployedAppId });
-            const alias = app?.domains.find((domain) => domain.id === aliasId);
+            const aliases = await client.apps.domains
+              .list({ app: deployedAppId, limit: 100 })
+              .autoPagingToArray({ limit: 100 });
+            const alias = aliases.find((domain) => domain.id === aliasId);
             if (alias) {
-              await alias.delete();
+              await client.apps.domains.del(alias.id);
             }
           }
           if (deployedAppId) {
-            await client.deleteApp({ id: deployedAppId });
+            await client.apps.del(deployedAppId);
           }
         });
 
@@ -96,7 +102,7 @@ test(
         });
 
         const uploadProgress = [];
-        const uploadUrl = await client.uploadFile(zip, (progress) => {
+        const uploadUrl = await client.files.upload(zip, (progress) => {
           uploadProgress.push(progress);
         });
 
@@ -108,21 +114,21 @@ test(
         assert.ok(uploadProgress.some((value) => value > 0 && value < 1));
         assert.equal(uploadProgress.at(-1), 1);
 
-        const build = await client.deployApp({
+        const deployment = await client.deployments.create({
           appName,
           owner: viewer.username,
           uploadUrl,
         });
 
-        assert.equal(typeof build.buildId, "string");
-        assert.notEqual(build.buildId.length, 0);
+        assert.equal(typeof deployment.buildId, "string");
+        assert.notEqual(deployment.buildId.length, 0);
 
         const buildProgress = [];
-        build.subscribeToProgress((entry) => {
-          buildProgress.push(entry);
+        const appVersion = await deployment.wait({
+          onProgress: (entry) => {
+            buildProgress.push(entry);
+          },
         });
-
-        const appVersion = await build.finish();
         deployedAppId = appVersion.app.id;
 
         assert.equal(typeof appVersion.id, "string");
@@ -133,23 +139,30 @@ test(
           "build should emit progress events",
         );
 
-        const fetchedById = await client.getApp({ id: deployedAppId });
+        const fetchedById = await client.apps.retrieve(deployedAppId);
         assert.ok(fetchedById);
         assert.equal(fetchedById.id, deployedAppId);
         assert.equal(fetchedById.name, appName);
-        assert.ok(Array.isArray(fetchedById.domains));
-        assert.ok(fetchedById.domains.length >= 1);
         assert.ok(fetchedById.activeVersion);
         assert.equal(fetchedById.activeVersion.id, appVersion.id);
 
-        const fetchedByName = await client.getApp({
-          owner: viewer.username,
-          name: appName,
-        });
+        const fetchedByName = await client.apps.retrieveByName(
+          appName,
+          viewer.username,
+        );
         assert.ok(fetchedByName);
         assert.equal(fetchedByName.id, deployedAppId);
 
-        const defaultAlias = fetchedById.domains[0];
+        const domainsPage = await client.apps.domains.list({
+          app: fetchedById.id,
+          limit: 10,
+        });
+        assert.equal(domainsPage.object, "list");
+        assert.equal(typeof domainsPage.has_more, "boolean");
+        assert.equal(domainsPage.hasMore, domainsPage.has_more);
+        assert.ok(domainsPage.data.length >= 1);
+
+        const defaultAlias = domainsPage.data[0];
         assert.equal(typeof defaultAlias.id, "string");
         assert.equal(typeof defaultAlias.url, "string");
         assert.equal(typeof defaultAlias.state, "string");
@@ -157,22 +170,39 @@ test(
           defaultAlias.redirectionHttpCode === undefined ||
             typeof defaultAlias.redirectionHttpCode === "string",
         );
-        assert.deepEqual(await defaultAlias.redirectsFrom, []);
-        assert.equal(await defaultAlias.redirectsTo, undefined);
+        assert.deepEqual(defaultAlias.redirectsFromIds, []);
+        assert.equal(defaultAlias.redirectsToId, undefined);
 
-        const logs = await fetchedById.activeVersion.fetchLogs(
-          new Date(Date.now() - 60 * 60 * 1000),
-        );
-        assert.ok(Array.isArray(logs));
-        if (logs[0]) {
-          assert.equal(typeof logs[0].message, "string");
-          assert.equal(typeof logs[0].instanceId, "string");
-          assert.equal(typeof logs[0].stream, "string");
-          assert.equal(typeof logs[0].timestamp, "number");
+        const logs = await client.apps.versions.logs.list({
+          version: fetchedById.activeVersion.id,
+          since: new Date(Date.now() - 60 * 60 * 1000),
+        });
+        assert.equal(logs.object, "list");
+        assert.ok(Array.isArray(logs.data));
+        if (logs.data[0]) {
+          assert.equal(typeof logs.data[0].message, "string");
+          assert.equal(typeof logs.data[0].instanceId, "string");
+          assert.equal(typeof logs.data[0].stream, "string");
+          assert.equal(typeof logs.data[0].timestamp, "number");
+        }
+
+        const appListPage = await client.apps.list({ limit: 1 });
+        assert.equal(appListPage.object, "list");
+        assert.ok(Array.isArray(appListPage.data));
+        const autoPagedApps = await client.apps
+          .list({ limit: 1 })
+          .autoPagingToArray({ limit: 1 });
+        assert.ok(autoPagedApps.length <= 1);
+        for await (const app of client.apps.list({ limit: 1 })) {
+          assert.equal(typeof app.id, "string");
+          break;
         }
 
         const domainName = `sdk-${Date.now().toString(36)}.example.com`;
-        const alias = await fetchedById.upsertDomain(domainName);
+        const alias = await client.apps.domains.create({
+          app: fetchedById.id,
+          hostname: domainName,
+        });
         aliasId = alias.id;
 
         assert.equal(typeof alias.id, "string");
@@ -181,38 +211,36 @@ test(
         assert.ok(alias.expectedDnsRecords.length > 0);
         assert.equal(alias.expectedDnsRecords[0].host, domainName);
 
-        const refreshedWithAlias = await client.getApp({ id: deployedAppId });
-        assert.ok(
-          refreshedWithAlias.domains.some((domain) => domain.id === alias.id),
-        );
-        assert.deepEqual(await alias.redirectsFrom, []);
-        assert.equal(await alias.redirectsTo, undefined);
+        const refreshedWithAlias = await client.apps.domains
+          .list({ app: deployedAppId, limit: 100 })
+          .autoPagingToArray({ limit: 100 });
+        assert.ok(refreshedWithAlias.some((domain) => domain.id === alias.id));
+        assert.deepEqual(alias.redirectsFromIds, []);
+        assert.equal(alias.redirectsToId, undefined);
 
-        await alias.delete();
+        await client.apps.domains.del(alias.id);
         aliasId = null;
 
-        const refreshedWithoutAlias = await client.getApp({
-          id: deployedAppId,
-        });
+        const refreshedWithoutAlias = await client.apps.domains
+          .list({ app: deployedAppId, limit: 100 })
+          .autoPagingToArray({ limit: 100 });
         assert.ok(
-          !refreshedWithoutAlias.domains.some(
-            (domain) => domain.id === alias.id,
-          ),
+          !refreshedWithoutAlias.some((domain) => domain.id === alias.id),
         );
 
-        await client.deleteApp({ id: deployedAppId });
+        await client.apps.del(deployedAppId);
         deployedAppId = null;
 
-        const deletedApp = await client.getApp({ id: appVersion.app.id });
+        const deletedApp = await client.apps.retrieve(appVersion.app.id);
         assert.equal(deletedApp, null);
       },
     );
 
     await t.test("missing apps return null", async () => {
-      const missing = await client.getApp({
-        owner: viewer.username,
-        name: `missing-${Date.now().toString(36)}`,
-      });
+      const missing = await client.apps.retrieveByName(
+        `missing-${Date.now().toString(36)}`,
+        viewer.username,
+      );
       assert.equal(missing, null);
     });
   },

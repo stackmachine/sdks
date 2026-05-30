@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<838abe95e8815c2555b0ef7e37b967f2>>
+ * @generated SignedSource<<3721a47db5aba0526b7ad88880b1ad52>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,13 +15,6 @@ export type srcDeployAppData$data = {
     readonly id: string;
   } | null | undefined;
   readonly adminUrl: string;
-  readonly domains: {
-    readonly edges: ReadonlyArray<{
-      readonly node: {
-        readonly " $fragmentSpreads": FragmentRefs<"srcAppAlias">;
-      } | null | undefined;
-    } | null | undefined>;
-  };
   readonly favicon: any | null | undefined;
   readonly id: string;
   readonly name: string;
@@ -81,44 +74,6 @@ return {
     {
       "alias": null,
       "args": null,
-      "concreteType": "AppAliasConnection",
-      "kind": "LinkedField",
-      "name": "domains",
-      "plural": false,
-      "selections": [
-        {
-          "alias": null,
-          "args": null,
-          "concreteType": "AppAliasEdge",
-          "kind": "LinkedField",
-          "name": "edges",
-          "plural": true,
-          "selections": [
-            {
-              "alias": null,
-              "args": null,
-              "concreteType": "AppAlias",
-              "kind": "LinkedField",
-              "name": "node",
-              "plural": false,
-              "selections": [
-                {
-                  "args": null,
-                  "kind": "FragmentSpread",
-                  "name": "srcAppAlias"
-                }
-              ],
-              "storageKey": null
-            }
-          ],
-          "storageKey": null
-        }
-      ],
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
       "concreteType": "DeployAppVersion",
       "kind": "LinkedField",
       "name": "activeVersion",
@@ -148,6 +103,6 @@ return {
 };
 })();
 
-(node as any).hash = "b2edc2167f5bf2099616ef0a61c267d5";
+(node as any).hash = "014e2594ea6ef6434f082cb4deb8fa0d";
 
 export default node;

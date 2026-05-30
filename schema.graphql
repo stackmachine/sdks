@@ -37,7 +37,7 @@ type APIKey implements Node {
 
 type APIKeyConnection {
   """Contains the nodes in this connection."""
-  edges: [APIKeyEdge]!
+  edges: [APIKeyEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -52,7 +52,7 @@ type APIKeyEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: APIKey
+  node: APIKey!
 }
 
 type APIToken implements Node {
@@ -69,13 +69,13 @@ type APIToken implements Node {
 
 type APITokenConnection {
   """Contains the nodes in this connection."""
-  edges: [APITokenEdge]!
+  edges: [APITokenEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
 
   """Total number of items in the connection."""
-  totalCount: Int
+  totalCount: Int!
 }
 
 """A Relay edge containing a `APIToken` and its cursor."""
@@ -84,7 +84,7 @@ type APITokenEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: APIToken
+  node: APIToken!
 }
 
 type ARecord implements DNSRecordInterface & Node {
@@ -165,7 +165,7 @@ type ActivityEvent implements Node {
 
 type ActivityEventConnection {
   """Contains the nodes in this connection."""
-  edges: [ActivityEventEdge]!
+  edges: [ActivityEventEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -180,7 +180,7 @@ type ActivityEventEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: ActivityEvent
+  node: ActivityEvent!
 }
 
 input AddPaymentInput {
@@ -225,7 +225,7 @@ type AppAlias implements Node {
   """
   List of records backend expects to move forward with domain verification
   """
-  expectedDnsRecords: [AppAliasDNSRecord]
+  expectedDnsRecords: [AppAliasDNSRecord!]!
   firstCheckedAt: DateTime
   hostname: String!
 
@@ -240,7 +240,7 @@ type AppAlias implements Node {
   redirectionHttpCode: HTTPRedirectType
 
   """list of AppAlias objects that redirect to this one."""
-  redirectsFrom: [AppAlias]
+  redirectsFrom: [AppAlias!]!
   redirectsTo: AppAlias
   state: AppAliasVerificationStates!
   text: String!
@@ -250,13 +250,13 @@ type AppAlias implements Node {
 
 type AppAliasConnection {
   """Contains the nodes in this connection."""
-  edges: [AppAliasEdge]!
+  edges: [AppAliasEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
 
   """Total number of items in the connection."""
-  totalCount: Int
+  totalCount: Int!
 }
 
 type AppAliasDNSRecord {
@@ -271,7 +271,7 @@ type AppAliasEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: AppAlias
+  node: AppAlias!
 }
 
 """An enumeration."""
@@ -312,15 +312,19 @@ type AppDatabase implements Node {
   username: String!
 }
 
+type AppDatabaseConfig implements Node {
+  id: ID!
+}
+
 type AppDatabaseConnection {
   """Contains the nodes in this connection."""
-  edges: [AppDatabaseEdge]!
+  edges: [AppDatabaseEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
 
   """Total number of items in the connection."""
-  totalCount: Int
+  totalCount: Int!
 }
 
 """A Relay edge containing a `AppDatabase` and its cursor."""
@@ -329,7 +333,7 @@ type AppDatabaseEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: AppDatabase
+  node: AppDatabase!
 }
 
 input AppDomainRedirectRules {
@@ -362,6 +366,10 @@ input AppFilter {
   sortBy: SearchOrderSort = DESC
 }
 
+type AppLimit implements Node {
+  id: ID!
+}
+
 type AppMail implements Node {
   emailAddr: String!
 
@@ -390,13 +398,13 @@ type AppRegion implements Node {
 
 type AppRegionConnection {
   """Contains the nodes in this connection."""
-  edges: [AppRegionEdge]!
+  edges: [AppRegionEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
 
   """Total number of items in the connection."""
-  totalCount: Int
+  totalCount: Int!
 }
 
 """A Relay edge containing a `AppRegion` and its cursor."""
@@ -405,7 +413,11 @@ type AppRegionEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: AppRegion
+  node: AppRegion!
+}
+
+type AppScreenshot implements Node {
+  id: ID!
 }
 
 """An enumeration."""
@@ -472,7 +484,7 @@ type AppTemplateCategory implements Node {
 
 type AppTemplateCategoryConnection {
   """Contains the nodes in this connection."""
-  edges: [AppTemplateCategoryEdge]!
+  edges: [AppTemplateCategoryEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -487,12 +499,12 @@ type AppTemplateCategoryEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: AppTemplateCategory
+  node: AppTemplateCategory!
 }
 
 type AppTemplateConnection {
   """Contains the nodes in this connection."""
-  edges: [AppTemplateEdge]!
+  edges: [AppTemplateEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -507,7 +519,7 @@ type AppTemplateEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: AppTemplate
+  node: AppTemplate!
 }
 
 input AppTemplateFilter {
@@ -556,17 +568,12 @@ type AppTransferRequest implements Node {
   requestedBy: User!
 }
 
-input AppV1Spec {
-  aliases: [String] = []
-  workload: WorkloadV2!
-}
-
 type AppVersionVolume {
   explorerUrl: String
   id: ID!
-  mountPaths: [AppVersionVolumeMountPath]!
+  mountPaths: [AppVersionVolumeMountPath!]!
   name: String!
-  s3Url: String!
+  s3Url: String
   size: BigInt
   usedSize: BigInt
 }
@@ -574,6 +581,42 @@ type AppVersionVolume {
 type AppVersionVolumeMountPath {
   path: String!
   subpath: String
+}
+
+type AppVolume implements Node {
+  app: DeployApp
+  explorerUrl: URL
+
+  """The ID of the object"""
+  id: ID!
+  isAddedByUi: Boolean!
+  maxSizeBytes: BigInt!
+  mountPath: String!
+  region: AppRegion!
+  s3: S3
+  s3Enabled: Boolean!
+  s3Url: URL
+  volumeId: String!
+}
+
+type AppVolumeConnection {
+  """Contains the nodes in this connection."""
+  edges: [AppVolumeEdge!]!
+
+  """Pagination data for this connection."""
+  pageInfo: PageInfo!
+
+  """Total number of items in the connection."""
+  totalCount: Int!
+}
+
+"""A Relay edge containing a `AppVolume` and its cursor."""
+type AppVolumeEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: AppVolume!
 }
 
 input ArchivePackageInput {
@@ -633,7 +676,7 @@ type AutobuildConfigForRepoPayload {
   clientMutationId: String
 
   """List of apps deployed with this repo."""
-  deployedApps: [DeployApp] @deprecated(reason: "This field is not used anymore")
+  deployedApps: DeployAppConnection @deprecated(reason: "This field is not used anymore")
 }
 
 input AutobuildConfigForZipUploadInput {
@@ -653,7 +696,7 @@ type AutobuildConfigForZipUploadPayload {
   clientMutationId: String
 
   """List of apps deployed with this repo."""
-  deployedApps: [DeployApp] @deprecated(reason: "This field is not used anymore")
+  deployedApps: DeployAppConnection @deprecated(reason: "This field is not used anymore")
 }
 
 input AutobuildDeploymentExtraData {
@@ -702,6 +745,7 @@ type AutobuildRepository implements Node {
   id: ID!
   installCmd: String
   logUrl: String
+  logs(after: String, before: String, first: Int, instanceIds: [String], last: Int, requestId: String, startingFrom: Float, startingFromIso: DateTime, streams: [LogStream], until: Float): LogConnection!
   name: String!
   namespace: String!
   prevCommitHash: String
@@ -710,6 +754,10 @@ type AutobuildRepository implements Node {
   status: StatusEnum!
   updatedAt: DateTime!
   user: User!
+}
+
+type AutobuildZipUpload implements Node {
+  id: ID!
 }
 
 input BanAppInput {
@@ -740,10 +788,18 @@ scalar BigInt
 type Billing {
   paymentConnection(after: String, before: String, first: Int, last: Int, offset: Int): PaymentIntentConnection!
   paymentMethodConnection(after: String, before: String, first: Int, last: Int, offset: Int): CardPaymentMethodConnection!
-  paymentMethods: [PaymentMethod]! @deprecated(reason: "Use `payment_connection` instead")
-  payments: [PaymentIntent]! @deprecated(reason: "Use `payment_connection` instead")
+  paymentMethods: [PaymentMethod!]! @deprecated(reason: "Use `payment_connection` instead")
+  payments: [PaymentIntent!]! @deprecated(reason: "Use `payment_connection` instead")
   stripeCustomer: StripeCustomer!
-  subscriptions: [WasmerSubscription]!
+  subscriptions: [WasmerSubscription!]!
+}
+
+type BillingPlan implements Node {
+  id: ID!
+}
+
+type BillingPlanResource implements Node {
+  id: ID!
 }
 
 type BindingsGenerator implements Node {
@@ -761,7 +817,7 @@ type BindingsGenerator implements Node {
 
 type BindingsGeneratorConnection {
   """Contains the nodes in this connection."""
-  edges: [BindingsGeneratorEdge]!
+  edges: [BindingsGeneratorEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -776,7 +832,7 @@ type BindingsGeneratorEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: BindingsGenerator
+  node: BindingsGenerator!
 }
 
 """An enumeration."""
@@ -823,7 +879,7 @@ type BlogPost implements Node {
 
 type BlogPostConnection {
   """Contains the nodes in this connection."""
-  edges: [BlogPostEdge]!
+  edges: [BlogPostEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -838,7 +894,7 @@ type BlogPostEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: BlogPost
+  node: BlogPost!
 }
 
 type BlogPostTag implements Node {
@@ -850,7 +906,7 @@ type BlogPostTag implements Node {
 
 type BlogPostTagConnection {
   """Contains the nodes in this connection."""
-  edges: [BlogPostTagEdge]!
+  edges: [BlogPostTagEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -865,15 +921,15 @@ type BlogPostTagEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: BlogPostTag
+  node: BlogPostTag!
 }
 
 input BlogPostsFilter {
-  count: Int = 1000
+  count: Int! = 1000
   sortBy: SearchOrderSort = DESC
 
   """Filter blog posts by tag."""
-  tags: [String]
+  tags: [String!]
 }
 
 """The Build Configuration for a given repo"""
@@ -987,43 +1043,6 @@ type CancelSubscriptionPayload {
   ok: Boolean!
 }
 
-input CapabilityCpuV1 {
-  maximumThreads: Int
-  maximumUsage: Int
-}
-
-input CapabilityFileSystemV1 {
-  volumes: [FileSystemVolumeConfigV1]!
-}
-
-input CapabilityMapV1 {
-  memorySwap: CapabilityCpuV1
-}
-
-input CapabilityMemorySwapV1 {
-  maximumSize: String
-  memoryId: String
-}
-
-input CapabilityNetworkDnsV1 {
-  allowedHosts: NetworkDnsAllowedHostsV1
-  enabled: Boolean
-  servers: [String]
-}
-
-input CapabilityNetworkGatewayV1 {
-  domains: [String]
-  enforceHttps: Boolean
-}
-
-input CapabilityNetworkV1 {
-  egress: NetworkEgressV1
-}
-
-input CapabilityPersistentMemoryV1 {
-  volumes: [String]
-}
-
 """
 Card brand.
 
@@ -1067,7 +1086,7 @@ type CardPaymentMethod implements Node {
 
 type CardPaymentMethodConnection {
   """Contains the nodes in this connection."""
-  edges: [CardPaymentMethodEdge]!
+  edges: [CardPaymentMethodEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -1082,7 +1101,7 @@ type CardPaymentMethodEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: CardPaymentMethod
+  node: CardPaymentMethod!
 }
 
 """
@@ -1098,18 +1117,18 @@ type Category implements Node {
 
   """A category is a label that can be attached to a package."""
   name: String!
-  packages(after: String, before: String, first: Int, last: Int, offset: Int): PackageConnection
+  packages(after: String, before: String, first: Int, last: Int, offset: Int): PackageConnection!
 }
 
 type CategoryConnection {
   """Contains the nodes in this connection."""
-  edges: [CategoryEdge]!
+  edges: [CategoryEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
 
   """Total number of items in the connection."""
-  totalCount: Int
+  totalCount: Int!
 }
 
 """A Relay edge containing a `Category` and its cursor."""
@@ -1118,7 +1137,7 @@ type CategoryEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: Category
+  node: Category!
 }
 
 input ChangePackageVersionArchivedStatusInput {
@@ -1168,7 +1187,7 @@ input ChangeUserUsernameInput {
 type ChangeUserUsernamePayload {
   clientMutationId: String
   token: String
-  user: User
+  user: User!
 }
 
 input CheckUserExistsInput {
@@ -1209,7 +1228,7 @@ type Collection {
 
 type CollectionConnection {
   """Contains the nodes in this connection."""
-  edges: [CollectionEdge]!
+  edges: [CollectionEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -1221,7 +1240,7 @@ type CollectionEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: Collection
+  node: Collection!
 }
 
 type Command {
@@ -1283,6 +1302,25 @@ type CreateAppDBPayload {
   clientMutationId: String
   database: AppDatabase!
   password: String!
+}
+
+input CreateAppVolumeInput {
+  """App ID"""
+  appId: ID!
+  clientMutationId: String
+
+  """Volume max size in bytes"""
+  maxSizeBytes: BigInt
+
+  """Volume mount path"""
+  mountPath: String!
+}
+
+"""Create a UI-managed volume for an app."""
+type CreateAppVolumePayload {
+  clientMutationId: String
+  success: Boolean!
+  volume: AppVolume!
 }
 
 input CreateCheckoutSessionInput {
@@ -1373,6 +1411,11 @@ type DNAMERecord implements DNSRecordInterface & Node {
   updatedAt: DateTime!
 }
 
+input DNSCAAExtraInput {
+  flags: Int!
+  tag: String!
+}
+
 type DNSDomain implements Node {
   createdAt: DateTime!
   deletedAt: DateTime
@@ -1391,7 +1434,7 @@ type DNSDomain implements Node {
 
 type DNSDomainConnection {
   """Contains the nodes in this connection."""
-  edges: [DNSDomainEdge]!
+  edges: [DNSDomainEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -1406,7 +1449,7 @@ type DNSDomainEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: DNSDomain
+  node: DNSDomain!
 }
 
 input DNSMXExtraInput {
@@ -1417,7 +1460,7 @@ union DNSRecord = AAAARecord | ARecord | CAARecord | CNAMERecord | DNAMERecord |
 
 type DNSRecordConnection {
   """Contains the nodes in this connection."""
-  edges: [DNSRecordEdge]!
+  edges: [DNSRecordEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -1432,7 +1475,7 @@ type DNSRecordEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: DNSRecord
+  node: DNSRecord!
 }
 
 interface DNSRecordInterface {
@@ -1449,6 +1492,29 @@ interface DNSRecordInterface {
 enum DNSRecordsSortBy {
   NEWEST
   OLDEST
+}
+
+input DNSSOAExtraInput {
+  expire: Int!
+  minimum: Int!
+  mname: String!
+  refresh: Int!
+  retry: Int!
+  rname: String!
+  serial: Int!
+}
+
+input DNSSRVExtraInput {
+  port: Int!
+  priority: Int!
+  protocol: String!
+  service: String!
+  weight: Int!
+}
+
+input DNSSSHFPExtraInput {
+  algorithm: Int!
+  type: Int!
 }
 
 """
@@ -1511,6 +1577,22 @@ type DeleteAppSecretPayload {
   clientMutationId: String
 
   """ID of the deleted secret."""
+  id: ID!
+  success: Boolean!
+}
+
+input DeleteAppVolumeInput {
+  clientMutationId: String
+
+  """App Volume ID"""
+  id: ID!
+}
+
+"""Soft-delete an app volume."""
+type DeleteAppVolumePayload {
+  clientMutationId: String
+
+  """ID of the deleted volume"""
   id: ID!
   success: Boolean!
 }
@@ -1588,7 +1670,7 @@ type DeleteUserPayload {
   userId: ID!
 }
 
-type DeployApp implements Node & Owner {
+type DeployApp implements Node {
   activeVersion: DeployAppVersion
   adminUrl: String!
   aggregateMetrics: AggregateMetrics!
@@ -1632,6 +1714,7 @@ type DeployApp implements Node & Owner {
   owner: Owner!
   perishReason: DeployDeployAppPerishReasonChoices
   permalink: String!
+  region: AppRegion
   rollouts(after: String, before: String, first: Int, last: Int): RolloutConnection
   s3Credentials: S3Credentials
   s3Url: URL
@@ -1641,7 +1724,7 @@ type DeployApp implements Node & Owner {
   state: String!
   updatedAt: DateTime!
   url: String!
-  urls: [String]!
+  urls: [String!]!
   usageMetrics(
     grouping: MetricGrouping
 
@@ -1651,6 +1734,7 @@ type DeployApp implements Node & Owner {
   ): [UsageMetric]!
   versions(after: String, before: String, createdAfter: DateTime, first: Int, last: Int, offset: Int, sortBy: DeployAppVersionsSortBy): DeployAppVersionConnection!
   viewerCan(action: OwnerAction!): Boolean!
+  volumes(after: String, before: String, first: Int, last: Int, offset: Int): AppVolumeConnection!
   willPerishAt: DateTime
 }
 
@@ -1665,7 +1749,7 @@ enum DeployAppAliasKindChoices {
 
 type DeployAppConnection {
   """Contains the nodes in this connection."""
-  edges: [DeployAppEdge]!
+  edges: [DeployAppEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -1680,7 +1764,7 @@ type DeployAppEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: DeployApp
+  node: DeployApp!
 }
 
 type DeployAppVersion implements Node {
@@ -1765,7 +1849,7 @@ type DeployAppVersion implements Node {
 
 type DeployAppVersionConnection {
   """Contains the nodes in this connection."""
-  edges: [DeployAppVersionEdge]!
+  edges: [DeployAppVersionEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -1780,7 +1864,7 @@ type DeployAppVersionEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: DeployAppVersion
+  node: DeployAppVersion!
 }
 
 """An enumeration."""
@@ -1932,11 +2016,6 @@ type DeploymentEdge {
   node: Deployment
 }
 
-input DeploymentV1 {
-  name: String!
-  workload: WorkloadV1!
-}
-
 input DetachAppFromAutobuildInput {
   """The ID of the App"""
   appId: ID!
@@ -2076,7 +2155,7 @@ type EnvVar implements Node {
 
 type EnvVarConnection {
   """Contains the nodes in this connection."""
-  edges: [EnvVarEdge]!
+  edges: [EnvVarEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -2091,7 +2170,7 @@ type EnvVarEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: EnvVar
+  node: EnvVar!
 }
 
 input EnvVarInput {
@@ -2116,7 +2195,7 @@ type EnvVarLog implements Node {
 
 type EnvVarLogConnection {
   """Contains the nodes in this connection."""
-  edges: [EnvVarLogEdge]!
+  edges: [EnvVarLogEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -2131,7 +2210,7 @@ type EnvVarLogEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: EnvVarLog
+  node: EnvVarLog!
 }
 
 input EnvVarUpdate {
@@ -2163,29 +2242,12 @@ type EventBody {
   text: String!
 }
 
-input FileSystemPermissionsV1 {
-  delete: Boolean
-  read: Boolean
-  write: Boolean
+type ExecutableCronJob implements Node {
+  id: ID!
 }
 
-input FileSystemVolumeConfigV1 {
-  mounts: [FileSystemVolumeMountV1]!
-  name: String!
-  source: FileSystemVolumeSourceV1!
-}
-
-input FileSystemVolumeMountV1 {
-  path: String!
-  permissions: [FileSystemPermissionsV1]
-}
-
-input FileSystemVolumeSourceLocalV1 {
-  maximumSize: String!
-}
-
-input FileSystemVolumeSourceV1 {
-  local: FileSystemVolumeSourceLocalV1!
+type FetchCronJob implements Node {
+  id: ID!
 }
 
 input GenerateAPITokenInput {
@@ -2268,7 +2330,7 @@ type GenerateSshTokenPayload {
 
 input GenerateUploadUrlInput {
   clientMutationId: String
-  expiresAfterSeconds: Int = 60
+  expiresAfterSeconds: Int = 900
   filename: String
   method: String
   name: String
@@ -2328,7 +2390,7 @@ type GithubAppInstallation implements Node {
 
   """The ID of the object"""
   id: ID!
-  repositories(filterByName: String): [GithubInstallationRepository]!
+  repositories(filterByName: String): [GithubInstallationRepository!]!
   slug: String!
 }
 
@@ -2444,7 +2506,7 @@ type InterfaceVersion implements Node {
 
 type InterfaceVersionConnection {
   """Contains the nodes in this connection."""
-  edges: [InterfaceVersionEdge]!
+  edges: [InterfaceVersionEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -2459,7 +2521,7 @@ type InterfaceVersionEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: InterfaceVersion
+  node: InterfaceVersion!
 }
 
 type InternalTask {
@@ -2615,7 +2677,6 @@ enum LogStream {
   STDOUT
 }
 
-"\n    Enum of ways a user can login. One user can have many login methods\n    associated with their account.\n    "
 enum LoginMethod {
   GITHUB
   GOOGLE
@@ -2668,7 +2729,7 @@ input MFARecoveryAuthInput {
 }
 
 type MFARecoveryCodes {
-  codes: [String]!
+  codes: [String!]!
 }
 
 input MFATOTPAuthInput {
@@ -2821,15 +2882,15 @@ type MoneyType {
 
 type Mutation {
   acceptAppTransferRequest(input: AcceptAppTransferRequestInput!): AcceptAppTransferRequestPayload
-  acceptNamespaceCollaboratorInvite(input: AcceptNamespaceCollaboratorInviteInput!): AcceptNamespaceCollaboratorInvitePayload
+  acceptNamespaceCollaboratorInvite(input: AcceptNamespaceCollaboratorInviteInput!): AcceptNamespaceCollaboratorInvitePayload!
   acceptPackageCollaboratorInvite(input: AcceptPackageCollaboratorInviteInput!): AcceptPackageCollaboratorInvitePayload
   acceptPackageTransferRequest(input: AcceptPackageTransferRequestInput!): AcceptPackageTransferRequestPayload
 
   """Viewer accepts the latest ToS."""
-  acceptTOS(input: AcceptTOSInput!): AcceptTOSPayload
+  acceptTOS(input: AcceptTOSInput!): AcceptTOSPayload!
 
   """Add stripe payment to the user"""
-  addPayment(input: AddPaymentInput!): AddPaymentPayload
+  addPayment(input: AddPaymentInput!): AddPaymentPayload!
 
   """Add an SSH authorized key to an SSH user."""
   addSshAuthorizedKey(input: AddSshAuthorizedKeyInput!): AddSshAuthorizedKeyPayload
@@ -2839,14 +2900,14 @@ type Mutation {
   attachVault(input: AttachVaultInput!): AttachVaultPayload
 
   """Get the autobuild config for a given repo"""
-  autobuildConfigForRepo(input: AutobuildConfigForRepoInput!): AutobuildConfigForRepoPayload
+  autobuildConfigForRepo(input: AutobuildConfigForRepoInput!): AutobuildConfigForRepoPayload!
 
   """Get the autobuild config for a given zip upload URL"""
-  autobuildConfigForZipUpload(input: AutobuildConfigForZipUploadInput!): AutobuildConfigForZipUploadPayload
+  autobuildConfigForZipUpload(input: AutobuildConfigForZipUploadInput!): AutobuildConfigForZipUploadPayload!
 
   """Ban app with a reason."""
   banApp(input: BanAppInput!): BanAppPayload
-  cancelSubscription(input: CancelSubscriptionInput!): CancelSubscriptionPayload
+  cancelSubscription(input: CancelSubscriptionInput!): CancelSubscriptionPayload!
   changePackageVersionArchivedStatus(input: ChangePackageVersionArchivedStatusInput!): ChangePackageVersionArchivedStatusPayload
   changeUserEmail(input: ChangeUserEmailInput!): ChangeUserEmailPayload
   changeUserPassword(input: ChangeUserPasswordInput!): ChangeUserPasswordPayload
@@ -2857,12 +2918,15 @@ type Mutation {
   claimPerishableApp(input: ClaimPerishableAppInput!): ClaimPerishableAppPayload
 
   """Connect a github repo to an app."""
-  connectGithubRepoToApp(input: ConnectGithubRepoToAppInput!): ConnectGithubRepoToAppPayload
+  connectGithubRepoToApp(input: ConnectGithubRepoToAppInput!): ConnectGithubRepoToAppPayload!
 
   """Create a new database for an app."""
   createAppDb(input: CreateAppDBInput!): CreateAppDBPayload
-  createCheckoutSession(input: CreateCheckoutSessionInput!): CreateCheckoutSessionPayload
-  createNamespace(input: CreateNamespaceInput!): CreateNamespacePayload
+
+  """Create a UI-managed volume for an app."""
+  createAppVolume(input: CreateAppVolumeInput!): CreateAppVolumePayload!
+  createCheckoutSession(input: CreateCheckoutSessionInput!): CreateCheckoutSessionPayload!
+  createNamespace(input: CreateNamespaceInput!): CreateNamespacePayload!
   createNamespaceApiKey(input: CreateNamespaceAPIKeyInput!): CreateNamespaceAPIKeyPayload
   createRepoForAppTemplate(input: CreateRepoForAppTemplateInput!): CreateRepoForAppTemplatePayload
   deleteApp(input: DeleteAppInput!): DeleteAppPayload
@@ -2875,6 +2939,9 @@ type Mutation {
 
   """Deprecated: use UpdateEnvVars."""
   deleteAppSecret(input: DeleteAppSecretInput!): DeleteAppSecretPayload @deprecated(reason: "Use `updateEnvVars` instead.")
+
+  """Soft-delete an app volume."""
+  deleteAppVolume(input: DeleteAppVolumeInput!): DeleteAppVolumePayload!
   deleteDNSRecord(input: DeleteDNSRecordInput!): DeleteDNSRecordPayload
   deleteDomain(input: DeleteDomainInput!): DeleteDomainPayload
   deleteNamespace(input: DeleteNamespaceInput!): DeleteNamespacePayload
@@ -2894,20 +2961,20 @@ type Mutation {
   deployWordpress(input: DeployWordpressInput!): DeployWordpressPayload @deprecated(reason: "Use `publishAppFromRepoAutobuild` subscription instead.")
 
   """Detach autobuild from app."""
-  detachAppFromAutobuild(input: DetachAppFromAutobuildInput!): DetachAppFromAutobuildPayload
+  detachAppFromAutobuild(input: DetachAppFromAutobuildInput!): DetachAppFromAutobuildPayload!
 
   """
   Try to detach a payment method from customer.
   Fails if trying to detach a default method,
   or if it's the only payment method.
   """
-  detachPaymentMethod(input: DetachPaymentMethodInput!): DetachPaymentMethodPayload
+  detachPaymentMethod(input: DetachPaymentMethodInput!): DetachPaymentMethodPayload!
 
   """Disable app with a reason."""
   disableApp(input: DisableAppInput!): DisableAppPayload
 
   """Disconnect a github repo from an app."""
-  disconnectGithubRepoFromApp(input: DisconnectGithubRepoFromAppInput!): DisconnectGithubRepoFromAppPayload
+  disconnectGithubRepoFromApp(input: DisconnectGithubRepoFromAppInput!): DisconnectGithubRepoFromAppPayload!
 
   """Edit an SSH user."""
   editSshUser(input: EditSshUserInput!): EditSshUserPayload
@@ -2916,7 +2983,7 @@ type Mutation {
   enableApp(input: EnableAppInput!): EnableAppPayload
   generateApiToken(input: GenerateAPITokenInput!): GenerateAPITokenPayload
   generateBindingsForAllPackages(input: GenerateBindingsForAllPackagesInput!): GenerateBindingsForAllPackagesPayload
-  generateCheckoutUrl(input: GenerateCheckoutUrlInput!): GenerateCheckoutUrlPayload
+  generateCheckoutUrl(input: GenerateCheckoutUrlInput!): GenerateCheckoutUrlPayload!
   generateDeployConfigToken(input: GenerateDeployConfigTokenInput!): GenerateDeployConfigTokenPayload
   generateDeployToken(input: GenerateDeployTokenInput!): GenerateDeployTokenPayload
   generateSshToken(input: GenerateSshTokenInput!): GenerateSshTokenPayload
@@ -2924,35 +2991,35 @@ type Mutation {
   generateWordPressMagicLoginUrl(input: GenerateWordPressMagicLoginUrlInput!): GenerateWordPressMagicLoginUrlPayload
 
   """Add a new github app installation"""
-  installGithubApp(input: InstallGithubAppInput!): InstallGithubAppPayload
+  installGithubApp(input: InstallGithubAppInput!): InstallGithubAppPayload!
   installWasmerWpPlugin(input: InstallWasmerWpPluginInput!): InstallWasmerWpPluginPayload
-  invalidateNonce(input: InvalidateNonceInput!): InvalidateNoncePayload
-  inviteNamespaceCollaborator(input: InviteNamespaceCollaboratorInput!): InviteNamespaceCollaboratorPayload
+  invalidateNonce(input: InvalidateNonceInput!): InvalidateNoncePayload!
+  inviteNamespaceCollaborator(input: InviteNamespaceCollaboratorInput!): InviteNamespaceCollaboratorPayload!
   invitePackageCollaborator(input: InvitePackageCollaboratorInput!): InvitePackageCollaboratorPayload
 
   """Add current user to the waitlist."""
-  joinWaitlist(input: JoinWaitlistInput!): JoinWaitlistPayload
+  joinWaitlist(input: JoinWaitlistInput!): JoinWaitlistPayload!
   likePackage(input: LikePackageInput!): LikePackagePayload
   makePackagePublic(input: MakePackagePublicInput!): MakePackagePublicPayload
 
   """Set a payment method as default for the user."""
-  makePaymentDefault(input: SetDefaultPaymentMethodInput!): SetDefaultPaymentMethodPayload
+  makePaymentDefault(input: SetDefaultPaymentMethodInput!): SetDefaultPaymentMethodPayload!
 
   """
   Mutation to change the active version of a DeployApp to another DeployAppVersion.
   """
   markAppVersionAsActive(input: MarkAppVersionAsActiveInput!): MarkAppVersionAsActivePayload
-  mfa2EmailAuth(input: MFAEmailAuthInput!): MFAAuthResponse
-  mfa2EmailGetToken(input: MFAGenerateEmailOTPInput!): MFAEmailGenerationResponse
-  mfa2RecoveryAuth(input: MFARecoveryAuthInput!): MFAAuthResponse
-  mfa2RecoveryGetToken(input: MFAGenerateRecoveryTokenInput!): MFARecoveryCodes
-  mfa2totpAuth(input: MFATOTPAuthInput!): MFAAuthResponse
-  mfa2totpGetToken(input: MFATOTPGetTokenInput!): MFATOTPTokenType
-  mfa2totpVerify(input: MFATOTPVerifyInput!): MFATOTPVerifyPayload
+  mfa2EmailAuth(input: MFAEmailAuthInput!): MFAAuthResponse!
+  mfa2EmailGetToken(input: MFAGenerateEmailOTPInput!): MFAEmailGenerationResponse!
+  mfa2RecoveryAuth(input: MFARecoveryAuthInput!): MFAAuthResponse!
+  mfa2RecoveryGetToken(input: MFAGenerateRecoveryTokenInput!): MFARecoveryCodes!
+  mfa2totpAuth(input: MFATOTPAuthInput!): MFAAuthResponse!
+  mfa2totpGetToken(input: MFATOTPGetTokenInput!): MFATOTPTokenType!
+  mfa2totpVerify(input: MFATOTPVerifyInput!): MFATOTPVerifyPayload!
 
   """Migrate an app to a different region."""
   migrateAppRegion(input: MigrateAppRegionInput!): MigrateAppRegionPayload
-  newNonce(input: NewNonceInput!): NewNoncePayload
+  newNonce(input: NewNonceInput!): NewNoncePayload!
   publishDeployApp(input: PublishDeployAppInput!): PublishDeployAppPayload
   publishPackage(input: PublishPackageInput!): PublishPackagePayload
   publishPublicKey(input: PublishPublicKeyInput!): PublishPublicKeyPayload
@@ -2964,9 +3031,9 @@ type Mutation {
 
   """Redeploy the active version of an app."""
   redeployActiveVersion(input: RedeployActiveVersionInput!): RedeployActiveVersionPayload
-  refreshAccessToken(refreshToken: String): Refresh
+  refreshAccessToken(refreshToken: String!): Refresh!
   registerDomain(input: RegisterDomainInput!): RegisterDomainPayload
-  registerUser(input: RegisterUserInput!): RegisterUserPayload
+  registerUser(input: RegisterUserInput!): RegisterUserPayload!
   removeAppTransferRequest(input: RemoveAppTransferRequestInput!): RemoveAppTransferRequestPayload
   removeNamespaceCollaborator(input: RemoveNamespaceCollaboratorInput!): RemoveNamespaceCollaboratorPayload
   removeNamespaceCollaboratorInvite(input: RemoveNamespaceCollaboratorInviteInput!): RemoveNamespaceCollaboratorInvitePayload
@@ -2976,7 +3043,7 @@ type Mutation {
   renameApp(input: RenameAppInput!): RenameAppPayload
   renameAppAlias(input: RenameAppAliasInput!): RenameAppAliasPayload
   renamePackage(input: RenamePackageInput!): RenamePackagePayload
-  renewCanceledSubscription(input: RenewCanceledSubscriptionInput!): RenewCanceledSubscriptionPayload
+  renewCanceledSubscription(input: RenewCanceledSubscriptionInput!): RenewCanceledSubscriptionPayload!
   requestAppTransfer(input: RequestAppTransferInput!): RequestAppTransferPayload
   requestPackageTransfer(input: RequestPackageTransferInput!): RequestPackageTransferPayload
   requestPasswordReset(input: RequestPasswordResetInput!): RequestPasswordResetPayload
@@ -2984,7 +3051,7 @@ type Mutation {
 
   """Reveal the password for an SSH user."""
   revealSshUserPassword(input: RevealSshUserPasswordInput!): RevealSshUserPasswordPayload
-  revokeAccessToken(refreshToken: String): Revoke
+  revokeAccessToken(refreshToken: String!): Revoke!
 
   """Request To revoke an API token; these start with 'wap_'."""
   revokeApiToken(input: RevokeAPITokenInput!): RevokeAPITokenPayload
@@ -2992,8 +3059,11 @@ type Mutation {
   """Delete a database for an app."""
   rotateCredentialsForAppDb(input: RotateCredentialsForAppDBInput!): RotateCredentialsForAppDBPayload
 
-  """Redeploy the active version of an app."""
-  rotateS3SecretsForApp(input: RotateS3SecretsForAppInput!): RotateS3SecretsForAppPayload
+  """Rotate S3 credentials for an app volume."""
+  rotateS3Credentials(input: RotateS3CredentialsInput!): RotateS3CredentialsPayload!
+
+  """Deprecated. Use rotateS3Credentials with an AppVolume ID."""
+  rotateS3SecretsForApp(input: RotateS3SecretsForAppInput!): RotateS3SecretsForAppPayload @deprecated(reason: "Use rotateS3Credentials with an AppVolume ID.")
 
   """Rotate the password for an SSH user."""
   rotateSshUserPassword(input: RotateSshUserPasswordInput!): RotateSshUserPasswordPayload
@@ -3002,7 +3072,7 @@ type Mutation {
 
   """Set the requested default domain for an app."""
   setAppDefaultAlias(input: SetAppDefaultAliasInput!): SetAppDefaultAliasPayload
-  socialAuth(input: SocialAuthJWTInput!): SocialAuthJWTPayload
+  socialAuth(input: SocialAuthJWTInput!): SocialAuthJWTPayload!
 
   """Sync all blog posts from Notion to the database."""
   syncNotionBlogPosts(input: SyncNotionBlogPostsInput!): SyncNotionBlogPostsPayload
@@ -3013,7 +3083,7 @@ type Mutation {
 
   """Enable or disable the SSH server capability on an app."""
   toggleSshServer(input: ToggleSshServerInput!): ToggleSshServerPayload
-  tokenAuth(input: ObtainJSONWebTokenInput!): ObtainJSONWebTokenPayload
+  tokenAuth(input: ObtainJSONWebTokenInput!): ObtainJSONWebTokenPayload!
 
   """Un-ban app with a reason."""
   unbanApp(input: UnbanAppInput!): UnbanAppPayload
@@ -3021,21 +3091,24 @@ type Mutation {
   unwatchPackage(input: UnwatchPackageInput!): UnwatchPackagePayload
 
   """Update autobuild config for an app."""
-  updateAutobuildConfigForApp(input: UpdateAutobuildConfigForAppInput!): UpdateAutobuildConfigForAppPayload
+  updateAutobuildConfigForApp(input: UpdateAutobuildConfigForAppInput!): UpdateAutobuildConfigForAppPayload!
   updateBuildConfig(input: UpdateBuildConfigInput!): UpdateBuildConfigPayload
 
   """
   Create, update, or delete app environment variables on an app with given ID
   """
   updateEnvVars(input: UpdateEnvVarsInput!): UpdateEnvVarsPayload
-  updateGithubRepoConnection(input: UpdateGithubRepoAppConnectionInput!): UpdateGithubRepoAppConnectionPayload
+  updateGithubRepoConnection(input: UpdateGithubRepoAppConnectionInput!): UpdateGithubRepoAppConnectionPayload!
   updateNamespace(input: UpdateNamespaceInput!): UpdateNamespacePayload
-  updateNamespaceCollaboratorInviteRole(input: UpdateNamespaceCollaboratorInviteRoleInput!): UpdateNamespaceCollaboratorInviteRolePayload
-  updateNamespaceCollaboratorRole(input: UpdateNamespaceCollaboratorRoleInput!): UpdateNamespaceCollaboratorRolePayload
+  updateNamespaceCollaboratorInviteRole(input: UpdateNamespaceCollaboratorInviteRoleInput!): UpdateNamespaceCollaboratorInviteRolePayload!
+  updateNamespaceCollaboratorRole(input: UpdateNamespaceCollaboratorRoleInput!): UpdateNamespaceCollaboratorRolePayload!
   updatePackage(input: UpdatePackageInput!): UpdatePackagePayload
   updatePackageCollaboratorInviteRole(input: UpdatePackageCollaboratorInviteRoleInput!): UpdatePackageCollaboratorInviteRolePayload
   updatePackageCollaboratorRole(input: UpdatePackageCollaboratorRoleInput!): UpdatePackageCollaboratorRolePayload
   updateUserInfo(input: UpdateUserInfoInput!): UpdateUserInfoPayload
+
+  """Update an app volume."""
+  updateVolume(input: UpdateVolumeInput!): UpdateVolumePayload!
 
   """Create or update an app domain on an app with given ID"""
   upsertAppDomain(input: UpsertAppDomainInput!): UpsertAppDomainPayload
@@ -3050,11 +3123,11 @@ type Mutation {
 
   """Create a new vault from yaml config"""
   upsertVault(input: UpsertVaultInput!): UpsertVaultPayload
-  validateNonce(input: ValidateNonceInput!): ValidateNoncePayload
+  validateNonce(input: ValidateNonceInput!): ValidateNoncePayload!
   validateUserEmail(input: ValidateUserEmailInput!): ValidateUserEmailPayload
   validateUserFingerprint(input: ValidateUserFingerprintInput!): ValidateUserFingerprintPayload
   validateUserPassword(input: ValidateUserPasswordInput!): ValidateUserPasswordPayload
-  verifyAccessToken(token: String): Verify
+  verifyAccessToken(token: String!): Verify!
 
   """Detach autobuild from app."""
   verifyAppDomain(input: VerifyAppDomainInput!): VerifyAppDomainPayload
@@ -3160,7 +3233,7 @@ type NamespaceCollaborator implements Node {
 
 type NamespaceCollaboratorConnection {
   """Contains the nodes in this connection."""
-  edges: [NamespaceCollaboratorEdge]!
+  edges: [NamespaceCollaboratorEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -3175,7 +3248,7 @@ type NamespaceCollaboratorEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: NamespaceCollaborator
+  node: NamespaceCollaborator!
 }
 
 type NamespaceCollaboratorInvite implements Node {
@@ -3197,7 +3270,7 @@ type NamespaceCollaboratorInvite implements Node {
 
 type NamespaceCollaboratorInviteConnection {
   """Contains the nodes in this connection."""
-  edges: [NamespaceCollaboratorInviteEdge]!
+  edges: [NamespaceCollaboratorInviteEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -3214,12 +3287,12 @@ type NamespaceCollaboratorInviteEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: NamespaceCollaboratorInvite
+  node: NamespaceCollaboratorInvite!
 }
 
 type NamespaceConnection {
   """Contains the nodes in this connection."""
-  edges: [NamespaceEdge]!
+  edges: [NamespaceEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -3234,7 +3307,7 @@ type NamespaceEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: Namespace
+  node: Namespace!
 }
 
 enum NamespaceOrderBy {
@@ -3294,18 +3367,7 @@ type NativeExecutableEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: NativeExecutable
-}
-
-input NetworkDnsAllowedHostsV1 {
-  allowAllHosts: Boolean
-  hosts: [String]
-  regexPatterns: [String]
-  wildcardPatterns: [String]
-}
-
-input NetworkEgressV1 {
-  enabled: Boolean
+  node: NativeExecutable!
 }
 
 input NewNonceInput {
@@ -3346,7 +3408,7 @@ type Nonce implements Node {
 
 type NonceConnection {
   """Contains the nodes in this connection."""
-  edges: [NonceEdge]!
+  edges: [NonceEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -3361,7 +3423,7 @@ type NonceEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: Nonce
+  node: Nonce!
 }
 
 input ObtainJSONWebTokenInput {
@@ -3484,6 +3546,12 @@ type Package implements Likeable & Node & PackageOwner {
   webcs(after: String, before: String, first: Int, last: Int, offset: Int): WebcImageConnection!
 }
 
+type PackageCategory implements Node {
+  category: Category
+  id: ID!
+  package: Package
+}
+
 type PackageCollaborator implements Node {
   createdAt: DateTime!
 
@@ -3498,7 +3566,7 @@ type PackageCollaborator implements Node {
 
 type PackageCollaboratorConnection {
   """Contains the nodes in this connection."""
-  edges: [PackageCollaboratorEdge]!
+  edges: [PackageCollaboratorEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -3513,7 +3581,7 @@ type PackageCollaboratorEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: PackageCollaborator
+  node: PackageCollaborator!
 }
 
 type PackageCollaboratorInvite implements Node {
@@ -3535,7 +3603,7 @@ type PackageCollaboratorInvite implements Node {
 
 type PackageCollaboratorInviteConnection {
   """Contains the nodes in this connection."""
-  edges: [PackageCollaboratorInviteEdge]!
+  edges: [PackageCollaboratorInviteEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -3550,12 +3618,12 @@ type PackageCollaboratorInviteEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: PackageCollaboratorInvite
+  node: PackageCollaboratorInvite!
 }
 
 type PackageConnection {
   """Contains the nodes in this connection."""
-  edges: [PackageEdge]!
+  edges: [PackageEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -3590,7 +3658,7 @@ type PackageEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: Package
+  node: Package!
 }
 
 type PackageInfo {
@@ -3643,7 +3711,7 @@ type PackageKeywordEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: PackageKeyword
+  node: PackageKeyword!
 }
 
 enum PackageOrderBy {
@@ -3707,7 +3775,7 @@ type PackageRolloutEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: PackageRollout
+  node: PackageRollout!
 }
 
 type PackageSearchConnection {
@@ -3725,7 +3793,7 @@ type PackageSearchEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: PackageVersion
+  node: PackageVersion!
 }
 
 type PackageTransferRequest implements Node {
@@ -3747,7 +3815,7 @@ type PackageTransferRequest implements Node {
 
 type PackageTransferRequestConnection {
   """Contains the nodes in this connection."""
-  edges: [PackageTransferRequestEdge]!
+  edges: [PackageTransferRequestEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -3762,7 +3830,7 @@ type PackageTransferRequestEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: PackageTransferRequest
+  node: PackageTransferRequest!
 }
 
 type PackageVersion implements Node & PackageInstance & PackageReleaseInterface {
@@ -3781,8 +3849,6 @@ type PackageVersion implements Node & PackageInstance & PackageReleaseInterface 
   description: String!
   distribution(version: WebcVersion): PackageDistribution!
   file: String!
-
-  """"""
   fileSize: BigInt!
   filesystem: [PackageVersionFilesystem]!
   getPiritaContents(base: String! = "", volume: String! = "atom"): [PiritaFilesystemItem!]! @deprecated(reason: "File exploration is of the webc is not supported anymore, please get the files directly fromt he webc")
@@ -3856,12 +3922,12 @@ type PackageVersionBindingEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: PackageVersionBinding
+  node: PackageVersionBinding!
 }
 
 type PackageVersionConnection {
   """Contains the nodes in this connection."""
-  edges: [PackageVersionEdge]!
+  edges: [PackageVersionEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -3876,7 +3942,7 @@ type PackageVersionEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: PackageVersion
+  node: PackageVersion!
 }
 
 type PackageVersionFilesystem {
@@ -3948,7 +4014,7 @@ type PackageVersionNPMBinding implements Node & PackageVersionLanguageBinding {
 
 type PackageVersionNPMBindingConnection {
   """Contains the nodes in this connection."""
-  edges: [PackageVersionNPMBindingEdge]!
+  edges: [PackageVersionNPMBindingEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -3963,7 +4029,7 @@ type PackageVersionNPMBindingEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: PackageVersionNPMBinding
+  node: PackageVersionNPMBinding!
 }
 
 type PackageVersionPythonBinding implements Node & PackageVersionLanguageBinding {
@@ -3996,7 +4062,7 @@ type PackageVersionPythonBinding implements Node & PackageVersionLanguageBinding
 
 type PackageVersionPythonBindingConnection {
   """Contains the nodes in this connection."""
-  edges: [PackageVersionPythonBindingEdge]!
+  edges: [PackageVersionPythonBindingEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -4013,7 +4079,7 @@ type PackageVersionPythonBindingEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: PackageVersionPythonBinding
+  node: PackageVersionPythonBinding!
 }
 
 type PackageVersionReadyResponse {
@@ -4055,7 +4121,7 @@ type PackageWebc implements Node & PackageInstance & PackageReleaseInterface {
 
 type PackageWebcConnection {
   """Contains the nodes in this connection."""
-  edges: [PackageWebcEdge]!
+  edges: [PackageWebcEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -4070,7 +4136,7 @@ type PackageWebcEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: PackageWebc
+  node: PackageWebc!
 }
 
 input PackagesFilter {
@@ -4149,12 +4215,6 @@ type PageInfo {
   startCursor: String
 }
 
-type Payment {
-  amount: String
-  id: ID
-  paidOn: DateTime
-}
-
 type PaymentIntent implements Node {
   amount: String!
 
@@ -4170,7 +4230,7 @@ type PaymentIntent implements Node {
 
 type PaymentIntentConnection {
   """Contains the nodes in this connection."""
-  edges: [PaymentIntentEdge]!
+  edges: [PaymentIntentEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -4185,7 +4245,7 @@ type PaymentIntentEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: PaymentIntent
+  node: PaymentIntent!
 }
 
 union PaymentMethod = CardPaymentMethod
@@ -4387,13 +4447,13 @@ type Query {
   getAppSecretLog(after: String, appId: ID!, before: String, first: Int, last: Int, offset: Int): SecretLogConnection @deprecated(reason: "Use `getAppEnvVarLog` instead.")
   getAppSecrets(after: String, appId: ID!, before: String, first: Int, last: Int, nameRegex: String, names: [String], offset: Int): SecretConnection @deprecated(reason: "Use `DeployApp.envVars` instead.")
   getAppTemplate(slug: String!): AppTemplate
-  getAppTemplateCategories(after: String, before: String, first: Int, last: Int, offset: Int): AppTemplateCategoryConnection
-  getAppTemplates(after: String, before: String, categorySlug: String, first: Int, frameworkSlug: String, highlighted: Boolean, languageSlug: String, last: Int, offset: Int, sortBy: AppTemplatesSortBy): AppTemplateConnection
+  getAppTemplateCategories(after: String, before: String, first: Int, last: Int, offset: Int): AppTemplateCategoryConnection!
+  getAppTemplates(after: String, before: String, categorySlug: String, first: Int, frameworkSlug: String, highlighted: Boolean, languageSlug: String, last: Int, offset: Int, sortBy: AppTemplatesSortBy): AppTemplateConnection!
   getAppVersions(after: String, before: String, first: Int, last: Int, offset: Int, sortBy: DeployAppVersionsSortBy, updatedAfter: DateTime): DeployAppVersionConnection!
-  getAuthNonce(name: String!): Nonce
+  getAuthNonce(name: String!): Nonce!
   getBlogpost(featured: Boolean, slug: String): BlogPost
   getBuildKinds(after: String, before: String, first: Int, last: Int, offset: Int): BuildKindConnection!
-  getCollections(after: String, before: String, first: Int, last: Int): CollectionConnection
+  getCollections(after: String, before: String, first: Int, last: Int): CollectionConnection!
   getCommand(name: String!): Command
   getCommands(names: [String!]!): [Command]
   getContract(name: String!): Interface @deprecated(reason: "Please use getInterface instead")
@@ -4419,18 +4479,18 @@ type Query {
   getPackageRelease(hash: String): PackageWebc
   getPackageVersion(name: String!, version: String = "latest"): PackageVersion
   getPackageVersionByHash(hash: String!, name: String!): PackageVersion
-  getPackageVersions(names: [String!]!): [PackageVersion]
+  getPackageVersions(names: [String!]!): [PackageVersion]!
   getPackages(names: [String!]!): [Package]!
-  getPasswordResetToken(token: String!): GetPasswordResetToken
+  getPasswordResetToken(token: String!): GetPasswordResetToken!
   getSecretValue(id: ID!): String @deprecated(reason: "Use `EnvVar.value` for non-sensitive environment variables.")
-  getSignedUrl(expiresAfterSeconds: Int = 60, filename: String, method: String): SignedUrl
-  getSignedUrlForPackageUpload(expiresAfterSeconds: Int = 60, filename: String, method: String, name: String, version: String = "latest"): SignedUrl
-  getTemplateFrameworks(after: String, before: String, first: Int, last: Int, offset: Int): TemplateFrameworkConnection
-  getTemplateLanguages(after: String, before: String, first: Int, last: Int, offset: Int): TemplateLanguageConnection
+  getSignedUrl(expiresAfterSeconds: Int = 900, filename: String, method: String): SignedUrl
+  getSignedUrlForPackageUpload(expiresAfterSeconds: Int = 900, filename: String, method: String, name: String, version: String = "latest"): SignedUrl
+  getTemplateFrameworks(after: String, before: String, first: Int, last: Int, offset: Int): TemplateFrameworkConnection!
+  getTemplateLanguages(after: String, before: String, first: Int, last: Int, offset: Int): TemplateLanguageConnection!
   getUser(username: String!): User
   getWebcImage(hash: String!): WebcImage
   githubRollout(id: ID!): GitHubRollout
-  info: RegistryInfo
+  info: RegistryInfo!
   internalTask(id: ID!): InternalTask
   latestTOS: TermsOfService!
   logValues(
@@ -4456,8 +4516,8 @@ type Query {
     """The ID of the object"""
     id: ID!
   ): Node
-  nodes(ids: [ID!]!): [Node]
-  packages(after: String, before: String, first: Int, last: Int, offset: Int): PackageConnection
+  nodes(ids: [ID!]!): [Node]!
+  packages(after: String, before: String, first: Int, last: Int, offset: Int): PackageConnection!
   recentPackageVersions(after: String, before: String, curated: Boolean, first: Int, last: Int, offset: Int): PackageVersionConnection!
   rollout(id: ID!): Rollout
   search(after: String, appTemplates: AppTemplateFilter, apps: AppFilter, before: String, blogposts: BlogPostsFilter, first: Int, last: Int, namespaces: NamespacesFilter, packages: PackagesFilter, query: String!, users: UsersFilter): SearchConnection!
@@ -4823,7 +4883,7 @@ input RequestPasswordResetInput {
 type RequestPasswordResetPayload {
   clientMutationId: String
   email: String!
-  errors: [ErrorType]
+  errors: [ErrorType!]
 }
 
 input RequestValidationEmailInput {
@@ -4891,10 +4951,11 @@ type Rollout implements Node {
 
 type RolloutConnection {
   """Contains the nodes in this connection."""
-  edges: [RolloutEdge]!
+  edges: [RolloutEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
+  totalCount: Int
 }
 
 """A Relay edge containing a `Rollout` and its cursor."""
@@ -4903,7 +4964,7 @@ type RolloutEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: Rollout
+  node: Rollout!
 }
 
 union RolloutType = GitHubRollout | PackageRollout | ZipRollout
@@ -4922,6 +4983,23 @@ type RotateCredentialsForAppDBPayload {
   password: String!
 }
 
+input RotateS3CredentialsInput {
+  clientMutationId: String
+
+  """App Volume ID"""
+  id: ID!
+}
+
+"""Rotate S3 credentials for an app volume."""
+type RotateS3CredentialsPayload {
+  accessKey: String!
+  clientMutationId: String
+  endpoint: String!
+  secretKey: String!
+  success: Boolean!
+  volume: AppVolume!
+}
+
 input RotateS3SecretsForAppInput {
   clientMutationId: String
 
@@ -4929,7 +5007,7 @@ input RotateS3SecretsForAppInput {
   id: ID!
 }
 
-"""Redeploy the active version of an app."""
+"""Deprecated. Use rotateS3Credentials with an AppVolume ID."""
 type RotateS3SecretsForAppPayload {
   app: DeployApp!
   clientMutationId: String
@@ -4964,14 +5042,10 @@ type RunEdgeCommandPayload {
   stdout: String!
 }
 
-"""Run a webassembly file."""
-input RunnerWCGIV1 {
-  dialect: String
-  source: WorkloadRunnerWasmSourceV1!
-}
-
-input RunnerWebProxyV1 {
-  source: WorkloadRunnerWasmSourceV1!
+type S3 {
+  accessKey: String!
+  endpoint: String!
+  secretKey: String!
 }
 
 type S3Credentials {
@@ -5089,11 +5163,11 @@ type SchemaInfo {
 
 type SearchConnection {
   """Contains the nodes in this connection."""
-  edges: [SearchEdge]!
+  edges: [SearchEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
-  totalCount: Int
+  totalCount: Int!
 }
 
 """A Relay edge containing a `Search` and its cursor."""
@@ -5102,7 +5176,7 @@ type SearchEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: SearchResult
+  node: SearchResult!
 }
 
 enum SearchKind {
@@ -5139,7 +5213,7 @@ type Secret implements Node {
 
 type SecretConnection {
   """Contains the nodes in this connection."""
-  edges: [SecretEdge]!
+  edges: [SecretEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -5154,7 +5228,7 @@ type SecretEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: Secret
+  node: Secret!
 }
 
 """Deprecated for persisted app environment variables; use EnvVarUpdate."""
@@ -5181,7 +5255,7 @@ type SecretLog implements Node {
 
 type SecretLogConnection {
   """Contains the nodes in this connection."""
-  edges: [SecretLogEdge]!
+  edges: [SecretLogEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -5196,7 +5270,7 @@ type SecretLogEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: SecretLog
+  node: SecretLog!
 }
 
 input SeePendingNotificationsInput {
@@ -5313,7 +5387,7 @@ type SshAuthorizedKeyEdge {
 }
 
 type SshUser implements Node {
-  authenticationMethods: [SshAuthenticationMethod]
+  authenticationMethods: [SshAuthenticationMethod]!
   authorizedKeys(after: String, before: String, first: Int, last: Int, offset: Int): SshAuthorizedKeyConnection!
 
   """The ID of the object"""
@@ -5368,7 +5442,7 @@ type StripeCustomer {
 type Subscription {
   appIsPublishedFromRepo(repoId: ID!): DeployAppVersion!
   autobuildDeployment(buildId: UUID!): AutobuildLog
-  fetchBuildLogs(buildId: String!): String
+  fetchBuildLogs(buildId: String!): String!
   generateScreenshot(
     """App version ID"""
     appVersionId: ID!
@@ -5420,13 +5494,14 @@ type Subscription {
 
 input SyncNotionBlogPostsInput {
   clientMutationId: String
+  force: Boolean
 }
 
 """Sync all blog posts from Notion to the database."""
 type SyncNotionBlogPostsPayload {
   clientMutationId: String
   createdCount: Int!
-  errors: [String]
+  errors: [String!]
   syncedCount: Int!
   updatedCount: Int!
 }
@@ -5484,7 +5559,7 @@ type TemplateFramework implements Node {
 
 type TemplateFrameworkConnection {
   """Contains the nodes in this connection."""
-  edges: [TemplateFrameworkEdge]!
+  edges: [TemplateFrameworkEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -5499,7 +5574,7 @@ type TemplateFrameworkEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: TemplateFramework
+  node: TemplateFramework!
 }
 
 type TemplateLanguage implements Node {
@@ -5514,7 +5589,7 @@ type TemplateLanguage implements Node {
 
 type TemplateLanguageConnection {
   """Contains the nodes in this connection."""
-  edges: [TemplateLanguageEdge]!
+  edges: [TemplateLanguageEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -5529,7 +5604,7 @@ type TemplateLanguageEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: TemplateLanguage
+  node: TemplateLanguage!
 }
 
 type TermsOfService implements Node {
@@ -5675,7 +5750,7 @@ Create, update, or delete app environment variables on an app with given ID
 """
 type UpdateEnvVarsPayload {
   clientMutationId: String
-  envVars: [EnvVar]!
+  envVars: [EnvVar!]!
   success: Boolean!
 }
 
@@ -5821,10 +5896,34 @@ type UpdateUserInfoPayload {
   user: User
 }
 
-"""
-Create scalar that ignores normal serialization/deserialization, since
-that will be handled by the multipart request spec
-"""
+input UpdateVolumeInput {
+  clientMutationId: String
+
+  """App Volume ID"""
+  id: ID!
+
+  """Volume max size in bytes"""
+  maxSizeBytes: BigInt
+
+  """Volume mount path"""
+  mountPath: String
+
+  """Whether to redeploy the active app version after workload changes"""
+  redeployApp: Boolean
+
+  """Whether the S3 endpoint is enabled"""
+  s3Enabled: Boolean
+}
+
+"""Update an app volume."""
+type UpdateVolumePayload {
+  clientMutationId: String
+  redeployedApp: Boolean!
+  success: Boolean!
+  volume: AppVolume!
+}
+
+"""A multipart file upload"""
 scalar Upload
 
 """An enumeration."""
@@ -5860,7 +5959,7 @@ type UpsertAppDomainPayload {
   clientMutationId: String
 
   """List of domains generated by the mutation"""
-  domains: [AppAlias]
+  domains: [AppAlias!]!
   success: Boolean!
 }
 
@@ -5896,17 +5995,21 @@ input UpsertAppSecretsInput {
 """Deprecated: use UpdateEnvVars."""
 type UpsertAppSecretsPayload {
   clientMutationId: String
-  secrets: [Secret]!
+  secrets: [Secret!]!
   success: Boolean!
 }
 
 input UpsertDNSRecordInput {
+  caa: DNSCAAExtraInput
   clientMutationId: String
   domainId: String!
   kind: RecordKind!
   mx: DNSMXExtraInput
   name: String!
   recordId: String
+  soa: DNSSOAExtraInput
+  srv: DNSSRVExtraInput
+  sshfp: DNSSSHFPExtraInput
   ttl: Int
   value: String!
 }
@@ -6041,7 +6144,7 @@ type User implements Node & Owner & PackageOwner {
 
 type UserConnection {
   """Contains the nodes in this connection."""
-  edges: [UserEdge]!
+  edges: [UserEdge!]!
 
   """Pagination data for this connection."""
   pageInfo: PageInfo!
@@ -6056,7 +6159,7 @@ type UserEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: User
+  node: User!
 }
 
 type UserNotification implements Node {
@@ -6072,7 +6175,7 @@ type UserNotification implements Node {
 
 type UserNotificationConnection {
   """Contains the nodes in this connection."""
-  edges: [UserNotificationEdge]!
+  edges: [UserNotificationEdge!]!
   hasPendingNotifications: Boolean!
 
   """Pagination data for this connection."""
@@ -6094,7 +6197,7 @@ type UserNotificationEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: UserNotification
+  node: UserNotification!
 }
 
 union UserNotificationKind = UserNotificationKindIncomingNamespaceInvite | UserNotificationKindIncomingPackageInvite | UserNotificationKindIncomingPackageTransfer | UserNotificationKindPublishedPackageVersion | UserNotificationKindValidateEmail
@@ -6290,8 +6393,6 @@ type WatchPackagePayload {
 
 type WebcImage implements Node {
   createdAt: DateTime!
-
-  """"""
   fileSize: BigInt!
 
   """The ID of the object"""
@@ -6325,15 +6426,7 @@ type WebcImageEdge {
   cursor: String!
 
   """The item at the end of the edge"""
-  node: WebcImage
-}
-
-input WebcSourceV1 {
-  authToken: String
-  name: String!
-  namespace: String!
-  repository: String! = "https://registry.wasmer.wtf"
-  tag: String
+  node: WebcImage!
 }
 
 enum WebcVersion {
@@ -6434,25 +6527,6 @@ type WorkloadMetrics {
   realCpuTimeMillis: BigInt!
   wallCpuTimeMillis: BigInt!
   workloads: Int!
-}
-
-input WorkloadRunnerV1 {
-  wcgi: RunnerWCGIV1
-  webProxy: RunnerWebProxyV1
-}
-
-input WorkloadRunnerWasmSourceV1 {
-  webc: WebcSourceV1!
-}
-
-input WorkloadV1 {
-  capability: CapabilityMapV1
-  name: String = null
-  runner: WorkloadRunnerV1!
-}
-
-input WorkloadV2 {
-  source: String!
 }
 
 type ZipRollout implements Node {

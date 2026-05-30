@@ -31,9 +31,9 @@
   },
   "dependencies": {
     "@zip.js/zip.js": "^2.8.8",
-    "graphql-ws": "^6.0.4",
-    "relay-compiler": "^18.0.0",
-    "relay-runtime": "^18.0.0"
+    "graphql-ws": "^6.0.7",
+    "relay-compiler": "^20.1.1",
+    "relay-runtime": "^20.1.1"
   },
   "devDependencies": {
     "@babel/preset-typescript": "^7.27.0",
@@ -43,9 +43,9 @@
     "@rollup/plugin-babel": "^6.0.4",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-typescript": "^12.1.2",
-    "@types/relay-runtime": "^18.0.2",
-    "babel-plugin-relay": "^18.2.0",
-    "graphql": "^16.10.0",
+    "@types/relay-runtime": "^20.1.1",
+    "babel-plugin-relay": "^20.1.1",
+    "graphql": "^16.12.0",
     "prettier": "^3.8.3",
     "rollup": "^4.39.0",
     "ts-node": "^10.9.2",
