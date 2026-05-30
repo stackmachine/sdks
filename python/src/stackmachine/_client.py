@@ -71,7 +71,7 @@ class StackMachine:
         http_client: Optional[httpx.Client] = None,
         http_transport: Optional[httpx.BaseTransport] = None,
     ) -> "StackMachine":
-        values = dict(settings or {})
+        values: StackMachineInitSettings = {} if settings is None else settings
         resolved_api_key = (
             api_key
             if api_key is not None
@@ -84,6 +84,14 @@ class StackMachine:
             or values.get("token")
             or ""
         )
+        settings_timeout = values.get("timeout")
+        resolved_timeout = (
+            timeout
+            if timeout is not None
+            else settings_timeout
+            if settings_timeout is not None
+            else DEFAULT_TIMEOUT
+        )
         resolved_api_url = (
             api_url
             if api_url is not None
@@ -93,26 +101,25 @@ class StackMachine:
             or values.get("apiUrl")
             or DEFAULT_API_URL
         )
+        settings_max_retries = (
+            values.get("max_network_retries")
+            if values.get("max_network_retries") is not None
+            else values.get("maxNetworkRetries")
+        )
         resolved_max_retries = (
             max_network_retries
             if max_network_retries is not None
             else maxNetworkRetries
             if maxNetworkRetries is not None
-            else values.get("max_network_retries")
-            if values.get("max_network_retries") is not None
-            else values.get("maxNetworkRetries")
-            if values.get("maxNetworkRetries") is not None
+            else settings_max_retries
+            if settings_max_retries is not None
             else DEFAULT_MAX_NETWORK_RETRIES
         )
         return cls(
             resolved_api_key,
             api_url=resolved_api_url,
             headers=headers if headers is not None else values.get("headers"),
-            timeout=(
-                timeout
-                if timeout is not None
-                else values.get("timeout", DEFAULT_TIMEOUT)
-            ),
+            timeout=resolved_timeout,
             max_network_retries=resolved_max_retries,
             http_client=(
                 http_client if http_client is not None else values.get("http_client")

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Mapping, Optional, Sequence
+from typing import Any, List, Mapping, Optional, Sequence
 
 from typing_extensions import Unpack
 
@@ -305,8 +305,8 @@ class AppsSshUsersResource:
         return SshUser.from_graphql(node)
 
     def retrieve_many(
-        self, ids: list[str], *, request_options: Optional[RequestOptionsLike] = None
-    ) -> list[Optional[SshUser]]:
+        self, ids: List[str], *, request_options: Optional[RequestOptionsLike] = None
+    ) -> List[Optional[SshUser]]:
         if not ids:
             return []
         response = self._client._query(
@@ -406,8 +406,8 @@ class AsyncAppsSshUsersResource:
         return SshUser.from_graphql(node)
 
     async def retrieve_many(
-        self, ids: list[str], *, request_options: Optional[RequestOptionsLike] = None
-    ) -> list[Optional[SshUser]]:
+        self, ids: List[str], *, request_options: Optional[RequestOptionsLike] = None
+    ) -> List[Optional[SshUser]]:
         if not ids:
             return []
         response = await self._client._query(

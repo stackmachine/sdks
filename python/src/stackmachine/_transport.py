@@ -5,7 +5,7 @@ import json
 import random
 import time
 from dataclasses import asdict, is_dataclass
-from typing import Any, AsyncIterator, Dict, Iterator, Mapping, Optional
+from typing import Any, AsyncIterator, Dict, Iterator, Mapping, Optional, cast
 from urllib.parse import urlparse, urlunparse
 
 import httpx
@@ -155,26 +155,57 @@ def _graphql_errors(body: Any) -> Optional[list[GraphQLErrorPayload]]:
 def _api_error(
     response: httpx.Response, body: Any, op_name: Optional[str]
 ) -> StackMachineAPIError:
-    options = {
-        "operation_name": op_name,
-        "status_code": response.status_code,
-        "request_id": _request_id(response.headers),
-        "code": _body_code(body),
-        "graphql_errors": _graphql_errors(body),
-    }
     message = _body_message(
         body,
         f"StackMachine API request failed with status {response.status_code}.",
     )
+    request_id = _request_id(response.headers)
+    code = _body_code(body)
+    graphql_errors = _graphql_errors(body)
     if response.status_code == 401:
-        return StackMachineAuthenticationError(message, **options)
+        return StackMachineAuthenticationError(
+            message,
+            operation_name=op_name,
+            status_code=response.status_code,
+            request_id=request_id,
+            code=code,
+            graphql_errors=graphql_errors,
+        )
     if response.status_code == 403:
-        return StackMachinePermissionError(message, **options)
+        return StackMachinePermissionError(
+            message,
+            operation_name=op_name,
+            status_code=response.status_code,
+            request_id=request_id,
+            code=code,
+            graphql_errors=graphql_errors,
+        )
     if response.status_code == 429:
-        return StackMachineRateLimitError(message, **options)
+        return StackMachineRateLimitError(
+            message,
+            operation_name=op_name,
+            status_code=response.status_code,
+            request_id=request_id,
+            code=code,
+            graphql_errors=graphql_errors,
+        )
     if 400 <= response.status_code < 500:
-        return StackMachineInvalidRequestError(message, **options)
-    return StackMachineAPIError(message, **options)
+        return StackMachineInvalidRequestError(
+            message,
+            operation_name=op_name,
+            status_code=response.status_code,
+            request_id=request_id,
+            code=code,
+            graphql_errors=graphql_errors,
+        )
+    return StackMachineAPIError(
+        message,
+        operation_name=op_name,
+        status_code=response.status_code,
+        request_id=request_id,
+        code=code,
+        graphql_errors=graphql_errors,
+    )
 
 
 def _variables_with_client_mutation_id(
@@ -467,15 +498,14 @@ class AsyncTransport:
 
         op_name = operation_name(query)
         headers = _headers(self.api_key, self.config, request_options)
-        connect_kwargs = {
-            "subprotocols": ["graphql-transport-ws"],
-            "open_timeout": _timeout(self.config, request_options),
-        }
+        subprotocols = cast(Any, ["graphql-transport-ws"])
+        open_timeout = _timeout(self.config, request_options)
         try:
             async with websockets.connect(
                 _subscription_url(self.config.api_url),
                 additional_headers=headers,
-                **connect_kwargs,
+                subprotocols=subprotocols,
+                open_timeout=open_timeout,
             ) as ws:
                 await ws.send(json.dumps({"type": "connection_init"}))
                 async for raw in ws:
@@ -519,10 +549,12 @@ class AsyncTransport:
                             operation_name=op_name,
                         )
         except TypeError:
-            async with websockets.connect(
+            legacy_connect = cast(Any, websockets.connect)
+            async with legacy_connect(
                 _subscription_url(self.config.api_url),
                 extra_headers=headers,
-                **connect_kwargs,
+                subprotocols=subprotocols,
+                open_timeout=open_timeout,
             ) as ws:
                 await ws.send(json.dumps({"type": "connection_init"}))
                 async for raw in ws:

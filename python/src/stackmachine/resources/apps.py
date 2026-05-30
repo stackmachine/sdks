@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Mapping, Optional
+from typing import Any, List, Mapping, Optional
 
 from typing_extensions import Unpack
 
@@ -89,8 +89,8 @@ class DeployAppsResource:
         return DeployApp.from_graphql(app)
 
     def retrieve_many(
-        self, ids: list[str], *, request_options: Optional[RequestOptionsLike] = None
-    ) -> list[Optional[DeployApp]]:
+        self, ids: List[str], *, request_options: Optional[RequestOptionsLike] = None
+    ) -> List[Optional[DeployApp]]:
         if not ids:
             return []
         response = self._client._query(
@@ -214,8 +214,8 @@ class AsyncDeployAppsResource:
         return DeployApp.from_graphql(app)
 
     async def retrieve_many(
-        self, ids: list[str], *, request_options: Optional[RequestOptionsLike] = None
-    ) -> list[Optional[DeployApp]]:
+        self, ids: List[str], *, request_options: Optional[RequestOptionsLike] = None
+    ) -> List[Optional[DeployApp]]:
         if not ids:
             return []
         response = await self._client._query(

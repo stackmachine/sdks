@@ -110,7 +110,7 @@ def test_request_options_override_auth_and_mutation_id() -> None:
 
     with StackMachine("default", http_transport=httpx.MockTransport(handler)) as client:
         deployment = client.deployments.create(
-            {"file": "zip://example"},
+            {"upload_url": "zip://example"},
             request_options={
                 "api_key": "override",
                 "idempotency_key": "mutation-1",
@@ -119,7 +119,7 @@ def test_request_options_override_auth_and_mutation_id() -> None:
 
     assert deployment.build_id == "build-1"
     assert seen["authorization"] == "Bearer override"
-    assert seen["body"]["variables"]["input"]["file"] == "zip://example"
+    assert seen["body"]["variables"]["input"]["uploadUrl"] == "zip://example"
     assert seen["body"]["variables"]["input"]["clientMutationId"] == "mutation-1"
 
 

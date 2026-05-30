@@ -156,6 +156,7 @@ app = stackmachine.apps.retrieve(
 cd python
 uv sync --dev
 uv run ruff check src examples tests
+uv run mypy
 uv run pytest
 uv build --no-sources
 ```

@@ -12,6 +12,7 @@ from typing import (
     Mapping,
     Optional,
     TypeVar,
+    cast,
 )
 
 from ._errors import StackMachineValidationError
@@ -299,7 +300,7 @@ class AsyncStackMachineList(Generic[T]):
         async for item in self:
             result = handler(item)
             if hasattr(result, "__await__"):
-                result = await result  # type: ignore[assignment]
+                result = await cast(Awaitable[Optional[bool]], result)
             if result is False:
                 return
 
