@@ -6,9 +6,7 @@ async function execWasmerDeploy(deployPath, subdomain) {
   try {
     const zip = await createZip(deployPath);
 
-    const upload = await client.files.upload(zip, {
-      chunkSize: 8 * 1024 * 1024,
-    });
+    const upload = await client.files.upload(zip);
 
     const deployment = await client.deployments.create({
       appName: subdomain,

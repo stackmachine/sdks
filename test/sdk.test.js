@@ -107,7 +107,6 @@ test(
 
         const uploadProgress = [];
         const uploadUrl = await client.files.upload(zip, {
-          chunkSize: 8 * 1024 * 1024,
           onProgress: (progress) => {
             uploadProgress.push(progress);
           },

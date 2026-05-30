@@ -7,7 +7,6 @@ const zip = await createZip({
   "index.php": "<html><body><h1>Hello World!</h1></body></html>",
 });
 const uploadUrl = await client.files.upload(zip, {
-  chunkSize: 8 * 1024 * 1024,
   onProgress: (progress) => {
     console.log("Uploading files... ", progress * 100, "%");
   },
