@@ -43,6 +43,48 @@ function relay() {
   };
 }
 
+function cjsCallableWrapper() {
+  return {
+    name: "cjs-callable-wrapper",
+    generateBundle(options) {
+      if (options.format !== "cjs") {
+        return;
+      }
+
+      this.emitFile({
+        type: "asset",
+        fileName: "index.cjs",
+        source: `'use strict';
+
+const core = require('./index.named.cjs');
+
+function StackMachine(apiKey, config) {
+  return Reflect.construct(
+    core.StackMachine,
+    [apiKey, config],
+    new.target || core.StackMachine,
+  );
+}
+
+Object.setPrototypeOf(StackMachine, core.StackMachine);
+StackMachine.prototype = core.StackMachine.prototype;
+Object.defineProperties(StackMachine, Object.getOwnPropertyDescriptors(core));
+Object.defineProperty(StackMachine, 'default', {
+  enumerable: true,
+  value: StackMachine,
+});
+Object.defineProperty(StackMachine, 'StackMachine', {
+  enumerable: true,
+  value: core.StackMachine,
+});
+
+module.exports = StackMachine;
+`,
+      });
+    },
+  };
+}
+
 export default {
   input: "src/index.ts",
   external: ["@zip.js/zip.js", "graphql-ws", "relay-runtime"],
@@ -56,7 +98,7 @@ export default {
       dir: "dist",
       format: "cjs",
       exports: "named",
-      entryFileNames: "[name].cjs",
+      entryFileNames: "[name].named.cjs",
     },
   ],
   plugins: [
@@ -69,6 +111,7 @@ export default {
       },
     }),
     relay(),
+    cjsCallableWrapper(),
     // nodeResolve()
   ],
 };

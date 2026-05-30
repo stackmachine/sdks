@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
+import { createRequire } from "node:module";
 import test from "node:test";
-import {
+import StackMachineDefault, {
   AutobuildApp,
   Deployment,
   StackMachine,
@@ -12,6 +13,8 @@ import {
   StackMachineRateLimitError,
   StackMachineValidationError,
 } from "../dist/index.js";
+
+const require = createRequire(import.meta.url);
 
 const jsonResponse = (body, init = {}) =>
   new Response(JSON.stringify(body), {
@@ -260,6 +263,39 @@ test("StackMachine.init remains compatible and accepts token alias", async () =>
   }
 
   assert.equal(fetch.calls[0].headers.get("authorization"), "Bearer token-key");
+});
+
+test("package supports default import and CommonJS callable construction", async () => {
+  assert.equal(StackMachineDefault, StackMachine);
+
+  const StackMachineCjs = require("..");
+  assert.equal(typeof StackMachineCjs, "function");
+  assert.equal(typeof StackMachineCjs.default, "function");
+  assert.equal(typeof StackMachineCjs.StackMachine, "function");
+  assert.equal(typeof StackMachineCjs.StackMachineAPIError, "function");
+
+  const callableClient = StackMachineCjs("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch: mockFetch(() => viewerResponse("callable")),
+  });
+  assert.ok(callableClient instanceof StackMachineCjs);
+  assert.ok(callableClient instanceof StackMachineCjs.StackMachine);
+  assert.equal(callableClient.apiUrl, "https://api.example.test/graphql");
+  assert.ok(callableClient.apps);
+  assert.ok(callableClient.deployments);
+
+  const constructedClient = new StackMachineCjs("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch: mockFetch(() => viewerResponse("constructed")),
+  });
+  assert.ok(constructedClient instanceof StackMachineCjs);
+  assert.ok(constructedClient instanceof StackMachineCjs.StackMachine);
+
+  const namedClient = new StackMachineCjs.StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch: mockFetch(() => viewerResponse("named")),
+  });
+  assert.ok(namedClient instanceof StackMachineCjs.StackMachine);
 });
 
 test("deployments.create uses the autobuild mutation and apps.autobuild remains an alias", async () => {

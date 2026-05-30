@@ -2128,3 +2128,5 @@ export class StackMachine implements SdkContext {
     };
   }
 }
+
+export default StackMachine;
