@@ -3,8 +3,10 @@
   "version": "0.2.1",
   "repository": {
     "type": "git",
-    "url": "https://github.com/stackmachine/stackmachine-js"
+    "url": "https://github.com/stackmachine/sdks",
+    "directory": "js"
   },
+  "homepage": "https://github.com/stackmachine/sdks/tree/main/js",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",

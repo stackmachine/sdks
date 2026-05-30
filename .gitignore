@@ -1,6 +1,5 @@
-/dist
-/build
-/node_modules
-examples/node_modules
+dist
+build
+node_modules
 
 .env
