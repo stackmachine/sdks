@@ -43,11 +43,9 @@ Both clients accept JavaScript-style aliases during initialization:
 
 ```python
 stackmachine = StackMachine.init(
-    {
-        "token": "sk_stackmachine_...",
-        "apiUrl": "https://api.stackmachine.com/graphql",
-        "maxNetworkRetries": 2,
-    }
+    token="sk_stackmachine_...",
+    apiUrl="https://api.stackmachine.com/graphql",
+    maxNetworkRetries=2,
 )
 ```
 
@@ -79,10 +77,8 @@ async for app in apps:
 
 ```python
 deployment = stackmachine.deployments.create(
-    {
-        "file": "https://example.com/app.zip",
-        "name": "my-app",
-    }
+    upload_url="https://example.com/app.zip",
+    app_name="my-app",
 )
 
 version = deployment.wait()
@@ -90,10 +86,8 @@ version = deployment.wait()
 
 ```python
 deployment = stackmachine.apps.autobuild(
-    {
-        "file": "https://example.com/app.zip",
-        "name": "my-app",
-    }
+    upload_url="https://example.com/app.zip",
+    app_name="my-app",
 )
 ```
 
@@ -140,13 +134,15 @@ key = stackmachine.apps.ssh.users.authorized_keys.create(
 Most methods accept `request_options` for per-request configuration:
 
 ```python
+from stackmachine import RequestOptions
+
 app = stackmachine.apps.retrieve(
     "app_id",
-    request_options={
-        "api_key": "sk_stackmachine_other",
-        "timeout": 30,
-        "idempotency_key": "deploy-123",
-    },
+    request_options=RequestOptions(
+        api_key="sk_stackmachine_other",
+        timeout=30,
+        idempotency_key="deploy-123",
+    ),
 )
 ```
 
