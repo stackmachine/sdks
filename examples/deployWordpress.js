@@ -6,7 +6,7 @@ const client = new StackMachine(STACKMACHINE_API_KEY);
 
 console.log("Creating build...");
 
-const build = await client.apps.autobuild({
+const deployment = await client.deployments.create({
   appName: "wp-app-xas1",
   repoUrl: "https://github.com/wordpress/wordpress",
   branch: "6.8.3",
@@ -27,12 +27,13 @@ const build = await client.apps.autobuild({
 });
 
 console.log("Deploying app...");
-build.subscribeToProgress(({ kind, message, datetime, stream }) => {
-  console.log(datetime, stream, kind, message);
-});
 let startTime = new Date();
 console.log("Waiting for the app to be built...");
-const app = await build.finish();
+const app = await deployment.wait({
+  onProgress: ({ kind, message, datetime, stream }) => {
+    console.log(datetime, stream, kind, message);
+  },
+});
 console.log("App built!", app);
 console.log(app.kind);
 console.log("Time taken:", new Date().getTime() - startTime.getTime(), "ms");

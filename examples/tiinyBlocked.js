@@ -8,7 +8,7 @@ async function execWasmerDeploy(deployPath, subdomain) {
 
     const upload = await client.files.upload(zip);
 
-    const build = await client.apps.autobuild({
+    const deployment = await client.deployments.create({
       appName: subdomain,
       owner: "tiinyhost",
       uploadUrl: upload,
@@ -18,12 +18,13 @@ async function execWasmerDeploy(deployPath, subdomain) {
     console.log(`Deploy: ${deployPath}`);
     console.debug(`App successfully deployed: ${subdomain}`);
     console.log("Deploying app...");
-    build.subscribeToProgress(({ kind, message, datetime, stream }) => {
-      console.log(datetime, stream, kind, message);
-    });
     let startTime = new Date();
     console.log("Waiting for the app to be built...");
-    const app = await build.finish();
+    const app = await deployment.wait({
+      onProgress: ({ kind, message, datetime, stream }) => {
+        console.log(datetime, stream, kind, message);
+      },
+    });
     console.log("App built!", app);
     console.log(app.kind);
     console.log(

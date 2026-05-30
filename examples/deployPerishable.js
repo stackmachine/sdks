@@ -14,7 +14,7 @@ const uploadUrl = await client.files.upload(zip, (progress) => {
   console.log("Uploading files... ", progress * 100, "%");
 });
 
-const build = await client.apps.autobuild({
+const deployment = await client.deployments.create({
   appName: "perishable-app",
   owner: "stackmachine",
   uploadUrl: uploadUrl,
@@ -22,12 +22,13 @@ const build = await client.apps.autobuild({
 });
 
 console.log("Deploying app...");
-build.subscribeToProgress(({ kind, message, datetime, stream }) => {
-  console.log(datetime, stream, kind, message);
-});
 let startTime = new Date();
 console.log("Waiting for the app to be built...");
-const appVersion = await build.finish();
+const appVersion = await deployment.wait({
+  onProgress: ({ kind, message, datetime, stream }) => {
+    console.log(datetime, stream, kind, message);
+  },
+});
 console.log("App built!", appVersion);
 console.log(appVersion.app.willPerishAt);
 console.log("Time taken:", new Date().getTime() - startTime.getTime(), "ms");

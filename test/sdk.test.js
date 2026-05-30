@@ -114,21 +114,21 @@ test(
         assert.ok(uploadProgress.some((value) => value > 0 && value < 1));
         assert.equal(uploadProgress.at(-1), 1);
 
-        const build = await client.apps.autobuild({
+        const deployment = await client.deployments.create({
           appName,
           owner: viewer.username,
           uploadUrl,
         });
 
-        assert.equal(typeof build.buildId, "string");
-        assert.notEqual(build.buildId.length, 0);
+        assert.equal(typeof deployment.buildId, "string");
+        assert.notEqual(deployment.buildId.length, 0);
 
         const buildProgress = [];
-        build.subscribeToProgress((entry) => {
-          buildProgress.push(entry);
+        const appVersion = await deployment.wait({
+          onProgress: (entry) => {
+            buildProgress.push(entry);
+          },
         });
-
-        const appVersion = await build.finish();
         deployedAppId = appVersion.app.id;
 
         assert.equal(typeof appVersion.id, "string");

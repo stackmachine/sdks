@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  AutobuildApp,
+  Deployment,
   StackMachine,
   StackMachineAPIError,
   StackMachineAuthenticationError,
@@ -49,6 +51,28 @@ const appNode = (id) => ({
   favicon: null,
   screenshot: null,
 });
+
+const appVersionNode = (id = "version_1", appId = "app_1") => ({
+  id,
+  app: appNode(appId),
+});
+
+const deploymentCreateResponse = (buildId = "build_1", success = true) =>
+  jsonResponse({
+    data: {
+      deployViaAutobuild: {
+        success,
+        buildId,
+      },
+    },
+  });
+
+const deploymentStatusResponse = (status) =>
+  jsonResponse({
+    data: {
+      autobuildDeploymentStatus: status,
+    },
+  });
 
 const appsListResponse = (
   items,
@@ -99,6 +123,35 @@ function mockFetch(handler) {
   return fetch;
 }
 
+function mockSubscriptionClient(events) {
+  const subscriptions = [];
+  const client = {
+    _getFragmentData: (_, data) => data,
+    _requestSubscription: (_subscription, variables, handlers, options) => {
+      const subscription = {
+        variables,
+        options,
+        disposed: false,
+      };
+      subscriptions.push(subscription);
+      queueMicrotask(() => {
+        for (const event of events) {
+          handlers.onNext?.({
+            autobuildDeployment: event,
+          });
+        }
+        handlers.onCompleted?.();
+      });
+      return {
+        dispose: () => {
+          subscription.disposed = true;
+        },
+      };
+    },
+  };
+  return { client, subscriptions };
+}
+
 test("clients keep independent keys, endpoints, caches, and resources", async () => {
   const fetchA = mockFetch(() => viewerResponse("client-a"));
   const fetchB = mockFetch(() => viewerResponse("client-b"));
@@ -113,6 +166,7 @@ test("clients keep independent keys, endpoints, caches, and resources", async ()
 
   assert.notEqual(clientA.environment, clientB.environment);
   assert.notEqual(clientA.apps, clientB.apps);
+  assert.notEqual(clientA.deployments, clientB.deployments);
   assert.notEqual(clientA.files, clientB.files);
 
   assert.deepEqual(await clientA.viewer({ force: false }), {
@@ -205,6 +259,194 @@ test("StackMachine.init remains compatible and accepts token alias", async () =>
   }
 
   assert.equal(fetch.calls[0].headers.get("authorization"), "Bearer token-key");
+});
+
+test("deployments.create uses the autobuild mutation and apps.autobuild remains an alias", async () => {
+  const createFetch = mockFetch(() => deploymentCreateResponse("build_create"));
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch: createFetch,
+  });
+
+  const deployment = await client.deployments.create(
+    {
+      appName: "app-create",
+      owner: "tester",
+      uploadUrl: "https://upload.example.test/app.zip",
+    },
+    {
+      apiKey: "request-key",
+      headers: { "x-request": "yes" },
+      clientMutationId: "cmid-deploy",
+    },
+  );
+
+  assert.ok(deployment instanceof Deployment);
+  assert.ok(deployment instanceof AutobuildApp);
+  assert.equal(deployment.buildId, "build_create");
+  assert.equal(createFetch.calls[0].body.operationName, "srcAutobuildMutation");
+  assert.equal(
+    createFetch.calls[0].headers.get("authorization"),
+    "Bearer request-key",
+  );
+  assert.equal(createFetch.calls[0].headers.get("x-request"), "yes");
+  assert.deepEqual(createFetch.calls[0].body.variables.input, {
+    appName: "app-create",
+    owner: "tester",
+    uploadUrl: "https://upload.example.test/app.zip",
+    clientMutationId: "cmid-deploy",
+  });
+
+  const aliasFetch = mockFetch(() => deploymentCreateResponse("build_alias"));
+  const aliasClient = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch: aliasFetch,
+  });
+
+  const aliasDeployment = await aliasClient.apps.autobuild({
+    appName: "app-alias",
+    owner: "tester",
+    uploadUrl: "https://upload.example.test/app.zip",
+  });
+
+  assert.ok(aliasDeployment instanceof Deployment);
+  assert.equal(aliasDeployment.buildId, "build_alias");
+  assert.equal(aliasFetch.calls[0].body.operationName, "srcAutobuildMutation");
+});
+
+test("deployments.retrieve maps status/appVersion and returns null for missing deployments", async () => {
+  const fetch = mockFetch((_, index) => {
+    if (index === 0) {
+      return deploymentStatusResponse(null);
+    }
+    return deploymentStatusResponse({
+      buildId: "build_found",
+      status: "SUCCESS",
+      appVersion: appVersionNode("version_1", "app_1"),
+    });
+  });
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  assert.equal(await client.deployments.retrieve("build_missing"), null);
+
+  const deployment = await client.deployments.retrieve("build_found", {
+    apiKey: "request-key",
+  });
+
+  assert.ok(deployment instanceof Deployment);
+  assert.equal(deployment.buildId, "build_found");
+  assert.equal(deployment.status, "SUCCESS");
+  assert.equal(deployment.appVersion.id, "version_1");
+  assert.equal(deployment.appVersion.app.id, "app_1");
+  assert.equal(await deployment.wait(), deployment.appVersion);
+  assert.equal(
+    fetch.calls[0].body.operationName,
+    "srcGetDeploymentStatusQuery",
+  );
+  assert.equal(fetch.calls[0].body.variables.buildId, "build_missing");
+  assert.equal(fetch.calls[1].body.variables.buildId, "build_found");
+  assert.equal(
+    fetch.calls[1].headers.get("authorization"),
+    "Bearer request-key",
+  );
+});
+
+test("deployment.wait emits progress, resolves on complete, and preserves request options", async () => {
+  const { client, subscriptions } = mockSubscriptionClient([
+    {
+      kind: "LOG",
+      message: "Installing dependencies",
+      datetime: "2026-01-01T00:00:00Z",
+      stream: "STDOUT",
+      appVersion: null,
+    },
+    {
+      kind: "COMPLETE",
+      message: null,
+      datetime: "2026-01-01T00:00:01Z",
+      stream: null,
+      appVersion: appVersionNode("version_complete", "app_complete"),
+    },
+  ]);
+  const deployment = new Deployment("build_wait", client);
+  const progress = [];
+
+  const appVersion = await deployment.wait(
+    {
+      onProgress: (entry) => {
+        progress.push(entry);
+      },
+    },
+    { apiKey: "subscription-key" },
+  );
+
+  assert.equal(appVersion.id, "version_complete");
+  assert.equal(appVersion.app.id, "app_complete");
+  assert.equal(deployment.status, "SUCCESS");
+  assert.equal(deployment.appVersion, appVersion);
+  assert.equal(progress.length, 1);
+  assert.equal(progress[0].kind, "LOG");
+  assert.ok(progress[0].datetime instanceof Date);
+  assert.equal(subscriptions.length, 1);
+  assert.deepEqual(subscriptions[0].variables, { buildId: "build_wait" });
+  assert.equal(subscriptions[0].options.apiKey, "subscription-key");
+  assert.equal(subscriptions[0].disposed, true);
+});
+
+test("deployment.wait rejects typed errors on failed deployments", async () => {
+  const { client } = mockSubscriptionClient([
+    {
+      kind: "FAILED",
+      message: "Build failed",
+      datetime: "2026-01-01T00:00:00Z",
+      stream: "STDERR",
+      appVersion: null,
+    },
+  ]);
+  const deployment = new Deployment("build_failed", client);
+
+  await assert.rejects(deployment.wait(), (error) => {
+    assert.ok(error instanceof StackMachineAPIError);
+    assert.equal(error.message, "Build failed");
+    assert.equal(error.operationName, "srcAutobuildSubscription");
+    return true;
+  });
+  assert.equal(deployment.status, "FAILED");
+});
+
+test("finish and subscribeToProgress remain deployment compatibility aliases", async () => {
+  const { client } = mockSubscriptionClient([
+    {
+      kind: "LOG",
+      message: "Preparing",
+      datetime: "2026-01-01T00:00:00Z",
+      stream: "STDOUT",
+      appVersion: null,
+    },
+    {
+      kind: "COMPLETE",
+      message: null,
+      datetime: "2026-01-01T00:00:01Z",
+      stream: null,
+      appVersion: appVersionNode("version_alias", "app_alias"),
+    },
+  ]);
+  const deployment = new Deployment("build_alias_wait", client);
+  const progress = [];
+
+  deployment.subscribeToProgress((entry) => {
+    progress.push(entry);
+  });
+  const appVersion = await deployment.finish();
+
+  assert.equal(appVersion.id, "version_alias");
+  assert.deepEqual(
+    progress.map((entry) => entry.message),
+    ["Preparing"],
+  );
 });
 
 test("list methods return Stripe-like list objects", async () => {

@@ -15,6 +15,7 @@ import { srcGetAppAliasesQuery } from "__generated__/srcGetAppAliasesQuery.graph
 import { srcGetAppByIdQuery } from "__generated__/srcGetAppByIdQuery.graphql";
 import { srcGetAppByNameQuery } from "__generated__/srcGetAppByNameQuery.graphql";
 import { srcGetAppLogsQuery } from "__generated__/srcGetAppLogsQuery.graphql";
+import { srcGetDeploymentStatusQuery } from "__generated__/srcGetDeploymentStatusQuery.graphql";
 import { srcDeleteAppDomainMutation } from "__generated__/srcDeleteAppDomainMutation.graphql";
 import { srcUpsertAppDomainMutation } from "__generated__/srcUpsertAppDomainMutation.graphql";
 import { srcVerifyAppDomainMutation } from "__generated__/srcVerifyAppDomainMutation.graphql";
@@ -583,25 +584,124 @@ export type AutoBuildProgressData = {
   stream: LogStream | undefined | null;
 };
 
+export type DeploymentProgress = AutoBuildProgressData;
+export type DeploymentProgressKind = AutoBuildDeployAppLogKind;
+export type DeploymentStatus =
+  | "CANCELLED"
+  | "FAILED"
+  | "INTERNAL_ERROR"
+  | "QUEUED"
+  | "RUNNING"
+  | "SUCCESS"
+  | "TIMEOUT"
+  | "WORKING"
+  | "%future added value";
+
+export type DeploymentWaitOptions = {
+  onProgress?: (entry: DeploymentProgress) => void;
+};
+
 export type Viewer = {
   username: string;
 };
 
-export class AutobuildApp {
+function isFailedDeploymentStatus(status: DeploymentStatus | undefined) {
+  return (
+    status === "CANCELLED" ||
+    status === "FAILED" ||
+    status === "INTERNAL_ERROR" ||
+    status === "TIMEOUT"
+  );
+}
+
+function isCompleteDeploymentStatus(status: DeploymentStatus | undefined) {
+  return status === "SUCCESS";
+}
+
+export class Deployment {
   buildId: string;
+  status?: DeploymentStatus;
   appVersion: DeployAppVersion | null = null;
   subscription: { dispose: () => void } | null = null;
-  pendingLogs: AutoBuildProgressData[] = [];
-  onProgress: ((data: AutoBuildProgressData) => void) | null = null;
-  completedPromise: Promise<DeployAppVersion> | null = null;
+  pendingLogs: DeploymentProgress[] = [];
+  onProgress: ((data: DeploymentProgress) => void) | null = null;
+  private waitPromise: Promise<DeployAppVersion> | null = null;
 
   constructor(
     buildId: string,
     private client: SdkContext,
-    options?: StackMachineRequestOptions,
+    initial?: {
+      status?: DeploymentStatus;
+      appVersion?: DeployAppVersion | null;
+    },
+    private defaultRequestOptions?: StackMachineRequestOptions,
   ) {
     this.buildId = buildId;
-    this.completedPromise = new Promise((resolve, reject) => {
+    this.status = initial?.status;
+    this.appVersion = initial?.appVersion ?? null;
+  }
+
+  private setProgressCallback(callback: (data: DeploymentProgress) => void) {
+    if (this.pendingLogs.length > 0) {
+      for (const data of this.pendingLogs) {
+        callback(data);
+      }
+      this.pendingLogs = [];
+    }
+    this.onProgress = callback;
+  }
+
+  private dispatchProgress(progress: DeploymentProgress) {
+    if (this.onProgress) {
+      this.onProgress(progress);
+    } else {
+      this.pendingLogs.push(progress);
+    }
+  }
+
+  private createMissingAppVersionError() {
+    return new StackMachineAPIError({
+      message:
+        "Error when building the app: build finished without deployed app.",
+      operationName: "srcAutobuildSubscription",
+    });
+  }
+
+  private createTerminalStatusError() {
+    return new StackMachineAPIError({
+      message: `The app build ended with status ${this.status}.`,
+      operationName: "srcAutobuildSubscription",
+    });
+  }
+
+  private startWait(
+    requestOptions?: StackMachineRequestOptions,
+  ): Promise<DeployAppVersion> {
+    if (this.appVersion && isCompleteDeploymentStatus(this.status)) {
+      return Promise.resolve(this.appVersion);
+    }
+    if (isFailedDeploymentStatus(this.status)) {
+      return Promise.reject(this.createTerminalStatusError());
+    }
+    if (this.waitPromise) {
+      return this.waitPromise;
+    }
+
+    this.waitPromise = new Promise((resolve, reject) => {
+      const cleanup = () => {
+        this.onProgress = null;
+        this.subscription?.dispose();
+        this.subscription = null;
+      };
+      const settleResolve = (value: DeployAppVersion) => {
+        cleanup();
+        resolve(value);
+      };
+      const settleReject = (error: StackMachineError) => {
+        cleanup();
+        reject(error);
+      };
+
       this.subscription =
         this.client._requestSubscription<srcAutobuildSubscription>(
           graphql`
@@ -629,7 +729,8 @@ export class AutobuildApp {
                 data.autobuildDeployment;
 
               if (kind === "FAILED") {
-                reject(
+                this.status = "FAILED";
+                settleReject(
                   new StackMachineAPIError({
                     message: message || "The app build failed.",
                     operationName: "srcAutobuildSubscription",
@@ -638,6 +739,7 @@ export class AutobuildApp {
                 return;
               }
               if (kind === "COMPLETE") {
+                this.status = "SUCCESS";
                 if (appVersion !== undefined && appVersion !== null) {
                   const appVersionData =
                     this.client._getFragmentData<srcDeployAppVersionData$data>(
@@ -648,16 +750,10 @@ export class AutobuildApp {
                     appVersionData,
                     this.client,
                   );
-                  resolve(this.appVersion);
+                  settleResolve(this.appVersion);
                   return;
                 }
-                reject(
-                  new StackMachineAPIError({
-                    message:
-                      "Error when building the app: build finished without deployed app.",
-                    operationName: "srcAutobuildSubscription",
-                  }),
-                );
+                settleReject(this.createMissingAppVersionError());
                 return;
               }
 
@@ -667,59 +763,130 @@ export class AutobuildApp {
                 datetime: parseDate(datetime)!,
                 stream,
               };
-              if (this.onProgress) {
-                this.onProgress(progress);
-              } else {
-                this.pendingLogs.push(progress);
-              }
+              this.dispatchProgress(progress);
             },
             onCompleted: () => {
-              this.onProgress = null;
-              this.subscription?.dispose();
-              this.subscription = null;
-              if (!this.appVersion) {
-                reject(
-                  new StackMachineAPIError({
-                    message:
-                      "Error when building the app: build finished without deployed app.",
-                    operationName: "srcAutobuildSubscription",
-                  }),
-                );
+              if (this.appVersion) {
+                settleResolve(this.appVersion);
               } else {
-                resolve(this.appVersion);
+                settleReject(this.createMissingAppVersionError());
               }
             },
             onError: (error) => {
-              reject(stackMachineErrorFromUnknown(error));
+              settleReject(
+                stackMachineErrorFromUnknown(error, "srcAutobuildSubscription"),
+              );
             },
           },
-          options,
+          requestOptions ?? this.defaultRequestOptions,
         );
     });
+    return this.waitPromise;
   }
 
-  subscribeToProgress(callback: (data: AutoBuildProgressData) => void) {
-    if (this.pendingLogs.length > 0) {
-      for (const data of this.pendingLogs) {
-        callback(data);
-      }
-      this.pendingLogs = [];
+  async wait(
+    options?: DeploymentWaitOptions,
+    requestOptions?: StackMachineRequestOptions,
+  ): Promise<DeployAppVersion> {
+    if (options?.onProgress) {
+      this.setProgressCallback(options.onProgress);
     }
-    this.onProgress = callback;
+    return this.startWait(requestOptions);
   }
 
+  /** @deprecated Use `wait({ onProgress })` instead. */
+  subscribeToProgress(callback: (data: DeploymentProgress) => void) {
+    this.setProgressCallback(callback);
+    this.startWait().catch(() => {});
+  }
+
+  /** @deprecated Use `wait()` instead. */
   async finish(): Promise<DeployAppVersion> {
-    const app = await this.completedPromise;
-    this.subscription?.dispose();
-    this.subscription = null;
-    if (!app) {
+    return this.startWait();
+  }
+}
+
+/** @deprecated Use `Deployment` instead. */
+export { Deployment as AutobuildApp };
+
+export class DeploymentsResource {
+  constructor(private client: SdkContext) {}
+
+  async create(
+    input: DeployAppAutobuildInput,
+    options?: StackMachineRequestOptions,
+  ): Promise<Deployment> {
+    const response = await this.client._mutation<srcAutobuildMutation>(
+      graphql`
+        mutation srcAutobuildMutation($input: DeployViaAutobuildInput!) {
+          deployViaAutobuild(input: $input) {
+            success
+            buildId
+          }
+        }
+      `,
+      {
+        input,
+      },
+      options,
+    );
+    const payload = requiredPayload(
+      response.deployViaAutobuild,
+      "The app could not be built.",
+      "srcAutobuildMutation",
+    );
+    if (!payload.success) {
       throw new StackMachineAPIError({
-        message:
-          "Error when building the app: build finished without deployed app.",
-        operationName: "srcAutobuildSubscription",
+        message: "The app could not be built.",
+        operationName: "srcAutobuildMutation",
       });
     }
-    return app;
+    return new Deployment(payload.buildId, this.client, undefined, options);
+  }
+
+  async retrieve(
+    buildId: string,
+    options?: StackMachineRequestOptions,
+  ): Promise<Deployment | null> {
+    const query = await this.client._query<srcGetDeploymentStatusQuery>(
+      graphql`
+        query srcGetDeploymentStatusQuery($buildId: UUID!) {
+          autobuildDeploymentStatus(buildId: $buildId) {
+            buildId
+            status
+            appVersion {
+              ...srcDeployAppVersionData
+            }
+          }
+        }
+      `,
+      { buildId },
+      options,
+    );
+    const status = query?.autobuildDeploymentStatus;
+    if (!status) {
+      return null;
+    }
+
+    const appVersionData = status.appVersion
+      ? this.client._getFragmentData<srcDeployAppVersionData$data>(
+          nodeAppVersion,
+          status.appVersion,
+        )
+      : null;
+    const appVersion = appVersionData
+      ? new DeployAppVersion(appVersionData, this.client)
+      : null;
+
+    return new Deployment(
+      status.buildId,
+      this.client,
+      {
+        status: status.status,
+        appVersion,
+      },
+      options,
+    );
   }
 }
 
@@ -1593,7 +1760,10 @@ export class DeployAppsResource {
   versions: AppsVersionsResource;
   ssh: AppsSshResource;
 
-  constructor(private client: SdkContext) {
+  constructor(
+    private client: SdkContext,
+    private deployments: DeploymentsResource,
+  ) {
     this.domains = new AppsDomainsResource(client);
     this.versions = new AppsVersionsResource(client);
     this.ssh = new AppsSshResource(client);
@@ -1748,33 +1918,8 @@ export class DeployAppsResource {
   async autobuild(
     input: DeployAppAutobuildInput,
     options?: StackMachineRequestOptions,
-  ): Promise<AutobuildApp> {
-    const response = await this.client._mutation<srcAutobuildMutation>(
-      graphql`
-        mutation srcAutobuildMutation($input: DeployViaAutobuildInput!) {
-          deployViaAutobuild(input: $input) {
-            success
-            buildId
-          }
-        }
-      `,
-      {
-        input,
-      },
-      options,
-    );
-    const payload = requiredPayload(
-      response.deployViaAutobuild,
-      "The app could not be built.",
-      "srcAutobuildMutation",
-    );
-    if (!payload.success) {
-      throw new StackMachineAPIError({
-        message: "The app could not be built.",
-        operationName: "srcAutobuildMutation",
-      });
-    }
-    return new AutobuildApp(payload.buildId, this.client, options);
+  ): Promise<Deployment> {
+    return this.deployments.create(input, options);
   }
 }
 
@@ -1797,6 +1942,7 @@ export class FilesResource {
 
 export class StackMachine implements SdkContext {
   environment: Environment;
+  deployments: DeploymentsResource;
   apps: DeployAppsResource;
   files: FilesResource;
   readonly apiUrl: string;
@@ -1818,7 +1964,8 @@ export class StackMachine implements SdkContext {
       fetch: config.fetch,
     };
     this.environment = createEnvironment(environmentOptions);
-    this.apps = new DeployAppsResource(this);
+    this.deployments = new DeploymentsResource(this);
+    this.apps = new DeployAppsResource(this, this.deployments);
     this.files = new FilesResource(this);
   }
 

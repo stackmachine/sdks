@@ -42,13 +42,28 @@ const zip = await createZip({
   "index.php": "<html><body><h1>Hello StackMachine</h1></body></html>",
 });
 const uploadUrl = await client.files.upload(zip);
-const build = await client.apps.autobuild({
+const deployment = await client.deployments.create({
   appName: "hello-stackmachine",
   owner: "stackmachine",
   uploadUrl,
 });
-const appVersion = await build.finish();
+const appVersion = await deployment.wait({
+  onProgress: ({ datetime, stream, kind, message }) => {
+    console.log(datetime, stream, kind, message);
+  },
+});
 const app = await client.apps.retrieve(appVersion.app.id);
+```
+
+`client.apps.autobuild(...)` is still supported as a deprecated compatibility alias for `client.deployments.create(...)`; its returned deployment still supports the old `.finish()` and `.subscribeToProgress(...)` methods.
+
+Resume an existing deployment by build ID:
+
+```js
+const deployment = await client.deployments.retrieve(buildId);
+if (deployment) {
+  const appVersion = await deployment.wait();
+}
 ```
 
 List APIs return Stripe-style paginated list objects:
