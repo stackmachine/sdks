@@ -62,6 +62,8 @@ import {
   resolveUploadOptions,
   type StackMachineUploadOptions,
   type StackMachineUploadProgress,
+  type StackMachineZipFile,
+  type StackMachineZipFiles,
 } from "./upload";
 
 const {
@@ -94,6 +96,8 @@ export {
   type StackMachinePaginationParams,
   type StackMachineUploadOptions,
   type StackMachineUploadProgress,
+  type StackMachineZipFile,
+  type StackMachineZipFiles,
 };
 
 export type StackMachineConfig = {
@@ -200,6 +204,13 @@ export type DeployAppAutobuildInput = {
   startCmd?: string | null;
   uploadUrl?: string | null;
   waitForScreenshotGeneration?: boolean | null;
+};
+export type DeploymentCreateInput = DeployAppAutobuildInput & {
+  files?: StackMachineZipFiles | null;
+};
+export type DeploymentCreateOptions = StackMachineRequestOptions & {
+  chunkSize?: number;
+  onUploadProgress?: (progress: StackMachineUploadProgress) => void;
 };
 export type AppsDomainsCreateInput = {
   app: string;
@@ -849,7 +860,10 @@ export class Deployment {
 export { Deployment as AutobuildApp };
 
 export class DeploymentsResource {
-  constructor(private client: SdkContext) {}
+  constructor(
+    private client: SdkContext,
+    private filesResource: FilesResource,
+  ) {}
 
   private deploymentFromStatus(
     status: NonNullable<
@@ -902,9 +916,34 @@ export class DeploymentsResource {
   }
 
   async create(
-    input: DeployAppAutobuildInput,
-    options?: StackMachineRequestOptions,
+    input: DeploymentCreateInput,
+    options?: DeploymentCreateOptions,
   ): Promise<Deployment> {
+    const { chunkSize, onUploadProgress, ...requestOptions } = options ?? {};
+    const { files, ...deploymentInput } = input;
+    let resolvedInput: DeployAppAutobuildInput = deploymentInput;
+
+    if (files) {
+      if (deploymentInput.uploadUrl) {
+        throw new StackMachineValidationError({
+          message:
+            "`files` cannot be passed together with `uploadUrl`; pass one deployment source.",
+          code: "invalid_deployment_source",
+          param: "files",
+        });
+      }
+      const archive = await createZip(files);
+      const uploadUrl = await this.filesResource.upload(archive, {
+        ...requestOptions,
+        chunkSize,
+        onProgress: onUploadProgress,
+      });
+      resolvedInput = {
+        ...deploymentInput,
+        uploadUrl,
+      };
+    }
+
     const response = await this.client._mutation<srcAutobuildMutation>(
       graphql`
         mutation srcAutobuildMutation($input: DeployViaAutobuildInput!) {
@@ -915,9 +954,9 @@ export class DeploymentsResource {
         }
       `,
       {
-        input,
+        input: resolvedInput,
       },
-      options,
+      requestOptions,
     );
     const payload = requiredPayload(
       response.deployViaAutobuild,
@@ -930,7 +969,12 @@ export class DeploymentsResource {
         operationName: "srcAutobuildMutation",
       });
     }
-    return new Deployment(payload.buildId, this.client, undefined, options);
+    return new Deployment(
+      payload.buildId,
+      this.client,
+      undefined,
+      requestOptions,
+    );
   }
 
   async retrieve(
@@ -2110,8 +2154,8 @@ export class DeployAppsResource {
   }
 
   async autobuild(
-    input: DeployAppAutobuildInput,
-    options?: StackMachineRequestOptions,
+    input: DeploymentCreateInput,
+    options?: DeploymentCreateOptions,
   ): Promise<Deployment> {
     return this.deployments.create(input, options);
   }
@@ -2169,13 +2213,13 @@ export class StackMachine implements SdkContext {
       fetch: this.fetch,
     };
     this.environment = createEnvironment(environmentOptions);
-    this.deployments = new DeploymentsResource(this);
-    this.apps = new DeployAppsResource(this, this.deployments);
     this.files = new FilesResource(this, {
       fetch: this.fetch,
       timeout: this.timeout,
       maxNetworkRetries: this.maxNetworkRetries,
     });
+    this.deployments = new DeploymentsResource(this, this.files);
+    this.apps = new DeployAppsResource(this, this.deployments);
   }
 
   static async init(settings: StackMachineRegistryConfig) {

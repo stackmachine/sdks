@@ -3,22 +3,45 @@ from __future__ import annotations
 import asyncio
 import threading
 import warnings
-from typing import Any, Callable, Mapping, Optional
+from typing import Any, Callable, Mapping, Optional, cast
 
 from typing_extensions import Unpack
 
-from .._errors import StackMachineAPIError
+from .._errors import StackMachineAPIError, StackMachineValidationError
 from .._graphql import operations as gql
 from .._models import DeployAppVersion, DeploymentProgress
 from .._types import (
+    CreateZipFiles,
     DeployAppAutobuildInput,
     DeploymentProgressCallback,
     RequestOptionsLike,
+    UploadProgressCallback,
 )
+from .._uploads import create_zip
 from .._utils import camelize, merge_input
 from ._shared import required_payload, resource_missing_error
 
 FAILED_STATUSES = {"CANCELLED", "FAILED", "INTERNAL_ERROR", "TIMEOUT"}
+
+
+def _merge_deployment_create_input(
+    input: Optional[DeployAppAutobuildInput],
+    kwargs: DeployAppAutobuildInput,
+) -> tuple[dict[str, object], Optional[CreateZipFiles]]:
+    deployment_input = merge_input(input, **kwargs)
+    files = deployment_input.pop("files", None)
+    has_upload_url = (
+        deployment_input.get("upload_url") is not None
+        or deployment_input.get("uploadUrl") is not None
+    )
+    if files is not None and has_upload_url:
+        raise StackMachineValidationError(
+            "`files` cannot be passed together with `upload_url`; "
+            "pass one deployment source.",
+            code="invalid_deployment_source",
+            param="files",
+        )
+    return deployment_input, cast(Optional[CreateZipFiles], files)
 
 
 class Deployment:
@@ -275,11 +298,27 @@ class DeploymentsResource:
         input: Optional[DeployAppAutobuildInput] = None,
         *,
         request_options: Optional[RequestOptionsLike] = None,
+        chunk_size: Optional[int] = None,
+        on_upload_progress: Optional[UploadProgressCallback] = None,
+        timeout: Optional[float] = None,
+        max_network_retries: Optional[int] = None,
         **kwargs: Unpack[DeployAppAutobuildInput],
     ) -> Deployment:
+        deployment_input, files = _merge_deployment_create_input(input, kwargs)
+        if files is not None:
+            upload_url = self._client.files.upload(
+                create_zip(files),
+                chunk_size=chunk_size,
+                on_progress=on_upload_progress,
+                timeout=timeout,
+                max_network_retries=max_network_retries,
+                request_options=request_options,
+            )
+            deployment_input["upload_url"] = upload_url
+
         response = self._client._mutation(
             gql.AUTOBUILD_MUTATION,
-            {"input": camelize(merge_input(input, **kwargs))},
+            {"input": camelize(deployment_input)},
             request_options=request_options,
         )
         payload = required_payload(
@@ -358,11 +397,27 @@ class AsyncDeploymentsResource:
         input: Optional[DeployAppAutobuildInput] = None,
         *,
         request_options: Optional[RequestOptionsLike] = None,
+        chunk_size: Optional[int] = None,
+        on_upload_progress: Optional[UploadProgressCallback] = None,
+        timeout: Optional[float] = None,
+        max_network_retries: Optional[int] = None,
         **kwargs: Unpack[DeployAppAutobuildInput],
     ) -> AsyncDeployment:
+        deployment_input, files = _merge_deployment_create_input(input, kwargs)
+        if files is not None:
+            upload_url = await self._client.files.upload(
+                create_zip(files),
+                chunk_size=chunk_size,
+                on_progress=on_upload_progress,
+                timeout=timeout,
+                max_network_retries=max_network_retries,
+                request_options=request_options,
+            )
+            deployment_input["upload_url"] = upload_url
+
         response = await self._client._mutation(
             gql.AUTOBUILD_MUTATION,
-            {"input": camelize(merge_input(input, **kwargs))},
+            {"input": camelize(deployment_input)},
             request_options=request_options,
         )
         payload = required_payload(

@@ -178,6 +178,7 @@ class DeployAppAutobuildInput(TypedDict, total=False):
     envVars: Optional[Sequence[Optional[DeployAppEnvVarInput]]]
     extra_data: Optional[DeployAppAutobuildExtraData]
     extraData: Optional[DeployAppAutobuildExtraData]
+    files: Optional[DeploymentFilesInput]
     install_cmd: Optional[str]
     installCmd: Optional[str]
     jobs: Optional[Sequence[Optional[DeployAppJobDefinitionInput]]]
@@ -240,15 +241,16 @@ class Readable(Protocol):
 
 FileInput = Union[str, bytes, bytearray, memoryview, Path, Readable]
 CreateZipFiles = Mapping[str, FileInput]
+DeploymentFilesInput = CreateZipFiles
 
 
 class UploadProgressCallback(Protocol):
-    def __call__(self, progress: "UploadProgress") -> None:
+    def __call__(self, progress: "UploadProgress", /) -> None:
         ...
 
 
 class DeploymentProgressCallback(Protocol):
-    def __call__(self, progress: "DeploymentProgress") -> None:
+    def __call__(self, progress: "DeploymentProgress", /) -> None:
         ...
 
 

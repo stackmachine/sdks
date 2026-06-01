@@ -20,8 +20,8 @@ from .._types import (
     DeployAppsSortBy,
     PaginationOptions,
     RequestOptionsLike,
+    UploadProgressCallback,
 )
-from .._utils import camelize, merge_input
 from ._shared import page_variables, resource_missing_error
 from .deployments import (
     AsyncDeployment,
@@ -148,10 +148,20 @@ class DeployAppsResource:
         input: Optional[DeployAppAutobuildInput] = None,
         *,
         request_options: Optional[RequestOptionsLike] = None,
+        chunk_size: Optional[int] = None,
+        on_upload_progress: Optional[UploadProgressCallback] = None,
+        timeout: Optional[float] = None,
+        max_network_retries: Optional[int] = None,
         **kwargs: Unpack[DeployAppAutobuildInput],
     ) -> Deployment:
         return self._deployments.create(
-            camelize(merge_input(input, **kwargs)), request_options=request_options
+            input,
+            request_options=request_options,
+            chunk_size=chunk_size,
+            on_upload_progress=on_upload_progress,
+            timeout=timeout,
+            max_network_retries=max_network_retries,
+            **kwargs,
         )
 
     del_ = delete
@@ -273,10 +283,20 @@ class AsyncDeployAppsResource:
         input: Optional[DeployAppAutobuildInput] = None,
         *,
         request_options: Optional[RequestOptionsLike] = None,
+        chunk_size: Optional[int] = None,
+        on_upload_progress: Optional[UploadProgressCallback] = None,
+        timeout: Optional[float] = None,
+        max_network_retries: Optional[int] = None,
         **kwargs: Unpack[DeployAppAutobuildInput],
     ) -> AsyncDeployment:
         return await self._deployments.create(
-            camelize(merge_input(input, **kwargs)), request_options=request_options
+            input,
+            request_options=request_options,
+            chunk_size=chunk_size,
+            on_upload_progress=on_upload_progress,
+            timeout=timeout,
+            max_network_retries=max_network_retries,
+            **kwargs,
         )
 
     del_ = delete
