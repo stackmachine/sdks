@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.3](https://github.com/stackmachine/sdks/compare/stackmachine-python-v0.3.2...stackmachine-python-v0.3.3) (2026-06-01)
+
+
+### Bug Fixes
+
+* support deployment file uploads ([9e4d8b4](https://github.com/stackmachine/sdks/commit/9e4d8b428863dffd53465833007349e22beafc0c))
+* support deployment file uploads ([b6f1ef4](https://github.com/stackmachine/sdks/commit/b6f1ef47fb8458090bcc3e94eedb775b9859b33c))
+
 ## [0.3.2](https://github.com/stackmachine/sdks/compare/stackmachine-python-v0.3.1...stackmachine-python-v0.3.2) (2026-05-30)
 
 
