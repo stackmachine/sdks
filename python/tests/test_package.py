@@ -18,6 +18,7 @@ from stackmachine import (
     StackMachineValidationError,
     create_zip,
 )
+from stackmachine.resources.deployments import DeploymentsResource
 from stackmachine.resources.files import FilesResource
 
 
@@ -51,9 +52,11 @@ def test_exports_clients_and_models() -> None:
 
 def test_exports_public_input_types() -> None:
     assert "DeployAppAutobuildInput" in stackmachine.__all__
+    assert "DeploymentFilesInput" in stackmachine.__all__
     assert "RequestOptionsInput" in stackmachine.__all__
     assert "FileInput" in stackmachine.__all__
     assert stackmachine.DeployAppAutobuildInput.__name__ == "DeployAppAutobuildInput"
+    assert stackmachine.DeploymentFilesInput == stackmachine.CreateZipFiles
     assert stackmachine.RequestOptionsInput.__name__ == "RequestOptionsInput"
 
 
@@ -63,6 +66,14 @@ def test_file_upload_signature_uses_public_types() -> None:
     assert hints["file"] == stackmachine.FileInput
     assert hints["on_progress"] == Optional[stackmachine.UploadProgressCallback]
     assert hints["request_options"] == Optional[stackmachine.RequestOptionsLike]
+
+
+def test_deployment_create_signature_uses_upload_progress_type() -> None:
+    hints = get_type_hints(DeploymentsResource.create)
+
+    assert hints["on_upload_progress"] == Optional[
+        stackmachine.UploadProgressCallback
+    ]
 
 
 def test_client_constructor_accepts_configuration_aliases() -> None:
@@ -136,6 +147,127 @@ def test_request_options_override_auth_and_mutation_id() -> None:
     assert seen["authorization"] == "Bearer override"
     assert seen["body"]["variables"]["input"]["uploadUrl"] == "zip://example"
     assert seen["body"]["variables"]["input"]["clientMutationId"] == "mutation-1"
+
+
+def test_deployments_create_accepts_files_and_upload_progress() -> None:
+    seen: dict[str, Any] = {}
+    upload_progress: list[stackmachine.UploadProgress] = []
+
+    def on_upload_progress(progress: stackmachine.UploadProgress) -> None:
+        upload_progress.append(progress)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == "https://storage.example.test/app.zip":
+            assert request.method == "POST"
+            return httpx.Response(
+                200, headers={"Location": "https://storage.example.test/session"}
+            )
+        if str(request.url) == "https://storage.example.test/session":
+            assert request.method == "PUT"
+            seen["archive"] = request.content
+            return httpx.Response(200)
+
+        body = json.loads(request.content)
+        if body["operationName"] == "uploadQuery":
+            return graphql_response(
+                {"getSignedUrl": {"url": "https://storage.example.test/app.zip"}}
+            )
+        if body["operationName"] == "srcAutobuildMutation":
+            seen["mutation"] = body
+            return graphql_response(
+                {"deployViaAutobuild": {"success": True, "buildId": "build-files"}}
+            )
+        raise AssertionError(f"Unexpected operation {body['operationName']}")
+
+    with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
+        deployment = client.deployments.create(
+            app_name="hello-stackmachine",
+            owner="tester",
+            files={"index.html": "<html><body><h1>Hello</h1></body></html>"},
+            chunk_size=10_000_000,
+            on_upload_progress=on_upload_progress,
+        )
+
+    assert deployment.build_id == "build-files"
+    assert seen["mutation"]["variables"]["input"] == {
+        "appName": "hello-stackmachine",
+        "owner": "tester",
+        "uploadUrl": "https://storage.example.test/app.zip",
+    }
+    assert "files" not in seen["mutation"]["variables"]["input"]
+    assert upload_progress[0].loaded == 0
+    assert upload_progress[-1].percent == 1
+    with zipfile.ZipFile(BytesIO(seen["archive"])) as archive:
+        assert archive.read("index.html") == b"<html><body><h1>Hello</h1></body></html>"
+
+
+async def test_async_deployments_create_accepts_files() -> None:
+    seen: dict[str, Any] = {}
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == "https://storage.example.test/app.zip":
+            return httpx.Response(
+                200, headers={"Location": "https://storage.example.test/session"}
+            )
+        if str(request.url) == "https://storage.example.test/session":
+            return httpx.Response(200)
+
+        body = json.loads(request.content)
+        if body["operationName"] == "uploadQuery":
+            return graphql_response(
+                {"getSignedUrl": {"url": "https://storage.example.test/app.zip"}}
+            )
+        if body["operationName"] == "srcAutobuildMutation":
+            seen["mutation"] = body
+            return graphql_response(
+                {
+                    "deployViaAutobuild": {
+                        "success": True,
+                        "buildId": "build-files-async",
+                    }
+                }
+            )
+        raise AssertionError(f"Unexpected operation {body['operationName']}")
+
+    client = AsyncStackMachine("secret", http_transport=httpx.MockTransport(handler))
+    try:
+        deployment = await client.deployments.create(
+            app_name="hello-stackmachine",
+            owner="tester",
+            files={"index.html": "<h1>Hello</h1>"},
+            chunk_size=10_000_000,
+        )
+    finally:
+        await client.close()
+
+    assert deployment.build_id == "build-files-async"
+    assert seen["mutation"]["variables"]["input"] == {
+        "appName": "hello-stackmachine",
+        "owner": "tester",
+        "uploadUrl": "https://storage.example.test/app.zip",
+    }
+
+
+def test_deployments_create_rejects_files_with_upload_url() -> None:
+    calls = 0
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return graphql_response({})
+
+    with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(StackMachineValidationError) as exc_info:
+            client.deployments.create(
+                app_name="ambiguous",
+                owner="tester",
+                upload_url="https://storage.example.test/app.zip",
+                files={"index.html": "<h1>Hello</h1>"},
+            )
+
+    assert exc_info.value.code == "invalid_deployment_source"
+    assert exc_info.value.param == "files"
+    assert calls == 0
 
 
 def test_graphql_errors_are_mapped() -> None:

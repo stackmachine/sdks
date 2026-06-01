@@ -52,8 +52,36 @@ const client = StackMachine(process.env.STACKMACHINE_API_KEY);
 Use the resource clients for app and file operations:
 
 ```js
+const deployment = await client.deployments.create(
+  {
+    appName: "hello-stackmachine",
+    owner: "stackmachine",
+    files: {
+      "index.html": "<html><body><h1>Hello StackMachine</h1></body></html>",
+    },
+  },
+  {
+    onUploadProgress: ({ percent }) => {
+      console.log("Uploading", percent * 100, "%");
+    },
+  },
+);
+const appVersion = await deployment.wait({
+  onProgress: ({ datetime, stream, kind, message }) => {
+    console.log(datetime, stream, kind, message);
+  },
+});
+const app = await client.apps.retrieve(appVersion.app.id);
+```
+
+For manual package uploads, use the lower-level file client:
+
+```js
+import StackMachine, { createZip } from "stackmachine";
+
+const client = new StackMachine(process.env.STACKMACHINE_API_KEY);
 const zip = await createZip({
-  "index.php": "<html><body><h1>Hello StackMachine</h1></body></html>",
+  "index.html": "<html><body><h1>Hello StackMachine</h1></body></html>",
 });
 const uploadUrl = await client.files.upload(zip, {
   onProgress: ({ percent }) => {
@@ -65,12 +93,6 @@ const deployment = await client.deployments.create({
   owner: "stackmachine",
   uploadUrl,
 });
-const appVersion = await deployment.wait({
-  onProgress: ({ datetime, stream, kind, message }) => {
-    console.log(datetime, stream, kind, message);
-  },
-});
-const app = await client.apps.retrieve(appVersion.app.id);
 ```
 
 Resources with `retrieve(...)` also expose `retrieveMany(...)`, preserving input order and returning `null` for missing IDs:

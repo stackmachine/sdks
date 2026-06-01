@@ -37,6 +37,17 @@ export type StackMachineUploadProgress = {
   percent: number;
 };
 
+export type StackMachineZipFile =
+  | Blob
+  | string
+  | Uint8Array
+  | ReadableStream
+  | File;
+
+export type StackMachineZipFiles = {
+  [key: string]: StackMachineZipFile;
+};
+
 export type StackMachineResolvedUploadOptions = StackMachineUploadOptions & {
   fetch: typeof fetch;
   timeout: number;
@@ -288,9 +299,7 @@ function createProgressReporter(
   };
 }
 
-export const createZip = async (files: {
-  [key: string]: Blob | string | Uint8Array | ReadableStream | File;
-}): Promise<Blob> => {
+export const createZip = async (files: StackMachineZipFiles): Promise<Blob> => {
   const zipFileWriter = new BlobWriter();
   const zipWriter = new ZipWriter(zipFileWriter);
   for (const [key, value] of Object.entries(files)) {

@@ -566,6 +566,92 @@ test("deployments.create uses the autobuild mutation and apps.autobuild remains 
   assert.equal(aliasFetch.calls[0].body.operationName, "srcAutobuildMutation");
 });
 
+test("deployments.create accepts files and reports upload progress", async () => {
+  const progress = [];
+  const fetch = mockFetch((call) => {
+    if (call.body?.operationName === "uploadQuery") {
+      return uploadQueryResponse("https://storage.example.test/app.zip");
+    }
+    if (
+      call.url === "https://storage.example.test/app.zip" &&
+      call.init.method === "POST"
+    ) {
+      return uploadSessionResponse("https://storage.example.test/session");
+    }
+    if (
+      call.url === "https://storage.example.test/session" &&
+      call.init.method === "PUT"
+    ) {
+      assert.match(call.headers.get("content-range"), /^bytes 0-\d+\/\d+$/);
+      return uploadCompleteResponse();
+    }
+    if (call.body?.operationName === "srcAutobuildMutation") {
+      return deploymentCreateResponse("build_from_files");
+    }
+    throw new Error(`Unexpected call ${call.init.method} ${call.url}`);
+  });
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  const deployment = await client.deployments.create(
+    {
+      appName: "hello-stackmachine",
+      owner: "tester",
+      files: {
+        "index.html": "<html><body><h1>Hello World!</h1></body></html>",
+      },
+    },
+    {
+      chunkSize: 10_000_000,
+      onUploadProgress: (entry) => progress.push(entry),
+    },
+  );
+
+  const mutation = fetch.calls.find(
+    (call) => call.body?.operationName === "srcAutobuildMutation",
+  );
+  assert.ok(mutation);
+  assert.equal(deployment.buildId, "build_from_files");
+  assert.equal(mutation.body.variables.input.appName, "hello-stackmachine");
+  assert.equal(mutation.body.variables.input.owner, "tester");
+  assert.equal(
+    mutation.body.variables.input.uploadUrl,
+    "https://storage.example.test/app.zip",
+  );
+  assert.match(mutation.body.variables.input.clientMutationId, /^sm_/);
+  assert.equal(Object.hasOwn(mutation.body.variables.input, "files"), false);
+  assert.equal(progress[0].loaded, 0);
+  assert.equal(progress.at(-1).percent, 1);
+});
+
+test("deployments.create rejects files together with uploadUrl", async () => {
+  const fetch = mockFetch(() => deploymentCreateResponse());
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  await assert.rejects(
+    client.deployments.create({
+      appName: "ambiguous",
+      owner: "tester",
+      uploadUrl: "https://storage.example.test/app.zip",
+      files: {
+        "index.html": "<h1>Hello</h1>",
+      },
+    }),
+    (error) => {
+      assert.ok(error instanceof StackMachineValidationError);
+      assert.equal(error.code, "invalid_deployment_source");
+      assert.equal(error.param, "files");
+      return true;
+    },
+  );
+  assert.equal(fetch.calls.length, 0);
+});
+
 test("deployments.retrieve maps status/appVersion and throws for missing deployments", async () => {
   const fetch = mockFetch(() =>
     deploymentStatusResponse({

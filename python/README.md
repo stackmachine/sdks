@@ -77,8 +77,12 @@ async for app in apps:
 
 ```python
 deployment = stackmachine.deployments.create(
-    upload_url="https://example.com/app.zip",
-    app_name="my-app",
+    app_name="hello-stackmachine",
+    owner="stackmachine",
+    files={
+        "index.html": "<html><body><h1>Hello StackMachine</h1></body></html>",
+    },
+    on_upload_progress=lambda progress: print("Uploading", progress.percent * 100),
 )
 
 version = deployment.wait()
@@ -86,12 +90,17 @@ version = deployment.wait()
 
 ```python
 deployment = stackmachine.apps.autobuild(
-    upload_url="https://example.com/app.zip",
-    app_name="my-app",
+    app_name="hello-stackmachine",
+    owner="stackmachine",
+    files={
+        "index.html": "<html><body><h1>Hello StackMachine</h1></body></html>",
+    },
 )
 ```
 
 ## Files
+
+Use this path only for manual package uploads:
 
 ```python
 from stackmachine import create_zip
