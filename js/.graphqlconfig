@@ -1,5 +1,5 @@
 overwrite: true
-schema: "https://api.stackmachine.com/graphql"
+schema: "https://registry.wasmer.wtf/graphql"
 generates:
   schema.graphql:
     plugins:

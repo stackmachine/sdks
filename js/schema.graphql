@@ -32,7 +32,9 @@ type APIKey implements Node {
   id: ID!
   lastUsedAt: DateTime
   maskedKey: String!
+  name: String!
   namespace: Namespace!
+  note: String
 }
 
 type APIKeyConnection {
@@ -1349,7 +1351,9 @@ type CreateCheckoutSessionPayload {
 
 input CreateNamespaceAPIKeyInput {
   clientMutationId: String
+  name: String
   namespaceId: ID!
+  note: String
 }
 
 type CreateNamespaceAPIKeyPayload {
@@ -3055,6 +3059,7 @@ type Mutation {
 
   """Request To revoke an API token; these start with 'wap_'."""
   revokeApiToken(input: RevokeAPITokenInput!): RevokeAPITokenPayload
+  rotateApiKey(input: RotateAPIKeyInput!): RotateAPIKeyPayload
 
   """Delete a database for an app."""
   rotateCredentialsForAppDb(input: RotateCredentialsForAppDBInput!): RotateCredentialsForAppDBPayload
@@ -3089,6 +3094,7 @@ type Mutation {
   unbanApp(input: UnbanAppInput!): UnbanAppPayload
   unlikePackage(input: UnlikePackageInput!): UnlikePackagePayload
   unwatchPackage(input: UnwatchPackageInput!): UnwatchPackagePayload
+  updateApiKey(input: UpdateAPIKeyInput!): UpdateAPIKeyPayload
 
   """Update autobuild config for an app."""
   updateAutobuildConfigForApp(input: UpdateAutobuildConfigForAppInput!): UpdateAutobuildConfigForAppPayload!
@@ -4969,6 +4975,17 @@ type RolloutEdge {
 
 union RolloutType = GitHubRollout | PackageRollout | ZipRollout
 
+input RotateAPIKeyInput {
+  apiKeyId: ID!
+  clientMutationId: String
+}
+
+type RotateAPIKeyPayload {
+  apiKey: APIKey!
+  clientMutationId: String
+  keyRaw: String!
+}
+
 input RotateCredentialsForAppDBInput {
   clientMutationId: String
 
@@ -5693,6 +5710,18 @@ input UnwatchPackageInput {
 type UnwatchPackagePayload {
   clientMutationId: String
   package: Package!
+}
+
+input UpdateAPIKeyInput {
+  apiKeyId: ID!
+  clientMutationId: String
+  name: String
+  note: String
+}
+
+type UpdateAPIKeyPayload {
+  apiKey: APIKey!
+  clientMutationId: String
 }
 
 input UpdateAutobuildConfigForAppInput {
