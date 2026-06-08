@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0](https://github.com/stackmachine/sdks/compare/stackmachine-v0.2.2...stackmachine-v0.3.0) (2026-06-08)
+
+
+### Features
+
+* Added support for volumes in the SDK ([ca30261](https://github.com/stackmachine/sdks/commit/ca30261fab4f3d730e2b7f0c003000783a2b0348))
+
+
+### Bug Fixes
+
+* **js:** refresh registry graphql schema ([702035c](https://github.com/stackmachine/sdks/commit/702035c59bf4fed231051336b51a1d1a54f624af))
+* **js:** refresh registry graphql schema ([ce87def](https://github.com/stackmachine/sdks/commit/ce87def9eb2cf93442ed8a95c47ce6eea6582123))
+
 ## [0.2.2](https://github.com/stackmachine/sdks/compare/stackmachine-v0.2.1...stackmachine-v0.2.2) (2026-06-01)
 
 
