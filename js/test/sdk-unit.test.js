@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import test from "node:test";
 import StackMachineDefault, {
   AutobuildApp,
+  AppVolume,
   Deployment,
   StackMachine,
   StackMachineAPIError,
@@ -76,6 +77,19 @@ const appAliasNode = (id) => ({
   lastCheckedAt: null,
   updatedAt: "2026-01-01T00:00:00Z",
   createdAt: "2026-01-01T00:00:00Z",
+});
+
+const appVolumeNode = (id, overrides = {}) => ({
+  __typename: "AppVolume",
+  id,
+  volumeId: `volume-${id}`,
+  mountPath: "/data",
+  maxSizeBytes: 1_073_741_824,
+  s3Enabled: false,
+  s3Url: null,
+  explorerUrl: `https://console.example.test/volumes/${id}`,
+  isAddedByUi: true,
+  ...overrides,
 });
 
 const sshUserNode = (id) => ({
@@ -165,6 +179,33 @@ const appsListResponse = (
     },
   });
 
+const appVolumesListResponse = (
+  items,
+  pageInfo = {
+    hasNextPage: false,
+    hasPreviousPage: false,
+    endCursor: items.at(-1)?.cursor ?? null,
+    startCursor: items[0]?.cursor ?? null,
+  },
+  totalCount = items.length,
+) =>
+  jsonResponse({
+    data: {
+      node: {
+        __typename: "DeployApp",
+        id: "app_1",
+        volumes: {
+          edges: items.map((item) => ({
+            cursor: item.cursor,
+            node: appVolumeNode(item.id, item.overrides),
+          })),
+          pageInfo,
+          totalCount,
+        },
+      },
+    },
+  });
+
 const abortError = () =>
   Object.assign(new Error("Aborted"), { name: "AbortError" });
 
@@ -231,6 +272,7 @@ test("clients keep independent keys, endpoints, caches, and resources", async ()
 
   assert.notEqual(clientA.environment, clientB.environment);
   assert.notEqual(clientA.apps, clientB.apps);
+  assert.notEqual(clientA.apps.volumes, clientB.apps.volumes);
   assert.notEqual(clientA.deployments, clientB.deployments);
   assert.notEqual(clientA.files, clientB.files);
 
@@ -1050,6 +1092,192 @@ test("list methods return Stripe-like list objects", async () => {
   assert.equal(page.data[0].id, "app_1");
   assert.equal(fetch.calls[0].body.variables.first, 1);
   assert.equal(fetch.calls[0].body.variables.sortBy, "NEWEST");
+});
+
+test("app volumes list, create, update, and delete map to GraphQL operations", async () => {
+  const fetch = mockFetch((call, index) => {
+    switch (call.body.operationName) {
+      case "srcListAppVolumesQuery":
+        return appVolumesListResponse(
+          [
+            {
+              id: index === 0 ? "volume_1" : "volume_2",
+              cursor: index === 0 ? "cursor_1" : "cursor_2",
+              overrides:
+                index === 0
+                  ? { s3Enabled: true, s3Url: "https://s3.example.test/v1" }
+                  : { mountPath: "/cache" },
+            },
+          ],
+          {
+            hasNextPage: index === 0,
+            hasPreviousPage: index > 0,
+            endCursor: index === 0 ? "cursor_1" : "cursor_2",
+            startCursor: index === 0 ? "cursor_1" : "cursor_2",
+          },
+          2,
+        );
+      case "srcCreateAppVolumeMutation":
+        return jsonResponse({
+          data: {
+            createAppVolume: {
+              success: true,
+              volume: appVolumeNode("volume_created", {
+                mountPath: "/uploads",
+                maxSizeBytes: 2_147_483_648,
+              }),
+            },
+          },
+        });
+      case "srcUpdateVolumeMutation":
+        return jsonResponse({
+          data: {
+            updateVolume: {
+              success: true,
+              volume: appVolumeNode("volume_created", {
+                mountPath: "/uploads-v2",
+                s3Enabled: true,
+              }),
+            },
+          },
+        });
+      case "srcDeleteAppVolumeMutation":
+        return jsonResponse({
+          data: {
+            deleteAppVolume: {
+              success: true,
+            },
+          },
+        });
+      default:
+        throw new Error(`Unexpected operation ${call.body.operationName}`);
+    }
+  });
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  const volumes = await client.apps.volumes
+    .list(
+      { app: "app_1", limit: 1 },
+      { apiKey: "request-key", headers: { "x-request": "yes" } },
+    )
+    .autoPagingToArray({ limit: 2 });
+  const created = await client.apps.volumes.create(
+    {
+      app: "app_1",
+      mountPath: "/uploads",
+      maxSizeBytes: 2_147_483_648,
+    },
+    { clientMutationId: "cmid-create-volume" },
+  );
+  const updated = await client.apps.volumes.update(
+    "volume_created",
+    { mountPath: "/uploads-v2", s3Enabled: true },
+    { idempotencyKey: "idem-update-volume" },
+  );
+  await client.apps.volumes.del("volume_created", {
+    clientMutationId: "cmid-delete-volume",
+  });
+
+  assert.deepEqual(
+    volumes.map((volume) => volume.id),
+    ["volume_1", "volume_2"],
+  );
+  assert.ok(volumes[0] instanceof AppVolume);
+  assert.equal(volumes[0].volumeId, "volume-volume_1");
+  assert.equal(volumes[0].mountPath, "/data");
+  assert.equal(volumes[0].maxSizeBytes, 1_073_741_824);
+  assert.equal(volumes[0].s3Enabled, true);
+  assert.equal(volumes[0].s3Url, "https://s3.example.test/v1");
+  assert.equal(
+    volumes[0].explorerUrl,
+    "https://console.example.test/volumes/volume_1",
+  );
+  assert.equal(volumes[0].isAddedByUi, true);
+  assert.equal(created.id, "volume_created");
+  assert.equal(created.mountPath, "/uploads");
+  assert.equal(updated.mountPath, "/uploads-v2");
+  assert.equal(updated.s3Enabled, true);
+
+  assert.equal(fetch.calls[0].body.variables.appId, "app_1");
+  assert.equal(fetch.calls[0].body.variables.first, 1);
+  assert.equal(fetch.calls[0].body.variables.after, undefined);
+  assert.equal(fetch.calls[1].body.variables.after, "cursor_1");
+  assert.equal(
+    fetch.calls[0].headers.get("authorization"),
+    "Bearer request-key",
+  );
+  assert.equal(fetch.calls[1].headers.get("x-request"), "yes");
+  assert.deepEqual(fetch.calls[2].body.variables.input, {
+    appId: "app_1",
+    mountPath: "/uploads",
+    maxSizeBytes: 2_147_483_648,
+    clientMutationId: "cmid-create-volume",
+  });
+  assert.deepEqual(fetch.calls[3].body.variables.input, {
+    id: "volume_created",
+    mountPath: "/uploads-v2",
+    s3Enabled: true,
+    clientMutationId: "idem-update-volume",
+  });
+  assert.deepEqual(fetch.calls[4].body.variables.input, {
+    id: "volume_created",
+    clientMutationId: "cmid-delete-volume",
+  });
+});
+
+test("app volume mutations throw when backend success is false", async () => {
+  const fetch = mockFetch((call) => {
+    switch (call.body.operationName) {
+      case "srcCreateAppVolumeMutation":
+        return jsonResponse({
+          data: {
+            createAppVolume: {
+              success: false,
+              volume: appVolumeNode("volume_failed"),
+            },
+          },
+        });
+      case "srcUpdateVolumeMutation":
+        return jsonResponse({
+          data: {
+            updateVolume: {
+              success: false,
+              volume: appVolumeNode("volume_failed"),
+            },
+          },
+        });
+      case "srcDeleteAppVolumeMutation":
+        return jsonResponse({
+          data: {
+            deleteAppVolume: {
+              success: false,
+            },
+          },
+        });
+      default:
+        throw new Error(`Unexpected operation ${call.body.operationName}`);
+    }
+  });
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  await assert.rejects(
+    client.apps.volumes.create({ app: "app_1", mountPath: "/data" }),
+    StackMachineAPIError,
+  );
+  await assert.rejects(
+    client.apps.volumes.update("volume_1", { mountPath: "/data" }),
+    StackMachineAPIError,
+  );
+  await assert.rejects(
+    client.apps.volumes.del("volume_1"),
+    StackMachineAPIError,
+  );
 });
 
 test("pagination aliases map to GraphQL variables and validate conflicts", async () => {

@@ -121,6 +121,24 @@ is_verified = stackmachine.apps.domains.verify(domain.id)
 stackmachine.apps.domains.delete(domain.id)
 ```
 
+## Volumes
+
+```python
+volume = stackmachine.apps.volumes.create(
+    app="app_id",
+    mount_path="/data",
+    max_size_bytes=1_073_741_824,
+)
+
+volumes = stackmachine.apps.volumes.list(app="app_id", limit=25)
+updated = stackmachine.apps.volumes.update(
+    volume.id,
+    mount_path="/uploads",
+    s3_enabled=True,
+)
+stackmachine.apps.volumes.delete(updated.id)
+```
+
 ## SSH
 
 ```python

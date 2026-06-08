@@ -4,6 +4,10 @@ import nodeAppAlias, {
   srcAppAlias$data,
 } from "__generated__/srcAppAlias.graphql";
 import { srcDeleteAppMutation } from "__generated__/srcDeleteAppMutation.graphql";
+import nodeAppVolume, {
+  srcAppVolume$data,
+} from "__generated__/srcAppVolume.graphql";
+import { srcCreateAppVolumeMutation } from "__generated__/srcCreateAppVolumeMutation.graphql";
 import nodeApp, {
   srcDeployAppData$data,
 } from "__generated__/srcDeployAppData.graphql";
@@ -17,7 +21,9 @@ import { srcGetAppByNameQuery } from "__generated__/srcGetAppByNameQuery.graphql
 import { srcGetAppLogsQuery } from "__generated__/srcGetAppLogsQuery.graphql";
 import { srcGetDeploymentStatusQuery } from "__generated__/srcGetDeploymentStatusQuery.graphql";
 import { srcDeleteAppDomainMutation } from "__generated__/srcDeleteAppDomainMutation.graphql";
+import { srcDeleteAppVolumeMutation } from "__generated__/srcDeleteAppVolumeMutation.graphql";
 import { srcUpsertAppDomainMutation } from "__generated__/srcUpsertAppDomainMutation.graphql";
+import { srcUpdateVolumeMutation } from "__generated__/srcUpdateVolumeMutation.graphql";
 import { srcVerifyAppDomainMutation } from "__generated__/srcVerifyAppDomainMutation.graphql";
 import { srcViewerQuery } from "__generated__/srcViewerQuery.graphql";
 import RelayRuntime, {
@@ -216,6 +222,20 @@ export type AppsDomainsCreateInput = {
   app: string;
   hostname: string;
   isDefault?: boolean;
+};
+export type AppsVolumesListInput = StackMachinePaginationParams & {
+  app: string;
+};
+export type AppsVolumesCreateInput = {
+  app: string;
+  mountPath: string;
+  maxSizeBytes?: number | string | null;
+};
+export type AppsVolumesUpdateInput = {
+  mountPath?: string | null;
+  maxSizeBytes?: number | string | null;
+  redeployApp?: boolean | null;
+  s3Enabled?: boolean | null;
 };
 export type AppAliasSortBy = "NEWEST" | "OLDEST";
 export type DeployAppsSortBy = "MOST_ACTIVE" | "NEWEST" | "OLDEST";
@@ -479,6 +499,41 @@ export class AppAlias {
     this.lastCheckedAt = parseDate(typedData.lastCheckedAt);
     this.updatedAt = parseDate(typedData.updatedAt)!;
     this.createdAt = parseDate(typedData.createdAt)!;
+  }
+}
+
+export class AppVolume {
+  static fragment = graphql`
+    fragment srcAppVolume on AppVolume {
+      id
+      volumeId
+      mountPath
+      maxSizeBytes
+      s3Enabled
+      s3Url
+      explorerUrl
+      isAddedByUi
+    }
+  `;
+  id: string;
+  volumeId: string;
+  mountPath: string;
+  maxSizeBytes: number | string;
+  s3Enabled: boolean;
+  s3Url: string | null;
+  explorerUrl: string | null;
+  isAddedByUi: boolean;
+
+  constructor(data: any) {
+    const typedData = data as srcAppVolume$data;
+    this.id = typedData.id;
+    this.volumeId = typedData.volumeId;
+    this.mountPath = typedData.mountPath;
+    this.maxSizeBytes = typedData.maxSizeBytes;
+    this.s3Enabled = typedData.s3Enabled;
+    this.s3Url = typedData.s3Url ?? null;
+    this.explorerUrl = typedData.explorerUrl ?? null;
+    this.isAddedByUi = typedData.isAddedByUi;
   }
 }
 
@@ -1242,6 +1297,195 @@ export class AppsDomainsResource {
   }
 }
 
+export class AppsVolumesResource {
+  constructor(private client: SdkContext) {}
+
+  list(
+    input: AppsVolumesListInput,
+    options?: StackMachineRequestOptions,
+  ): StackMachineListPromise<AppVolume> {
+    return createStackMachineListPromise<AppVolume, AppsVolumesListInput>({
+      params: input,
+      options,
+      url: "/v1/apps/volumes",
+      fetchPage: async (pagination, params, requestOptions) => {
+        const query = await this.client._query<any>(
+          graphql`
+            query srcListAppVolumesQuery(
+              $appId: ID!
+              $first: Int
+              $after: String
+              $last: Int
+              $before: String
+            ) {
+              node(id: $appId) {
+                ... on DeployApp {
+                  volumes(
+                    first: $first
+                    after: $after
+                    last: $last
+                    before: $before
+                  ) {
+                    edges {
+                      cursor
+                      node {
+                        ...srcAppVolume
+                      }
+                    }
+                    pageInfo {
+                      hasNextPage
+                      hasPreviousPage
+                      endCursor
+                      startCursor
+                    }
+                    totalCount
+                  }
+                }
+              }
+            }
+          `,
+          {
+            appId: params.app,
+            first: pagination.first,
+            after: pagination.after,
+            last: pagination.last,
+            before: pagination.before,
+          },
+          requestOptions,
+        );
+
+        return connectionToListPageData(
+          query?.node?.volumes,
+          (node: any) =>
+            new AppVolume(
+              this.client._getFragmentData<srcAppVolume$data>(
+                nodeAppVolume,
+                node,
+              ),
+            ),
+        );
+      },
+    });
+  }
+
+  async create(
+    input: AppsVolumesCreateInput,
+    options?: StackMachineRequestOptions,
+  ): Promise<AppVolume> {
+    const response = await this.client._mutation<srcCreateAppVolumeMutation>(
+      graphql`
+        mutation srcCreateAppVolumeMutation($input: CreateAppVolumeInput!) {
+          createAppVolume(input: $input) {
+            success
+            volume {
+              ...srcAppVolume
+            }
+          }
+        }
+      `,
+      {
+        input: {
+          appId: input.app,
+          mountPath: input.mountPath,
+          maxSizeBytes: input.maxSizeBytes,
+        },
+      },
+      options,
+    );
+    const payload = requiredPayload(
+      response.createAppVolume,
+      "Failed to create volume, mutation failed.",
+      "srcCreateAppVolumeMutation",
+    );
+    if (!payload.success) {
+      throw new StackMachineAPIError({
+        message: "Failed to create volume, mutation was not successful.",
+        operationName: "srcCreateAppVolumeMutation",
+      });
+    }
+    const volume = requiredPayload(
+      payload.volume,
+      "Failed to create volume, no volume returned.",
+      "srcCreateAppVolumeMutation",
+    );
+    return new AppVolume(
+      this.client._getFragmentData<srcAppVolume$data>(nodeAppVolume, volume),
+    );
+  }
+
+  async update(
+    id: string,
+    input: AppsVolumesUpdateInput,
+    options?: StackMachineRequestOptions,
+  ): Promise<AppVolume> {
+    const response = await this.client._mutation<srcUpdateVolumeMutation>(
+      graphql`
+        mutation srcUpdateVolumeMutation($input: UpdateVolumeInput!) {
+          updateVolume(input: $input) {
+            success
+            volume {
+              ...srcAppVolume
+            }
+          }
+        }
+      `,
+      {
+        input: {
+          id,
+          mountPath: input.mountPath,
+          maxSizeBytes: input.maxSizeBytes,
+          redeployApp: input.redeployApp,
+          s3Enabled: input.s3Enabled,
+        },
+      },
+      options,
+    );
+    const payload = requiredPayload(
+      response.updateVolume,
+      "Failed to update volume, mutation failed.",
+      "srcUpdateVolumeMutation",
+    );
+    if (!payload.success) {
+      throw new StackMachineAPIError({
+        message: "Failed to update volume, mutation was not successful.",
+        operationName: "srcUpdateVolumeMutation",
+      });
+    }
+    const volume = requiredPayload(
+      payload.volume,
+      "Failed to update volume, no volume returned.",
+      "srcUpdateVolumeMutation",
+    );
+    return new AppVolume(
+      this.client._getFragmentData<srcAppVolume$data>(nodeAppVolume, volume),
+    );
+  }
+
+  async del(id: string, options?: StackMachineRequestOptions): Promise<void> {
+    const response = await this.client._mutation<srcDeleteAppVolumeMutation>(
+      graphql`
+        mutation srcDeleteAppVolumeMutation($input: DeleteAppVolumeInput!) {
+          deleteAppVolume(input: $input) {
+            success
+          }
+        }
+      `,
+      {
+        input: {
+          id,
+        },
+      },
+      options,
+    );
+    if (!response.deleteAppVolume?.success) {
+      throw new StackMachineAPIError({
+        message: "Failed to delete volume, mutation was not successful.",
+        operationName: "srcDeleteAppVolumeMutation",
+      });
+    }
+  }
+}
+
 export class AppsVersionsLogsResource {
   constructor(private client: SdkContext) {}
 
@@ -1956,6 +2200,7 @@ export class AppsSshResource {
 
 export class DeployAppsResource {
   domains: AppsDomainsResource;
+  volumes: AppsVolumesResource;
   versions: AppsVersionsResource;
   ssh: AppsSshResource;
 
@@ -1964,6 +2209,7 @@ export class DeployAppsResource {
     private deployments: DeploymentsResource,
   ) {
     this.domains = new AppsDomainsResource(client);
+    this.volumes = new AppsVolumesResource(client);
     this.versions = new AppsVersionsResource(client);
     this.ssh = new AppsSshResource(client);
   }

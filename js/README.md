@@ -9,6 +9,7 @@ JavaScript SDK for deploying and managing apps on StackMachine.
 - Fetch app logs
 - Delete apps
 - Manage app domains
+- Manage app volumes
 - ...
 
 ## Installation
@@ -127,6 +128,27 @@ for await (const app of client.apps.list({ limit: 25 })) {
 const domains = await client.apps.domains
   .list({ app: app.id, limit: 25 })
   .autoPagingToArray({ limit: 100 });
+```
+
+Manage app volumes:
+
+```js
+const volume = await client.apps.volumes.create({
+  app: app.id,
+  mountPath: "/data",
+  maxSizeBytes: 1_073_741_824,
+});
+
+const volumes = await client.apps.volumes
+  .list({ app: app.id, limit: 25 })
+  .autoPagingToArray({ limit: 100 });
+
+const updated = await client.apps.volumes.update(volume.id, {
+  mountPath: "/uploads",
+  s3Enabled: true,
+});
+
+await client.apps.volumes.del(updated.id);
 ```
 
 Check out the examples below for more client usage.

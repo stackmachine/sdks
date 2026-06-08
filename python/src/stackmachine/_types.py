@@ -95,6 +95,10 @@ class AppsDomainsListInput(PaginationOptions, total=False):
     sortBy: AppAliasSortBy
 
 
+class AppsVolumesListInput(PaginationOptions, total=False):
+    app: str
+
+
 class AppsVersionsListInput(PaginationOptions, total=False):
     app: str
     created_after: datetime
@@ -208,6 +212,25 @@ class AppsDomainsCreateInput(TypedDict, total=False):
     hostname: str
     is_default: Optional[bool]
     isDefault: Optional[bool]
+
+
+class AppsVolumesCreateInput(TypedDict, total=False):
+    app: str
+    mount_path: str
+    mountPath: str
+    max_size_bytes: Optional[int]
+    maxSizeBytes: Optional[int]
+
+
+class AppsVolumesUpdateInput(TypedDict, total=False):
+    mount_path: Optional[str]
+    mountPath: Optional[str]
+    max_size_bytes: Optional[int]
+    maxSizeBytes: Optional[int]
+    redeploy_app: Optional[bool]
+    redeployApp: Optional[bool]
+    s3_enabled: Optional[bool]
+    s3Enabled: Optional[bool]
 
 
 class AppsSshAuthorizedKeysCreateInput(TypedDict, total=False):

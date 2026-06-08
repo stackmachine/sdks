@@ -74,6 +74,33 @@ class AppAlias:
 
 
 @dataclass
+class AppVolume:
+    id: str
+    volume_id: str
+    mount_path: str
+    max_size_bytes: int
+    s3_enabled: bool
+    s3_url: Optional[str]
+    explorer_url: Optional[str]
+    is_added_by_ui: bool
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "AppVolume":
+        return cls(
+            id=str(data["id"]),
+            volume_id=str(data["volumeId"]),
+            mount_path=str(data["mountPath"]),
+            max_size_bytes=int(data["maxSizeBytes"]),
+            s3_enabled=bool(data["s3Enabled"]),
+            s3_url=str(data["s3Url"]) if data.get("s3Url") else None,
+            explorer_url=(
+                str(data["explorerUrl"]) if data.get("explorerUrl") else None
+            ),
+            is_added_by_ui=bool(data["isAddedByUi"]),
+        )
+
+
+@dataclass
 class DeployApp:
     id: str
     will_perish_at: Optional[datetime]

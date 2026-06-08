@@ -109,6 +109,17 @@ updatedAt
 createdAt
 """
 
+APP_VOLUME_FIELDS = """
+id
+volumeId
+mountPath
+maxSizeBytes
+s3Enabled
+s3Url
+explorerUrl
+isAddedByUi
+"""
+
 SSH_USER_FIELDS = """
 id
 username
@@ -252,6 +263,41 @@ query srcListAppDomainsQuery(
 }}
 """
 
+LIST_APP_VOLUMES_QUERY = f"""
+query srcListAppVolumesQuery(
+  $appId: ID!
+  $first: Int
+  $after: String
+  $last: Int
+  $before: String
+) {{
+  node(id: $appId) {{
+    ... on DeployApp {{
+      volumes(
+        first: $first
+        after: $after
+        last: $last
+        before: $before
+      ) {{
+        edges {{
+          cursor
+          node {{
+            {APP_VOLUME_FIELDS}
+          }}
+        }}
+        pageInfo {{
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }}
+        totalCount
+      }}
+    }}
+  }}
+}}
+"""
+
 UPSERT_APP_DOMAIN_MUTATION = f"""
 mutation srcUpsertAppDomainMutation($input: UpsertAppDomainInput!) {{
   upsertAppDomain(input: $input) {{
@@ -261,6 +307,36 @@ mutation srcUpsertAppDomainMutation($input: UpsertAppDomainInput!) {{
     }}
   }}
 }}
+"""
+
+CREATE_APP_VOLUME_MUTATION = f"""
+mutation srcCreateAppVolumeMutation($input: CreateAppVolumeInput!) {{
+  createAppVolume(input: $input) {{
+    success
+    volume {{
+      {APP_VOLUME_FIELDS}
+    }}
+  }}
+}}
+"""
+
+UPDATE_VOLUME_MUTATION = f"""
+mutation srcUpdateVolumeMutation($input: UpdateVolumeInput!) {{
+  updateVolume(input: $input) {{
+    success
+    volume {{
+      {APP_VOLUME_FIELDS}
+    }}
+  }}
+}}
+"""
+
+DELETE_APP_VOLUME_MUTATION = """
+mutation srcDeleteAppVolumeMutation($input: DeleteAppVolumeInput!) {
+  deleteAppVolume(input: $input) {
+    success
+  }
+}
 """
 
 VERIFY_APP_DOMAIN_MUTATION = """

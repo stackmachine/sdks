@@ -32,6 +32,7 @@ from .deployments import (
 from .domains import AppsDomainsResource, AsyncAppsDomainsResource
 from .ssh import AppsSshResource, AsyncAppsSshResource
 from .versions import AppsVersionsResource, AsyncAppsVersionsResource
+from .volumes import AppsVolumesResource, AsyncAppsVolumesResource
 
 
 class DeployAppsResource:
@@ -39,6 +40,7 @@ class DeployAppsResource:
         self._client = client
         self._deployments = deployments
         self.domains = AppsDomainsResource(client)
+        self.volumes = AppsVolumesResource(client)
         self.versions = AppsVersionsResource(client)
         self.ssh = AppsSshResource(client)
 
@@ -174,6 +176,7 @@ class AsyncDeployAppsResource:
         self._client = client
         self._deployments = deployments
         self.domains = AsyncAppsDomainsResource(client)
+        self.volumes = AsyncAppsVolumesResource(client)
         self.versions = AsyncAppsVersionsResource(client)
         self.ssh = AsyncAppsSshResource(client)
 

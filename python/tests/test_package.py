@@ -13,6 +13,7 @@ import stackmachine
 from stackmachine import (
     AsyncStackMachine,
     StackMachine,
+    StackMachineAPIError,
     StackMachineAuthenticationError,
     StackMachineGraphQLError,
     StackMachineValidationError,
@@ -35,6 +36,21 @@ def app_payload(id: str = "app_1") -> dict[str, Any]:
     }
 
 
+def volume_payload(id: str = "volume_1", **overrides: Any) -> dict[str, Any]:
+    payload = {
+        "id": id,
+        "volumeId": f"volume-{id}",
+        "mountPath": "/data",
+        "maxSizeBytes": 1_073_741_824,
+        "s3Enabled": False,
+        "s3Url": None,
+        "explorerUrl": f"https://console.example.test/volumes/{id}",
+        "isAddedByUi": True,
+    }
+    payload.update(overrides)
+    return payload
+
+
 def graphql_response(data: dict[str, Any], status_code: int = 200) -> httpx.Response:
     return httpx.Response(status_code, json={"data": data})
 
@@ -46,16 +62,22 @@ def test_version_matches_package_metadata() -> None:
 def test_exports_clients_and_models() -> None:
     assert stackmachine.StackMachine is StackMachine
     assert stackmachine.AsyncStackMachine is AsyncStackMachine
+    assert stackmachine.AppVolume.__name__ == "AppVolume"
     assert "StackMachine" in stackmachine.__all__
     assert "AsyncStackMachine" in stackmachine.__all__
+    assert "AppVolume" in stackmachine.__all__
 
 
 def test_exports_public_input_types() -> None:
     assert "DeployAppAutobuildInput" in stackmachine.__all__
     assert "DeploymentFilesInput" in stackmachine.__all__
+    assert "AppsVolumesCreateInput" in stackmachine.__all__
+    assert "AppsVolumesListInput" in stackmachine.__all__
+    assert "AppsVolumesUpdateInput" in stackmachine.__all__
     assert "RequestOptionsInput" in stackmachine.__all__
     assert "FileInput" in stackmachine.__all__
     assert stackmachine.DeployAppAutobuildInput.__name__ == "DeployAppAutobuildInput"
+    assert stackmachine.AppsVolumesCreateInput.__name__ == "AppsVolumesCreateInput"
     assert stackmachine.DeploymentFilesInput == stackmachine.CreateZipFiles
     assert stackmachine.RequestOptionsInput.__name__ == "RequestOptionsInput"
 
@@ -71,9 +93,7 @@ def test_file_upload_signature_uses_public_types() -> None:
 def test_deployment_create_signature_uses_upload_progress_type() -> None:
     hints = get_type_hints(DeploymentsResource.create)
 
-    assert hints["on_upload_progress"] == Optional[
-        stackmachine.UploadProgressCallback
-    ]
+    assert hints["on_upload_progress"] == Optional[stackmachine.UploadProgressCallback]
 
 
 def test_client_constructor_accepts_configuration_aliases() -> None:
@@ -359,6 +379,159 @@ def test_sync_list_auto_paginates() -> None:
     assert calls[1]["after"] == "cursor-1"
 
 
+def test_sync_app_volumes_lifecycle() -> None:
+    calls: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        calls.append(body)
+        variables = body["variables"]
+        if body["operationName"] == "srcListAppVolumesQuery":
+            is_first_page = variables.get("after") is None
+            volume_id = "volume_1" if is_first_page else "volume_2"
+            return graphql_response(
+                {
+                    "node": {
+                        "volumes": {
+                            "edges": [{"node": volume_payload(volume_id)}],
+                            "pageInfo": {
+                                "hasNextPage": is_first_page,
+                                "hasPreviousPage": not is_first_page,
+                                "endCursor": "cursor-1"
+                                if is_first_page
+                                else "cursor-2",
+                                "startCursor": "cursor-1"
+                                if is_first_page
+                                else "cursor-2",
+                            },
+                            "totalCount": 2,
+                        }
+                    }
+                }
+            )
+        if body["operationName"] == "srcCreateAppVolumeMutation":
+            return graphql_response(
+                {
+                    "createAppVolume": {
+                        "success": True,
+                        "volume": volume_payload(
+                            "volume_created",
+                            mountPath="/uploads",
+                            maxSizeBytes=2_147_483_648,
+                        ),
+                    }
+                }
+            )
+        if body["operationName"] == "srcUpdateVolumeMutation":
+            return graphql_response(
+                {
+                    "updateVolume": {
+                        "success": True,
+                        "volume": volume_payload(
+                            "volume_created",
+                            mountPath="/uploads-v2",
+                            s3Enabled=True,
+                        ),
+                    }
+                }
+            )
+        if body["operationName"] == "srcDeleteAppVolumeMutation":
+            return graphql_response({"deleteAppVolume": {"success": True}})
+        raise AssertionError(f"Unexpected operation {body['operationName']}")
+
+    with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
+        volumes = client.apps.volumes.list(
+            app="app_1",
+            limit=1,
+            request_options={"api_key": "override"},
+        ).auto_paging_to_array(limit=2)
+        created = client.apps.volumes.create(
+            app="app_1",
+            mount_path="/uploads",
+            max_size_bytes=2_147_483_648,
+            request_options={"client_mutation_id": "cmid-create-volume"},
+        )
+        updated = client.apps.volumes.update(
+            "volume_created",
+            mount_path="/uploads-v2",
+            s3_enabled=True,
+            request_options={"idempotency_key": "idem-update-volume"},
+        )
+        client.apps.volumes.delete(
+            "volume_created",
+            request_options={"client_mutation_id": "cmid-delete-volume"},
+        )
+
+    assert [volume.id for volume in volumes] == ["volume_1", "volume_2"]
+    assert isinstance(volumes[0], stackmachine.AppVolume)
+    assert volumes[0].volume_id == "volume-volume_1"
+    assert volumes[0].mount_path == "/data"
+    assert volumes[0].max_size_bytes == 1_073_741_824
+    assert volumes[0].s3_enabled is False
+    assert volumes[0].s3_url is None
+    assert volumes[0].explorer_url == "https://console.example.test/volumes/volume_1"
+    assert volumes[0].is_added_by_ui is True
+    assert created.id == "volume_created"
+    assert created.mount_path == "/uploads"
+    assert updated.mount_path == "/uploads-v2"
+    assert updated.s3_enabled is True
+
+    assert calls[0]["variables"]["appId"] == "app_1"
+    assert calls[0]["variables"]["first"] == 1
+    assert calls[1]["variables"]["after"] == "cursor-1"
+    assert calls[0]["operationName"] == "srcListAppVolumesQuery"
+    assert calls[2]["variables"]["input"] == {
+        "appId": "app_1",
+        "mountPath": "/uploads",
+        "maxSizeBytes": 2_147_483_648,
+        "clientMutationId": "cmid-create-volume",
+    }
+    assert calls[3]["variables"]["input"] == {
+        "id": "volume_created",
+        "mountPath": "/uploads-v2",
+        "s3Enabled": True,
+        "clientMutationId": "idem-update-volume",
+    }
+    assert calls[4]["variables"]["input"] == {
+        "id": "volume_created",
+        "clientMutationId": "cmid-delete-volume",
+    }
+
+
+def test_sync_app_volume_mutations_raise_on_unsuccessful_payloads() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        operation_name = json.loads(request.content)["operationName"]
+        if operation_name == "srcCreateAppVolumeMutation":
+            return graphql_response(
+                {
+                    "createAppVolume": {
+                        "success": False,
+                        "volume": volume_payload("volume_failed"),
+                    }
+                }
+            )
+        if operation_name == "srcUpdateVolumeMutation":
+            return graphql_response(
+                {
+                    "updateVolume": {
+                        "success": False,
+                        "volume": volume_payload("volume_failed"),
+                    }
+                }
+            )
+        if operation_name == "srcDeleteAppVolumeMutation":
+            return graphql_response({"deleteAppVolume": {"success": False}})
+        raise AssertionError(f"Unexpected operation {operation_name}")
+
+    with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(StackMachineAPIError):
+            client.apps.volumes.create(app="app_1", mount_path="/data")
+        with pytest.raises(StackMachineAPIError):
+            client.apps.volumes.update("volume_1", mount_path="/data")
+        with pytest.raises(StackMachineAPIError):
+            client.apps.volumes.delete("volume_1")
+
+
 async def test_async_viewer_returns_model() -> None:
     async def handler(_: httpx.Request) -> httpx.Response:
         return graphql_response({"viewer": {"username": "async-user"}})
@@ -402,6 +575,92 @@ async def test_async_list_request_can_be_awaited_and_iterated() -> None:
 
     assert page.data[0].id == "app_1"
     assert [app.id for app in iterated] == ["app_1"]
+
+
+async def test_async_app_volumes_lifecycle() -> None:
+    calls: list[dict[str, Any]] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        calls.append(body)
+        if body["operationName"] == "srcListAppVolumesQuery":
+            return graphql_response(
+                {
+                    "node": {
+                        "volumes": {
+                            "edges": [{"node": volume_payload("volume_async")}],
+                            "pageInfo": {
+                                "hasNextPage": False,
+                                "hasPreviousPage": False,
+                                "endCursor": "cursor-async",
+                                "startCursor": "cursor-async",
+                            },
+                            "totalCount": 1,
+                        }
+                    }
+                }
+            )
+        if body["operationName"] == "srcCreateAppVolumeMutation":
+            return graphql_response(
+                {
+                    "createAppVolume": {
+                        "success": True,
+                        "volume": volume_payload(
+                            "volume_async_created",
+                            mountPath="/async",
+                        ),
+                    }
+                }
+            )
+        if body["operationName"] == "srcUpdateVolumeMutation":
+            return graphql_response(
+                {
+                    "updateVolume": {
+                        "success": True,
+                        "volume": volume_payload(
+                            "volume_async_created",
+                            mountPath="/async-v2",
+                            s3Enabled=True,
+                        ),
+                    }
+                }
+            )
+        if body["operationName"] == "srcDeleteAppVolumeMutation":
+            return graphql_response({"deleteAppVolume": {"success": True}})
+        raise AssertionError(f"Unexpected operation {body['operationName']}")
+
+    client = AsyncStackMachine("secret", http_transport=httpx.MockTransport(handler))
+    try:
+        page = await client.apps.volumes.list(app="app_1", limit=1)
+        created = await client.apps.volumes.create(
+            app="app_1",
+            mount_path="/async",
+        )
+        updated = await client.apps.volumes.update(
+            "volume_async_created",
+            mount_path="/async-v2",
+            s3_enabled=True,
+            request_options={"idempotency_key": "idem-async-volume"},
+        )
+        await client.apps.volumes.delete("volume_async_created")
+    finally:
+        await client.close()
+
+    assert page.data[0].id == "volume_async"
+    assert created.mount_path == "/async"
+    assert updated.mount_path == "/async-v2"
+    assert updated.s3_enabled is True
+    assert calls[0]["variables"]["appId"] == "app_1"
+    assert calls[1]["variables"]["input"] == {
+        "appId": "app_1",
+        "mountPath": "/async",
+    }
+    assert calls[2]["variables"]["input"] == {
+        "id": "volume_async_created",
+        "mountPath": "/async-v2",
+        "s3Enabled": True,
+        "clientMutationId": "idem-async-volume",
+    }
 
 
 def test_pagination_validation() -> None:
