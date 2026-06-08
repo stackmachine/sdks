@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/stackmachine/sdks/compare/stackmachine-python-v0.3.3...stackmachine-python-v0.4.0) (2026-06-08)
+
+
+### Features
+
+* Added support for volumes in the SDK ([ca30261](https://github.com/stackmachine/sdks/commit/ca30261fab4f3d730e2b7f0c003000783a2b0348))
+
 ## [0.3.3](https://github.com/stackmachine/sdks/compare/stackmachine-python-v0.3.2...stackmachine-python-v0.3.3) (2026-06-01)
 
 
