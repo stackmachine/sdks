@@ -25,6 +25,7 @@ from .resources.deployments import AsyncDeploymentsResource
 from .resources.dns import AsyncDNSResource
 from .resources.emails import AsyncEmailsResource
 from .resources.files import AsyncFilesResource
+from .resources.packages import AsyncPackagesResource
 
 
 class AsyncStackMachine:
@@ -74,6 +75,7 @@ class AsyncStackMachine:
         self.dns = AsyncDNSResource(self)
         self.emails = AsyncEmailsResource(self)
         self.files = AsyncFilesResource(self, AsyncUploader(self._transport))
+        self.packages = AsyncPackagesResource(self)
 
     @classmethod
     def init(

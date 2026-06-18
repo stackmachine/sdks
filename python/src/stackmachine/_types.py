@@ -107,6 +107,72 @@ EmailMessageStatus = Literal[
     "SENT",
     "%future added value",
 ]
+PackageOrderBy = Literal[
+    "ALPHABETICALLY",
+    "CREATED_DATE",
+    "PUBLISHED_DATE",
+    "SIZE",
+    "TOTAL_DOWNLOADS",
+    "TOTAL_LIKES",
+    "%future added value",
+]
+SearchOrderSort = Literal["ASC", "DESC", "%future added value"]
+SearchPublishDate = Literal[
+    "LAST_DAY", "LAST_MONTH", "LAST_WEEK", "LAST_YEAR", "%future added value"
+]
+CountComparison = Literal[
+    "EQUAL",
+    "GREATER_THAN",
+    "GREATER_THAN_OR_EQUAL",
+    "LESS_THAN",
+    "LESS_THAN_OR_EQUAL",
+    "%future added value",
+]
+
+
+class CountFilter(TypedDict, total=False):
+    count: int
+    comparison: CountComparison
+
+
+class PackagesFilter(TypedDict, total=False):
+    owner: Optional[str]
+    published_by: Optional[str]
+    publishedBy: Optional[str]
+    curated: Optional[bool]
+    deployable: Optional[bool]
+    has_bindings: Optional[bool]
+    hasBindings: Optional[bool]
+    has_commands: Optional[bool]
+    hasCommands: Optional[bool]
+    is_standalone: Optional[bool]
+    isStandalone: Optional[bool]
+    with_interfaces: Optional[Sequence[Optional[str]]]
+    withInterfaces: Optional[Sequence[Optional[str]]]
+    license: Optional[str]
+    size: CountFilter
+    downloads: CountFilter
+    likes: CountFilter
+    created_after: Optional[Union[str, datetime]]
+    createdAfter: Optional[Union[str, datetime]]
+    created_before: Optional[Union[str, datetime]]
+    createdBefore: Optional[Union[str, datetime]]
+    last_published_after: Optional[Union[str, datetime]]
+    lastPublishedAfter: Optional[Union[str, datetime]]
+    last_published_before: Optional[Union[str, datetime]]
+    lastPublishedBefore: Optional[Union[str, datetime]]
+    publish_date: Optional[SearchPublishDate]
+    publishDate: Optional[SearchPublishDate]
+    order_by: Optional[PackageOrderBy]
+    orderBy: Optional[PackageOrderBy]
+    sort_by: Optional[SearchOrderSort]
+    sortBy: Optional[SearchOrderSort]
+    count: Optional[int]
+
+
+class PackagesSearchInput(PaginationOptions, total=False):
+    query: str
+    filter: PackagesFilter
 
 
 class DeployAppsListInput(PaginationOptions, total=False):
