@@ -30,6 +30,9 @@ import nodeEmailMessage, {
 import nodeGithubRepoConnection, {
   srcGithubRepoConnectionData$data,
 } from "__generated__/srcGithubRepoConnectionData.graphql";
+import nodeSearchPackageVersion, {
+  srcSearchPackageVersionData$data,
+} from "__generated__/srcSearchPackageVersionData.graphql";
 import { srcGetAppAliasesQuery } from "__generated__/srcGetAppAliasesQuery.graphql";
 import { srcGetAppByIdQuery } from "__generated__/srcGetAppByIdQuery.graphql";
 import { srcGetAppByNameQuery } from "__generated__/srcGetAppByNameQuery.graphql";
@@ -4553,12 +4556,283 @@ export class FilesResource {
   }
 }
 
+export type CountComparison =
+  | "EQUAL"
+  | "GREATER_THAN"
+  | "GREATER_THAN_OR_EQUAL"
+  | "LESS_THAN"
+  | "LESS_THAN_OR_EQUAL"
+  | "%future added value";
+export type PackageOrderBy =
+  | "ALPHABETICALLY"
+  | "CREATED_DATE"
+  | "PUBLISHED_DATE"
+  | "SIZE"
+  | "TOTAL_DOWNLOADS"
+  | "TOTAL_LIKES"
+  | "%future added value";
+export type SearchOrderSort = "ASC" | "DESC" | "%future added value";
+export type SearchPublishDate =
+  | "LAST_DAY"
+  | "LAST_MONTH"
+  | "LAST_WEEK"
+  | "LAST_YEAR"
+  | "%future added value";
+export type CountFilter = {
+  count?: number | null;
+  comparison?: CountComparison | null;
+};
+export type PackagesFilter = {
+  owner?: string | null;
+  publishedBy?: string | null;
+  curated?: boolean | null;
+  deployable?: boolean | null;
+  hasBindings?: boolean | null;
+  hasCommands?: boolean | null;
+  isStandalone?: boolean | null;
+  withInterfaces?: ReadonlyArray<string | null | undefined> | null;
+  license?: string | null;
+  size?: CountFilter | null;
+  downloads?: CountFilter | null;
+  likes?: CountFilter | null;
+  createdAfter?: Date | null;
+  createdBefore?: Date | null;
+  lastPublishedAfter?: Date | null;
+  lastPublishedBefore?: Date | null;
+  publishDate?: SearchPublishDate | null;
+  orderBy?: PackageOrderBy | null;
+  sortBy?: SearchOrderSort | null;
+  count?: number | null;
+};
+
+export type WebcVersion = "V2" | "V3" | "%future added value";
+
+export interface PackageDistribution {
+  piritaSha256Hash: string | null;
+  piritaDownloadUrl: string | null;
+  downloadUrl: string | null;
+  size: number | null;
+  piritaSize: number | null;
+  webcVersion: WebcVersion | null;
+  /** The webc manifest, as a JSON string. */
+  webcManifest: string | null;
+}
+
+export interface PackageVersion {
+  id: string;
+  version: string;
+  createdAt: Date;
+  distribution: PackageDistribution;
+}
+
+export interface Package {
+  id: string;
+  packageName: string;
+  namespace: string | null;
+  lastVersion: PackageVersion | null;
+  private: boolean;
+}
+
+export class SearchPackageVersion {
+  static fragment = graphql`
+    fragment srcSearchPackageVersionData on PackageVersion {
+      id
+      version
+      createdAt
+      package {
+        id
+        packageName
+        namespace
+        private
+        lastVersion {
+          id
+          version
+          createdAt
+          distribution {
+            piritaSha256Hash
+            piritaDownloadUrl
+            downloadUrl
+            size
+            piritaSize
+            webcVersion
+            webcManifest
+          }
+        }
+      }
+    }
+  `;
+
+  /** The package version's id. */
+  id: string;
+  version: string;
+  createdAt: Date;
+  package: Package;
+
+  constructor(data: any) {
+    const typedData = data as srcSearchPackageVersionData$data;
+    this.id = typedData.id;
+    this.version = typedData.version;
+    this.createdAt = parseDate(typedData.createdAt)!;
+    this.package = {
+      id: typedData.package.id,
+      packageName: typedData.package.packageName,
+      namespace: typedData.package.namespace ?? null,
+      lastVersion: mapPackageVersion(typedData.package.lastVersion),
+      private: typedData.package.private,
+    };
+  }
+}
+
+export type PackagesSearchInput = StackMachinePaginationParams & {
+  /** Free-text query. Empty (the default) matches everything subject to filters. */
+  query?: string;
+  /**
+   * The full registry package filter (owner, curated, downloads, likes, size,
+   * license, dates, interfaces, ordering, ...). See {@link PackagesFilter}.
+   */
+  filter?: PackagesFilter;
+};
+
+function mapPackageDistribution(distribution: any): PackageDistribution {
+  return {
+    piritaSha256Hash: distribution?.piritaSha256Hash ?? null,
+    piritaDownloadUrl: distribution?.piritaDownloadUrl ?? null,
+    downloadUrl: distribution?.downloadUrl ?? null,
+    size: distribution?.size ?? null,
+    piritaSize: distribution?.piritaSize ?? null,
+    webcVersion: distribution?.webcVersion ?? null,
+    webcManifest: distribution?.webcManifest ?? null,
+  };
+}
+
+function mapPackageVersion(version: any): PackageVersion | null {
+  if (!version) {
+    return null;
+  }
+  return {
+    id: version.id,
+    version: version.version,
+    createdAt: parseDate(version.createdAt)!,
+    distribution: mapPackageDistribution(version.distribution),
+  };
+}
+
+// `PackagesFilter` is one nested `$packages` variable, so its `DateTime` fields
+// can't be serialized inline like the top-level scalar date inputs (cf. logs
+// `since`/`until`). Expose them as `Date` and convert just those to ISO strings
+// here.
+// If nested transforms like this pop up in the future, it may make sense
+// to hoist this out into some form of generic/reusable abstraction akin to
+// what python does already.
+function serializePackagesFilter(
+  filter: PackagesFilter | undefined,
+): Record<string, unknown> {
+  if (!filter) {
+    return {};
+  }
+  return {
+    ...filter,
+    createdAfter: filter.createdAfter?.toISOString(),
+    createdBefore: filter.createdBefore?.toISOString(),
+    lastPublishedAfter: filter.lastPublishedAfter?.toISOString(),
+    lastPublishedBefore: filter.lastPublishedBefore?.toISOString(),
+  };
+}
+
+export class PackagesResource {
+  constructor(private client: SdkContext) {}
+
+  /**
+   * Search the registry for packages. Results are the latest version of each
+   * matching package. Supports the registry's package filters (e.g. `owner`,
+   * `curated`).
+   */
+  search(
+    input: PackagesSearchInput = {},
+    options?: StackMachineRequestOptions,
+  ): StackMachineListPromise<SearchPackageVersion> {
+    return createStackMachineListPromise<
+      SearchPackageVersion,
+      PackagesSearchInput
+    >({
+      params: input,
+      options,
+      url: "/v1/packages",
+      fetchPage: async (pagination, params, requestOptions) => {
+        const result = await this.client._query<any>(
+          graphql`
+            query srcSearchPackagesQuery(
+              $searchQuery: String!
+              $first: Int
+              $after: String
+              $last: Int
+              $before: String
+              $packages: PackagesFilter
+            ) {
+              search(
+                query: $searchQuery
+                packages: $packages
+                first: $first
+                after: $after
+                last: $last
+                before: $before
+              ) {
+                edges {
+                  cursor
+                  node {
+                    __typename
+                    ... on PackageVersion {
+                      ...srcSearchPackageVersionData
+                    }
+                  }
+                }
+                pageInfo {
+                  hasNextPage
+                  hasPreviousPage
+                  endCursor
+                  startCursor
+                }
+                totalCount
+              }
+            }
+          `,
+          {
+            searchQuery: params.query ?? "",
+            // A non-null `packages` filter is what scopes `search` to packages,
+            // so always send at least an empty filter.
+            packages: serializePackagesFilter(params.filter),
+            first: pagination.first,
+            after: pagination.after,
+            last: pagination.last,
+            before: pagination.before,
+          },
+          requestOptions,
+        );
+
+        // `search` returns a union, but the `packages` filter scopes results
+        // to PackageVersion nodes.
+        return connectionToListPageData(
+          result?.search,
+          (node: any) =>
+            new SearchPackageVersion(
+              this.client._getFragmentData<srcSearchPackageVersionData$data>(
+                nodeSearchPackageVersion,
+                node,
+              ),
+            ),
+        );
+      },
+    });
+  }
+}
+
 export class StackMachine implements SdkContext {
   environment: Environment;
   deployments: DeploymentsResource;
   apps: DeployAppsResource;
   dns: DNSResource;
   emails: EmailsResource;
+  packages: PackagesResource;
   files: FilesResource;
   readonly apiUrl: string;
   readonly timeout: number;
@@ -4590,6 +4864,7 @@ export class StackMachine implements SdkContext {
     this.apps = new DeployAppsResource(this, this.deployments);
     this.dns = new DNSResource(this);
     this.emails = new EmailsResource(this);
+    this.packages = new PackagesResource(this);
   }
 
   static async init(settings: StackMachineRegistryConfig) {
