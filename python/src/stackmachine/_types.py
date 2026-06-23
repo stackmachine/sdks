@@ -81,6 +81,21 @@ AppAliasSortBy = Literal["NEWEST", "OLDEST"]
 DeployAppVersionsSortBy = Literal["NEWEST", "OLDEST"]
 LogStream = Literal["RUNTIME", "STDERR", "STDOUT", "%future added value"]
 SshAuthenticationMethod = Literal["PASSWORD", "PUBLIC_KEY", "%future added value"]
+DNSRecordKind = Literal[
+    "A",
+    "AAAA",
+    "CAA",
+    "CNAME",
+    "DNAME",
+    "MX",
+    "NS",
+    "PTR",
+    "SOA",
+    "SRV",
+    "SSHFP",
+    "TXT",
+    "%future added value",
+]
 
 
 class DeployAppsListInput(PaginationOptions, total=False):
@@ -231,6 +246,97 @@ class AppsVolumesUpdateInput(TypedDict, total=False):
     redeployApp: Optional[bool]
     s3_enabled: Optional[bool]
     s3Enabled: Optional[bool]
+
+
+class AppsGitConnectInput(TypedDict, total=False):
+    app: str
+    installation_repo_id: str
+    installationRepoId: str
+    deploy_branch: Optional[str]
+    deployBranch: Optional[str]
+
+
+class AppsGitUpdateInput(TypedDict, total=False):
+    deployment_status_events: Optional[bool]
+    deploymentStatusEvents: Optional[bool]
+    pull_request_comments: Optional[bool]
+    pullRequestComments: Optional[bool]
+
+
+class AppsDatabasesListInput(PaginationOptions, total=False):
+    app: str
+
+
+class AppsDatabasesCreateInput(TypedDict, total=False):
+    app: str
+    name: Optional[str]
+
+
+class DNSDomainsListInput(PaginationOptions, total=False):
+    owner: Optional[str]
+
+
+class DNSDomainsCreateInput(TypedDict, total=False):
+    name: str
+    owner: Optional[str]
+    import_records: Optional[bool]
+    importRecords: Optional[bool]
+
+
+class DNSDomainsImportZoneFileInput(TypedDict, total=False):
+    zone_file: str
+    zoneFile: str
+    delete_missing_records: Optional[bool]
+    deleteMissingRecords: Optional[bool]
+
+
+class DNSRecordsListInput(TypedDict):
+    domain: str
+
+
+class DNSCAAExtraInput(TypedDict):
+    flags: int
+    tag: str
+
+
+class DNSMXExtraInput(TypedDict):
+    preference: int
+
+
+class DNSSOAExtraInput(TypedDict):
+    expire: int
+    minimum: int
+    mname: str
+    refresh: int
+    retry: int
+    rname: str
+    serial: int
+
+
+class DNSSRVExtraInput(TypedDict):
+    port: int
+    priority: int
+    protocol: str
+    service: str
+    weight: int
+
+
+class DNSSSHFPExtraInput(TypedDict):
+    algorithm: int
+    type: int
+
+
+class DNSRecordsUpsertInput(TypedDict, total=False):
+    domain: str
+    kind: DNSRecordKind
+    name: str
+    value: str
+    ttl: Optional[int]
+    caa: Optional[DNSCAAExtraInput]
+    mx: Optional[DNSMXExtraInput]
+    soa: Optional[DNSSOAExtraInput]
+    srv: Optional[DNSSRVExtraInput]
+    sshfp: Optional[DNSSSHFPExtraInput]
 
 
 class AppsSshAuthorizedKeysCreateInput(TypedDict, total=False):

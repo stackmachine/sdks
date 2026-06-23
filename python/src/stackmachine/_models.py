@@ -101,6 +101,48 @@ class AppVolume:
 
 
 @dataclass
+class StackMachineOwnerSummary:
+    id: Optional[str]
+    type: str
+    global_id: Optional[str]
+    global_name: Optional[str]
+    is_pro: bool
+    name: Optional[str] = None
+    display_name: Optional[str] = None
+    username: Optional[str] = None
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "StackMachineOwnerSummary":
+        return cls(
+            id=str(data["id"]) if data.get("id") is not None else None,
+            type=str(data.get("__typename") or "Owner"),
+            global_id=str(data["globalId"]) if data.get("globalId") else None,
+            global_name=str(data["globalName"]) if data.get("globalName") else None,
+            is_pro=bool(data.get("isPro")),
+            name=str(data["name"]) if data.get("name") else None,
+            display_name=(
+                str(data["displayName"]) if data.get("displayName") else None
+            ),
+            username=str(data["username"]) if data.get("username") else None,
+        )
+
+
+@dataclass
+class StackMachineUserSummary:
+    id: str
+    username: str
+    global_name: Optional[str] = None
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "StackMachineUserSummary":
+        return cls(
+            id=str(data["id"]),
+            username=str(data["username"]),
+            global_name=str(data["globalName"]) if data.get("globalName") else None,
+        )
+
+
+@dataclass
 class DeployApp:
     id: str
     will_perish_at: Optional[datetime]
@@ -143,6 +185,291 @@ class DeployAppVersion:
     ) -> "DeployAppVersion":
         resolved_app = app or DeployApp.from_graphql(data["app"])
         return cls(id=str(data["id"]), app=resolved_app)
+
+
+@dataclass
+class AppDatabase:
+    id: str
+    name: str
+    host: str
+    port: str
+    username: str
+    password: Optional[str]
+    phpmyadmin_url: Optional[str]
+    db_explorer_url: Optional[str]
+    deleted_at: Optional[datetime]
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
+    app: Optional[DeployApp] = None
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "AppDatabase":
+        return cls(
+            id=str(data["id"]),
+            name=str(data["name"]),
+            host=str(data["host"]),
+            port=str(data["port"]),
+            username=str(data["username"]),
+            password=str(data["password"]) if data.get("password") else None,
+            phpmyadmin_url=(
+                str(data["phpmyadminUrl"]) if data.get("phpmyadminUrl") else None
+            ),
+            db_explorer_url=(
+                str(data["dbExplorerUrl"]) if data.get("dbExplorerUrl") else None
+            ),
+            deleted_at=parse_datetime(data.get("deletedAt")),
+            created_at=parse_datetime(data.get("createdAt")),
+            updated_at=parse_datetime(data.get("updatedAt")),
+            app=DeployApp.from_graphql(data["app"]) if data.get("app") else None,
+        )
+
+
+@dataclass
+class AppDatabaseCredentialsResult:
+    database: AppDatabase
+    password: str
+
+
+@dataclass
+class GithubAppInstallation:
+    id: str
+    slug: str
+    github_configure_url: str
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "GithubAppInstallation":
+        return cls(
+            id=str(data["id"]),
+            slug=str(data["slug"]),
+            github_configure_url=str(data["githubConfigureUrl"]),
+        )
+
+
+@dataclass
+class GithubInstallationRepository:
+    id: str
+    name: str
+    namespace: str
+    repo_url: str
+    url: str
+    installation: GithubAppInstallation
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "GithubInstallationRepository":
+        return cls(
+            id=str(data["id"]),
+            name=str(data["name"]),
+            namespace=str(data["namespace"]),
+            repo_url=str(data["repoUrl"]),
+            url=str(data["url"]),
+            installation=GithubAppInstallation.from_graphql(data["installation"]),
+        )
+
+
+@dataclass
+class GithubRepoConnection:
+    id: str
+    app: DeployApp
+    connected_at: Optional[datetime]
+    connected_by: StackMachineUserSummary
+    deploy_branch: str
+    deployment_status_events: bool
+    pull_request_comments: bool
+    github_repo_installation: GithubInstallationRepository
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "GithubRepoConnection":
+        return cls(
+            id=str(data["id"]),
+            app=DeployApp.from_graphql(data["app"]),
+            connected_at=parse_datetime(data.get("connectedAt")),
+            connected_by=StackMachineUserSummary.from_graphql(data["connectedBy"]),
+            deploy_branch=str(data["deployBranch"]),
+            deployment_status_events=bool(data["deploymentStatusEvents"]),
+            pull_request_comments=bool(data["pullRequestComments"]),
+            github_repo_installation=GithubInstallationRepository.from_graphql(
+                data["githubRepoInstallation"]
+            ),
+        )
+
+
+@dataclass
+class DNSRecordDomainSummary:
+    id: str
+    name: str
+    slug: str
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "DNSRecordDomainSummary":
+        return cls(id=str(data["id"]), name=str(data["name"]), slug=str(data["slug"]))
+
+
+def _dns_record_kind_from_typename(typename: str) -> str:
+    record_kinds = {
+        "AAAARecord": "AAAA",
+        "ARecord": "A",
+        "CAARecord": "CAA",
+        "CNAMERecord": "CNAME",
+        "DNAMERecord": "DNAME",
+        "MXRecord": "MX",
+        "NSRecord": "NS",
+        "PTRRecord": "PTR",
+        "SOARecord": "SOA",
+        "SRVRecord": "SRV",
+        "SSHFPRecord": "SSHFP",
+        "TXTRecord": "TXT",
+    }
+    return record_kinds.get(typename, "%future added value")
+
+
+def _dns_record_value_from_data(data: Mapping[str, Any]) -> str:
+    for key in (
+        "value",
+        "address",
+        "cName",
+        "dName",
+        "exchange",
+        "nsdname",
+        "ptrdname",
+        "target",
+        "data",
+        "fingerprint",
+        "text",
+    ):
+        if data.get(key) is not None:
+            return str(data[key])
+    return ""
+
+
+@dataclass
+class DNSRecord:
+    id: str
+    type: str
+    kind: str
+    domain: DNSRecordDomainSummary
+    name: str
+    text: str
+    value: str
+    ttl: int
+    dns_class: Optional[str]
+    deleted_at: Optional[datetime]
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
+    address: Optional[str] = None
+    c_name: Optional[str] = None
+    d_name: Optional[str] = None
+    flags: Optional[int] = None
+    tag: Optional[str] = None
+    exchange: Optional[str] = None
+    preference: Optional[int] = None
+    nsdname: Optional[str] = None
+    ptrdname: Optional[str] = None
+    expire: Optional[int] = None
+    minimum: Optional[int] = None
+    mname: Optional[str] = None
+    refresh: Optional[int] = None
+    retry: Optional[int] = None
+    rname: Optional[str] = None
+    serial: Optional[int] = None
+    port: Optional[int] = None
+    priority: Optional[int] = None
+    protocol: Optional[str] = None
+    service: Optional[str] = None
+    target: Optional[str] = None
+    weight: Optional[int] = None
+    algorithm: Optional[int] = None
+    fingerprint: Optional[str] = None
+    sshfp_type: Optional[int] = None
+    data: Optional[str] = None
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "DNSRecord":
+        typename = str(data.get("__typename") or "")
+        return cls(
+            id=str(data["id"]),
+            type=typename,
+            kind=_dns_record_kind_from_typename(typename),
+            domain=DNSRecordDomainSummary.from_graphql(data["domain"]),
+            name=str(data["name"]),
+            text=str(data["text"]),
+            value=_dns_record_value_from_data(data),
+            ttl=int(data["ttl"]),
+            dns_class=str(data["dnsClass"]) if data.get("dnsClass") else None,
+            deleted_at=parse_datetime(data.get("deletedAt")),
+            created_at=parse_datetime(data.get("createdAt")),
+            updated_at=parse_datetime(data.get("updatedAt")),
+            address=str(data["address"]) if data.get("address") else None,
+            c_name=str(data["cName"]) if data.get("cName") else None,
+            d_name=str(data["dName"]) if data.get("dName") else None,
+            flags=int(data["flags"]) if data.get("flags") is not None else None,
+            tag=str(data["tag"]) if data.get("tag") else None,
+            exchange=str(data["exchange"]) if data.get("exchange") else None,
+            preference=(
+                int(data["preference"]) if data.get("preference") is not None else None
+            ),
+            nsdname=str(data["nsdname"]) if data.get("nsdname") else None,
+            ptrdname=str(data["ptrdname"]) if data.get("ptrdname") else None,
+            expire=int(data["expire"]) if data.get("expire") is not None else None,
+            minimum=(
+                int(data["minimum"]) if data.get("minimum") is not None else None
+            ),
+            mname=str(data["mname"]) if data.get("mname") else None,
+            refresh=int(data["refresh"]) if data.get("refresh") is not None else None,
+            retry=int(data["retry"]) if data.get("retry") is not None else None,
+            rname=str(data["rname"]) if data.get("rname") else None,
+            serial=int(data["serial"]) if data.get("serial") is not None else None,
+            port=int(data["port"]) if data.get("port") is not None else None,
+            priority=(
+                int(data["priority"]) if data.get("priority") is not None else None
+            ),
+            protocol=str(data["protocol"]) if data.get("protocol") else None,
+            service=str(data["service"]) if data.get("service") else None,
+            target=str(data["target"]) if data.get("target") else None,
+            weight=int(data["weight"]) if data.get("weight") is not None else None,
+            algorithm=(
+                int(data["algorithm"]) if data.get("algorithm") is not None else None
+            ),
+            fingerprint=(
+                str(data["fingerprint"]) if data.get("fingerprint") else None
+            ),
+            sshfp_type=int(data["type"]) if data.get("type") is not None else None,
+            data=str(data["data"]) if data.get("data") else None,
+        )
+
+
+@dataclass
+class DNSDomain:
+    id: str
+    name: str
+    slug: str
+    zone_file: str
+    owner: Optional[StackMachineOwnerSummary]
+    records: List[DNSRecord]
+    deleted_at: Optional[datetime]
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "DNSDomain":
+        return cls(
+            id=str(data["id"]),
+            name=str(data["name"]),
+            slug=str(data["slug"]),
+            zone_file=str(data["zoneFile"]),
+            owner=(
+                StackMachineOwnerSummary.from_graphql(data["owner"])
+                if data.get("owner")
+                else None
+            ),
+            records=[
+                DNSRecord.from_graphql(record)
+                for record in data.get("records") or []
+                if record
+            ],
+            deleted_at=parse_datetime(data.get("deletedAt")),
+            created_at=parse_datetime(data.get("createdAt")),
+            updated_at=parse_datetime(data.get("updatedAt")),
+        )
 
 
 @dataclass
