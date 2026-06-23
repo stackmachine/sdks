@@ -79,6 +79,7 @@ class PaginationOptions(TypedDict, total=False):
 DeployAppsSortBy = Literal["MOST_ACTIVE", "NEWEST", "OLDEST"]
 AppAliasSortBy = Literal["NEWEST", "OLDEST"]
 DeployAppVersionsSortBy = Literal["NEWEST", "OLDEST"]
+DNSRecordsSortBy = Literal["NEWEST", "OLDEST"]
 LogStream = Literal["RUNTIME", "STDERR", "STDOUT", "%future added value"]
 SshAuthenticationMethod = Literal["PASSWORD", "PUBLIC_KEY", "%future added value"]
 DNSRecordKind = Literal[
@@ -94,6 +95,16 @@ DNSRecordKind = Literal[
     "SRV",
     "SSHFP",
     "TXT",
+    "%future added value",
+]
+DatabaseEngine = Literal["MYSQL", "POSTGRES", "SQLITE"]
+EmailMessageDirection = Literal["RECEIVED", "SENT", "%future added value"]
+EmailMessageStatus = Literal[
+    "DELIVERED",
+    "FAILED",
+    "QUEUED",
+    "RECEIVED",
+    "SENT",
     "%future added value",
 ]
 
@@ -257,6 +268,8 @@ class AppsGitConnectInput(TypedDict, total=False):
 
 
 class AppsGitUpdateInput(TypedDict, total=False):
+    deploy_branch: Optional[str]
+    deployBranch: Optional[str]
     deployment_status_events: Optional[bool]
     deploymentStatusEvents: Optional[bool]
     pull_request_comments: Optional[bool]
@@ -269,6 +282,8 @@ class AppsDatabasesListInput(PaginationOptions, total=False):
 
 class AppsDatabasesCreateInput(TypedDict, total=False):
     app: str
+    db_engine: DatabaseEngine
+    dbEngine: DatabaseEngine
     name: Optional[str]
 
 
@@ -292,6 +307,12 @@ class DNSDomainsImportZoneFileInput(TypedDict, total=False):
 
 class DNSRecordsListInput(TypedDict):
     domain: str
+
+
+class DNSRecordsListPageInput(PaginationOptions, total=False):
+    domain: str
+    sort_by: DNSRecordsSortBy
+    sortBy: DNSRecordsSortBy
 
 
 class DNSCAAExtraInput(TypedDict):
@@ -339,6 +360,48 @@ class DNSRecordsUpsertInput(TypedDict, total=False):
     sshfp: Optional[DNSSSHFPExtraInput]
 
 
+class DNSRecordUpdateInput(TypedDict, total=False):
+    id: Optional[str]
+    delete: Optional[bool]
+    kind: Optional[DNSRecordKind]
+    name: Optional[str]
+    value: Optional[str]
+    ttl: Optional[int]
+    caa: Optional[DNSCAAExtraInput]
+    mx: Optional[DNSMXExtraInput]
+    soa: Optional[DNSSOAExtraInput]
+    srv: Optional[DNSSRVExtraInput]
+    sshfp: Optional[DNSSSHFPExtraInput]
+
+
+class DNSRecordsUpdateManyInput(TypedDict):
+    domain: str
+    records: Sequence[Optional[DNSRecordUpdateInput]]
+
+
+class EmailsListInput(PaginationOptions, total=False):
+    app: Optional[str]
+    owner: Optional[str]
+
+
+class EmailsSendInput(TypedDict, total=False):
+    app: str
+    to: Sequence[str]
+    subject: str
+    bcc: Optional[Sequence[str]]
+    cc: Optional[Sequence[str]]
+    from_address: Optional[str]
+    fromAddress: Optional[str]
+    from_email_id: Optional[str]
+    fromEmailId: Optional[str]
+    html_body: Optional[str]
+    htmlBody: Optional[str]
+    reply_to: Optional[str]
+    replyTo: Optional[str]
+    text_body: Optional[str]
+    textBody: Optional[str]
+
+
 class AppsSshAuthorizedKeysCreateInput(TypedDict, total=False):
     user: str
     public_key: str
@@ -346,7 +409,9 @@ class AppsSshAuthorizedKeysCreateInput(TypedDict, total=False):
     name: Optional[str]
 
 
-class AppsSshAuthorizedKeysDeleteInput(TypedDict):
+class AppsSshAuthorizedKeysDeleteInput(TypedDict, total=False):
+    authorized_key_id: str
+    authorizedKeyId: str
     user: str
     name: str
 

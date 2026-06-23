@@ -18,7 +18,8 @@ with StackMachine(os.environ["STACKMACHINE_API_KEY"]) as client:
     print("Connected Git repository:", connection.id)
 
     updated = client.apps.git.update(
-        connection.id,
+        app_id,
+        deploy_branch=deploy_branch,
         deployment_status_events=True,
         pull_request_comments=True,
     )

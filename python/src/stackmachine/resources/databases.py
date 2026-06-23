@@ -15,8 +15,34 @@ from .._pagination import (
     create_async_list,
     create_list,
 )
-from .._types import PaginationOptions, RequestOptionsLike
+from .._types import DatabaseEngine, PaginationOptions, RequestOptionsLike
 from ._shared import page_variables, required_payload
+
+
+def _database_credentials_result(
+    payload_data: Any,
+    operation_name: str,
+    action: str,
+) -> AppDatabaseCredentialsResult:
+    payload = required_payload(
+        payload_data,
+        f"Failed to {action}, mutation failed.",
+        operation_name,
+    )
+    database = required_payload(
+        payload.get("database"),
+        f"Failed to {action}, no database returned.",
+        operation_name,
+    )
+    password = required_payload(
+        payload.get("password"),
+        f"Failed to {action}, no password returned.",
+        operation_name,
+    )
+    return AppDatabaseCredentialsResult(
+        database=AppDatabase.from_graphql(database),
+        password=str(password),
+    )
 
 
 class AppsDatabasesResource:
@@ -51,32 +77,31 @@ class AppsDatabasesResource:
         self,
         *,
         app: str,
+        db_engine: Optional[DatabaseEngine] = None,
         name: Optional[str] = None,
         request_options: Optional[RequestOptionsLike] = None,
     ) -> AppDatabaseCredentialsResult:
+        if db_engine:
+            response = self._client._mutation(
+                gql.CREATE_DATABASE_AND_LINK_TO_APP_MUTATION,
+                {"input": {"appId": app, "dbEngine": db_engine, "name": name}},
+                request_options=request_options,
+            )
+            return _database_credentials_result(
+                response.get("createDatabaseAndLinkToApp") if response else None,
+                "srcCreateDatabaseAndLinkToAppMutation",
+                "create database",
+            )
+
         response = self._client._mutation(
             gql.CREATE_APP_DATABASE_MUTATION,
             {"input": {"id": app, "name": name}},
             request_options=request_options,
         )
-        payload = required_payload(
+        return _database_credentials_result(
             response.get("createAppDb") if response else None,
-            "Failed to create database, mutation failed.",
             "srcCreateAppDatabaseMutation",
-        )
-        database = required_payload(
-            payload.get("database"),
-            "Failed to create database, no database returned.",
-            "srcCreateAppDatabaseMutation",
-        )
-        password = required_payload(
-            payload.get("password"),
-            "Failed to create database, no password returned.",
-            "srcCreateAppDatabaseMutation",
-        )
-        return AppDatabaseCredentialsResult(
-            database=AppDatabase.from_graphql(database),
-            password=str(password),
+            "create database",
         )
 
     def rotate_credentials(
@@ -157,32 +182,31 @@ class AsyncAppsDatabasesResource:
         self,
         *,
         app: str,
+        db_engine: Optional[DatabaseEngine] = None,
         name: Optional[str] = None,
         request_options: Optional[RequestOptionsLike] = None,
     ) -> AppDatabaseCredentialsResult:
+        if db_engine:
+            response = await self._client._mutation(
+                gql.CREATE_DATABASE_AND_LINK_TO_APP_MUTATION,
+                {"input": {"appId": app, "dbEngine": db_engine, "name": name}},
+                request_options=request_options,
+            )
+            return _database_credentials_result(
+                response.get("createDatabaseAndLinkToApp") if response else None,
+                "srcCreateDatabaseAndLinkToAppMutation",
+                "create database",
+            )
+
         response = await self._client._mutation(
             gql.CREATE_APP_DATABASE_MUTATION,
             {"input": {"id": app, "name": name}},
             request_options=request_options,
         )
-        payload = required_payload(
+        return _database_credentials_result(
             response.get("createAppDb") if response else None,
-            "Failed to create database, mutation failed.",
             "srcCreateAppDatabaseMutation",
-        )
-        database = required_payload(
-            payload.get("database"),
-            "Failed to create database, no database returned.",
-            "srcCreateAppDatabaseMutation",
-        )
-        password = required_payload(
-            payload.get("password"),
-            "Failed to create database, no password returned.",
-            "srcCreateAppDatabaseMutation",
-        )
-        return AppDatabaseCredentialsResult(
-            database=AppDatabase.from_graphql(database),
-            password=str(password),
+            "create database",
         )
 
     async def rotate_credentials(

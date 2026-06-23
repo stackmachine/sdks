@@ -2,7 +2,7 @@ import os
 
 from stackmachine import StackMachine
 
-owner = "owner_example"
+owner = "owner_id_example"
 domain_name = "example.com"
 
 with StackMachine(os.environ["STACKMACHINE_API_KEY"]) as client:

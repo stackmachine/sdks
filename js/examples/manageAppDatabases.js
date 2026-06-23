@@ -17,6 +17,7 @@ console.log("Databases:", databases);
 
 const { database, password } = await client.apps.databases.create({
   app: appId,
+  dbEngine: "POSTGRES",
   name: "primary",
 });
 console.log("Created database:", database.id);

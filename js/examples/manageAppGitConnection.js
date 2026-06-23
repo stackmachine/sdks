@@ -22,7 +22,8 @@ const connection = await client.apps.git.connect({
 });
 console.log("Connected Git repository:", connection.id);
 
-const updated = await client.apps.git.update(connection.id, {
+const updated = await client.apps.git.update(appId, {
+  deployBranch,
   deploymentStatusEvents: true,
   pullRequestComments: true,
 });

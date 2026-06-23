@@ -259,6 +259,10 @@ id
 name
 slug
 zoneFile
+delegationStatus
+nameservers
+lastCheckedAt
+verifiedAt
 deletedAt
 createdAt
 updatedAt
@@ -275,9 +279,36 @@ id
 name
 slug
 zoneFile
+delegationStatus
+nameservers
+lastCheckedAt
+verifiedAt
 deletedAt
 createdAt
 updatedAt
+owner {{
+  {DNS_OWNER_FIELDS}
+}}
+"""
+
+EMAIL_MESSAGE_FIELDS = f"""
+id
+bcc
+cc
+createdAt
+direction
+from
+htmlBody
+receivedAt
+replyTo
+sentAt
+status
+subject
+textBody
+to
+app {{
+  id
+}}
 owner {{
   {DNS_OWNER_FIELDS}
 }}
@@ -548,6 +579,19 @@ mutation srcCreateAppDatabaseMutation($input: CreateAppDBInput!) {{
 }}
 """
 
+CREATE_DATABASE_AND_LINK_TO_APP_MUTATION = f"""
+mutation srcCreateDatabaseAndLinkToAppMutation(
+  $input: CreateAppDatabaseInput!
+) {{
+  createDatabaseAndLinkToApp(input: $input) {{
+    database {{
+      {APP_DATABASE_FIELDS}
+    }}
+    password
+  }}
+}}
+"""
+
 ROTATE_APP_DATABASE_CREDENTIALS_MUTATION = f"""
 mutation srcRotateAppDatabaseCredentialsMutation(
   $input: RotateCredentialsForAppDBInput!
@@ -593,6 +637,14 @@ query srcGetAppGitConnectionsQuery($ids: [ID!]!) {{
     }}
   }}
 }}
+"""
+
+GET_GITHUB_REPO_UPDATE_TARGET_QUERY = """
+query srcGetGithubRepoUpdateTargetQuery($id: ID!) {
+  node(id: $id) {
+    __typename
+  }
+}
 """
 
 CONNECT_GITHUB_REPO_TO_APP_MUTATION = f"""
@@ -918,16 +970,26 @@ mutation srcDeleteSshAuthorizedKeyMutation($input: DeleteSshAuthorizedKeyInput!)
 }
 """
 
+DELETE_SSH_AUTHORIZED_KEY_BY_ID_MUTATION = """
+mutation srcDeleteSshAuthorizedKeyByIdMutation(
+  $input: DeleteSshAuthorizedKeyByIdInput!
+) {
+  deleteSshAuthorizedKeyById(input: $input) {
+    success
+  }
+}
+"""
+
 LIST_DNS_DOMAINS_QUERY = f"""
 query srcListDNSDomainsQuery(
-  $namespace: String
+  $owner: ID
   $first: Int
   $after: String
   $last: Int
   $before: String
 ) {{
   getAllDomains(
-    namespace: $namespace
+    ownerId: $owner
     first: $first
     after: $after
     last: $last
@@ -1014,6 +1076,44 @@ query srcListDNSRecordsQuery($domainId: ID!) {{
 }}
 """
 
+LIST_DNS_RECORDS_CONNECTION_QUERY = f"""
+query srcListDNSRecordsConnectionQuery(
+  $domainId: ID!
+  $first: Int
+  $after: String
+  $last: Int
+  $before: String
+  $sortBy: DNSRecordsSortBy
+) {{
+  node(id: $domainId) {{
+    __typename
+    ... on DNSDomain {{
+      recordsConnection(
+        first: $first
+        after: $after
+        last: $last
+        before: $before
+        sortBy: $sortBy
+      ) {{
+        edges {{
+          cursor
+          node {{
+            {DNS_RECORD_FIELDS}
+          }}
+        }}
+        pageInfo {{
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }}
+        totalCount
+      }}
+    }}
+  }}
+}}
+"""
+
 GET_DNS_RECORDS_QUERY = f"""
 query srcGetDNSRecordsQuery($ids: [ID!]!) {{
   nodes(ids: $ids) {{
@@ -1039,4 +1139,171 @@ mutation srcDeleteDNSRecordMutation($input: DeleteDNSRecordInput!) {
     success
   }
 }
+"""
+
+UPDATE_DNS_RECORDS_MUTATION = f"""
+mutation srcUpdateDNSRecordsMutation($input: UpdateDNSRecordsInput!) {{
+  updateDNSRecords(input: $input) {{
+    success
+    records {{
+      {DNS_RECORD_FIELDS}
+    }}
+  }}
+}}
+"""
+
+LIST_SENT_EMAILS_QUERY = f"""
+query srcListSentEmailsQuery(
+  $id: ID!
+  $first: Int
+  $after: String
+  $last: Int
+  $before: String
+) {{
+  node(id: $id) {{
+    __typename
+    ... on DeployApp {{
+      emails: sentEmails(first: $first, after: $after, last: $last, before: $before) {{
+        edges {{
+          cursor
+          node {{
+            {EMAIL_MESSAGE_FIELDS}
+          }}
+        }}
+        pageInfo {{
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }}
+        totalCount
+      }}
+    }}
+    ... on Namespace {{
+      emails: sentEmails(first: $first, after: $after, last: $last, before: $before) {{
+        edges {{
+          cursor
+          node {{
+            {EMAIL_MESSAGE_FIELDS}
+          }}
+        }}
+        pageInfo {{
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }}
+        totalCount
+      }}
+    }}
+    ... on User {{
+      emails: sentEmails(first: $first, after: $after, last: $last, before: $before) {{
+        edges {{
+          cursor
+          node {{
+            {EMAIL_MESSAGE_FIELDS}
+          }}
+        }}
+        pageInfo {{
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }}
+        totalCount
+      }}
+    }}
+  }}
+}}
+"""
+
+LIST_RECEIVED_EMAILS_QUERY = f"""
+query srcListReceivedEmailsQuery(
+  $id: ID!
+  $first: Int
+  $after: String
+  $last: Int
+  $before: String
+) {{
+  node(id: $id) {{
+    __typename
+    ... on DeployApp {{
+      emails: receivedEmails(
+        first: $first
+        after: $after
+        last: $last
+        before: $before
+      ) {{
+        edges {{
+          cursor
+          node {{
+            {EMAIL_MESSAGE_FIELDS}
+          }}
+        }}
+        pageInfo {{
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }}
+        totalCount
+      }}
+    }}
+    ... on Namespace {{
+      emails: receivedEmails(
+        first: $first
+        after: $after
+        last: $last
+        before: $before
+      ) {{
+        edges {{
+          cursor
+          node {{
+            {EMAIL_MESSAGE_FIELDS}
+          }}
+        }}
+        pageInfo {{
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }}
+        totalCount
+      }}
+    }}
+    ... on User {{
+      emails: receivedEmails(
+        first: $first
+        after: $after
+        last: $last
+        before: $before
+      ) {{
+        edges {{
+          cursor
+          node {{
+            {EMAIL_MESSAGE_FIELDS}
+          }}
+        }}
+        pageInfo {{
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }}
+        totalCount
+      }}
+    }}
+  }}
+}}
+"""
+
+SEND_APP_EMAIL_MUTATION = f"""
+mutation srcSendAppEmailMutation($input: SendAppEmailInput!) {{
+  sendAppEmail(input: $input) {{
+    success
+    message {{
+      {EMAIL_MESSAGE_FIELDS}
+    }}
+  }}
+}}
 """

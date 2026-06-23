@@ -172,6 +172,15 @@ class DeployApp:
 
 
 @dataclass
+class DeployAppReference:
+    id: str
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "DeployAppReference":
+        return cls(id=str(data["id"]))
+
+
+@dataclass
 class DeployAppVersion:
     id: str
     app: DeployApp
@@ -443,9 +452,13 @@ class DNSDomain:
     name: str
     slug: str
     zone_file: str
+    delegation_status: Optional[str]
+    nameservers: List[str]
     owner: Optional[StackMachineOwnerSummary]
     records: List[DNSRecord]
     deleted_at: Optional[datetime]
+    last_checked_at: Optional[datetime]
+    verified_at: Optional[datetime]
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
 
@@ -456,6 +469,16 @@ class DNSDomain:
             name=str(data["name"]),
             slug=str(data["slug"]),
             zone_file=str(data["zoneFile"]),
+            delegation_status=(
+                str(data["delegationStatus"])
+                if data.get("delegationStatus")
+                else None
+            ),
+            nameservers=[
+                str(nameserver)
+                for nameserver in data.get("nameservers") or []
+                if nameserver
+            ],
             owner=(
                 StackMachineOwnerSummary.from_graphql(data["owner"])
                 if data.get("owner")
@@ -467,8 +490,61 @@ class DNSDomain:
                 if record
             ],
             deleted_at=parse_datetime(data.get("deletedAt")),
+            last_checked_at=parse_datetime(data.get("lastCheckedAt")),
+            verified_at=parse_datetime(data.get("verifiedAt")),
             created_at=parse_datetime(data.get("createdAt")),
             updated_at=parse_datetime(data.get("updatedAt")),
+        )
+
+
+@dataclass
+class EmailMessage:
+    id: str
+    app: Optional[DeployAppReference]
+    app_id: Optional[str]
+    owner: Optional[StackMachineOwnerSummary]
+    direction: str
+    status: str
+    from_: str
+    to: List[str]
+    cc: List[str]
+    bcc: List[str]
+    reply_to: Optional[str]
+    subject: str
+    text_body: Optional[str]
+    html_body: Optional[str]
+    received_at: Optional[datetime]
+    sent_at: Optional[datetime]
+    created_at: Optional[datetime]
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "EmailMessage":
+        return cls(
+            id=str(data["id"]),
+            app=(
+                DeployAppReference.from_graphql(data["app"])
+                if data.get("app")
+                else None
+            ),
+            app_id=str(data["app"]["id"]) if data.get("app") else None,
+            owner=(
+                StackMachineOwnerSummary.from_graphql(data["owner"])
+                if data.get("owner")
+                else None
+            ),
+            direction=str(data["direction"]),
+            status=str(data["status"]),
+            from_=str(data["from"]),
+            to=[str(address) for address in data.get("to") or [] if address],
+            cc=[str(address) for address in data.get("cc") or [] if address],
+            bcc=[str(address) for address in data.get("bcc") or [] if address],
+            reply_to=str(data["replyTo"]) if data.get("replyTo") else None,
+            subject=str(data["subject"]),
+            text_body=str(data["textBody"]) if data.get("textBody") else None,
+            html_body=str(data["htmlBody"]) if data.get("htmlBody") else None,
+            received_at=parse_datetime(data.get("receivedAt")),
+            sent_at=parse_datetime(data.get("sentAt")),
+            created_at=parse_datetime(data.get("createdAt")),
         )
 
 

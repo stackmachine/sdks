@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b10d2e6cded2563b12f3ac6596f83cc6>>
+ * @generated SignedSource<<52fb936ff2e7a44687364ee6a28f9b78>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,6 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type DNSDelegationStatus = "MISCONFIGURED" | "PENDING" | "UNKNOWN" | "VERIFIED" | "%future added value";
 export type srcListDNSDomainsQuery$variables = {
   after?: string | null | undefined;
   before?: string | null | undefined;
@@ -22,9 +23,12 @@ export type srcListDNSDomainsQuery$data = {
       readonly cursor: string;
       readonly node: {
         readonly createdAt: any;
+        readonly delegationStatus: DNSDelegationStatus;
         readonly deletedAt: any | null | undefined;
         readonly id: string;
+        readonly lastCheckedAt: any | null | undefined;
         readonly name: string;
+        readonly nameservers: ReadonlyArray<string>;
         readonly owner: {
           readonly __typename: string;
           readonly displayName?: string | null | undefined;
@@ -37,6 +41,7 @@ export type srcListDNSDomainsQuery$data = {
         };
         readonly slug: string;
         readonly updatedAt: any;
+        readonly verifiedAt: any | null | undefined;
         readonly zoneFile: string;
       };
     }>;
@@ -103,7 +108,7 @@ v5 = [
   },
   {
     "kind": "Variable",
-    "name": "namespace",
+    "name": "ownerId",
     "variableName": "owner"
   }
 ],
@@ -146,52 +151,80 @@ v11 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "deletedAt",
+  "name": "delegationStatus",
   "storageKey": null
 },
 v12 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "createdAt",
+  "name": "nameservers",
   "storageKey": null
 },
 v13 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "updatedAt",
+  "name": "lastCheckedAt",
   "storageKey": null
 },
 v14 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "__typename",
+  "name": "verifiedAt",
   "storageKey": null
 },
 v15 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "globalId",
+  "name": "deletedAt",
   "storageKey": null
 },
 v16 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "globalName",
+  "name": "createdAt",
   "storageKey": null
 },
 v17 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "isPro",
+  "name": "updatedAt",
   "storageKey": null
 },
 v18 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "__typename",
+  "storageKey": null
+},
+v19 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "globalId",
+  "storageKey": null
+},
+v20 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "globalName",
+  "storageKey": null
+},
+v21 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "isPro",
+  "storageKey": null
+},
+v22 = {
   "kind": "InlineFragment",
   "selections": [
     (v7/*: any*/),
@@ -207,7 +240,7 @@ v18 = {
   "type": "Namespace",
   "abstractKey": null
 },
-v19 = {
+v23 = {
   "kind": "InlineFragment",
   "selections": [
     (v7/*: any*/),
@@ -222,7 +255,7 @@ v19 = {
   "type": "User",
   "abstractKey": null
 },
-v20 = {
+v24 = {
   "alias": null,
   "args": null,
   "concreteType": "PageInfo",
@@ -261,7 +294,7 @@ v20 = {
   ],
   "storageKey": null
 },
-v21 = {
+v25 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
@@ -313,6 +346,10 @@ return {
                   (v11/*: any*/),
                   (v12/*: any*/),
                   (v13/*: any*/),
+                  (v14/*: any*/),
+                  (v15/*: any*/),
+                  (v16/*: any*/),
+                  (v17/*: any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -321,12 +358,12 @@ return {
                     "name": "owner",
                     "plural": false,
                     "selections": [
-                      (v14/*: any*/),
-                      (v15/*: any*/),
-                      (v16/*: any*/),
-                      (v17/*: any*/),
                       (v18/*: any*/),
-                      (v19/*: any*/)
+                      (v19/*: any*/),
+                      (v20/*: any*/),
+                      (v21/*: any*/),
+                      (v22/*: any*/),
+                      (v23/*: any*/)
                     ],
                     "storageKey": null
                   }
@@ -336,8 +373,8 @@ return {
             ],
             "storageKey": null
           },
-          (v20/*: any*/),
-          (v21/*: any*/)
+          (v24/*: any*/),
+          (v25/*: any*/)
         ],
         "storageKey": null
       }
@@ -389,6 +426,10 @@ return {
                   (v11/*: any*/),
                   (v12/*: any*/),
                   (v13/*: any*/),
+                  (v14/*: any*/),
+                  (v15/*: any*/),
+                  (v16/*: any*/),
+                  (v17/*: any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -397,12 +438,12 @@ return {
                     "name": "owner",
                     "plural": false,
                     "selections": [
-                      (v14/*: any*/),
-                      (v15/*: any*/),
-                      (v16/*: any*/),
-                      (v17/*: any*/),
                       (v18/*: any*/),
                       (v19/*: any*/),
+                      (v20/*: any*/),
+                      (v21/*: any*/),
+                      (v22/*: any*/),
+                      (v23/*: any*/),
                       {
                         "kind": "InlineFragment",
                         "selections": [
@@ -420,24 +461,24 @@ return {
             ],
             "storageKey": null
           },
-          (v20/*: any*/),
-          (v21/*: any*/)
+          (v24/*: any*/),
+          (v25/*: any*/)
         ],
         "storageKey": null
       }
     ]
   },
   "params": {
-    "cacheID": "71eb22e800c63f137a299f749f2edc42",
+    "cacheID": "2ce8d03db9b19daf18513e1c25995eee",
     "id": null,
     "metadata": {},
     "name": "srcListDNSDomainsQuery",
     "operationKind": "query",
-    "text": "query srcListDNSDomainsQuery(\n  $owner: String\n  $first: Int\n  $after: String\n  $last: Int\n  $before: String\n) {\n  getAllDomains(namespace: $owner, first: $first, after: $after, last: $last, before: $before) {\n    edges {\n      cursor\n      node {\n        id\n        name\n        slug\n        zoneFile\n        deletedAt\n        createdAt\n        updatedAt\n        owner {\n          __typename\n          globalId\n          globalName\n          isPro\n          ... on Namespace {\n            id\n            name\n            displayName\n          }\n          ... on User {\n            id\n            username\n          }\n          ... on Node {\n            __isNode: __typename\n            id\n          }\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      endCursor\n      startCursor\n    }\n    totalCount\n  }\n}\n"
+    "text": "query srcListDNSDomainsQuery(\n  $owner: ID\n  $first: Int\n  $after: String\n  $last: Int\n  $before: String\n) {\n  getAllDomains(ownerId: $owner, first: $first, after: $after, last: $last, before: $before) {\n    edges {\n      cursor\n      node {\n        id\n        name\n        slug\n        zoneFile\n        delegationStatus\n        nameservers\n        lastCheckedAt\n        verifiedAt\n        deletedAt\n        createdAt\n        updatedAt\n        owner {\n          __typename\n          globalId\n          globalName\n          isPro\n          ... on Namespace {\n            id\n            name\n            displayName\n          }\n          ... on User {\n            id\n            username\n          }\n          ... on Node {\n            __isNode: __typename\n            id\n          }\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      endCursor\n      startCursor\n    }\n    totalCount\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "d331fcec3c63ff9f2d3449eba05958f3";
+(node as any).hash = "9d6cf667a662251f9b7762caa7141950";
 
 export default node;

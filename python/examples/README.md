@@ -7,7 +7,8 @@ export STACKMACHINE_API_KEY=sk_stackmachine_...
 ```
 
 Each example uses editable placeholder IDs near the top of the file, such as
-`da_example`, `github_repo_example`, and `dns_domain_example`.
+`da_example`, `github_repo_example`, `dns_domain_example`, and
+`owner_id_example`.
 
 Run an example with Python:
 
@@ -23,6 +24,7 @@ Examples that create or update resources:
 - `manage_hosted_dns_domains.py`
 - `manage_hosted_dns_records.py`
 - `import_hosted_dns_zone_file.py`
+- `manage_emails.py`
 
 Destructive cleanup calls are included as commented lines. Uncomment them only
 when you intend to delete or disconnect the resource shown in the example.

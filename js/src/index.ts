@@ -15,6 +15,9 @@ import { srcDeployAppKindWordPress$data } from "__generated__/srcDeployAppKindWo
 import nodeAppVersion, {
   srcDeployAppVersionData$data,
 } from "__generated__/srcDeployAppVersionData.graphql";
+import nodeEmailMessage, {
+  srcEmailMessageData$data,
+} from "__generated__/srcEmailMessageData.graphql";
 import { srcGetAppAliasesQuery } from "__generated__/srcGetAppAliasesQuery.graphql";
 import { srcGetAppByIdQuery } from "__generated__/srcGetAppByIdQuery.graphql";
 import { srcGetAppByNameQuery } from "__generated__/srcGetAppByNameQuery.graphql";
@@ -243,14 +246,17 @@ export type AppsGitConnectInput = {
   deployBranch?: string | null;
 };
 export type AppsGitUpdateInput = {
+  deployBranch?: string | null;
   deploymentStatusEvents?: boolean | null;
   pullRequestComments?: boolean | null;
 };
 export type AppsDatabasesListInput = StackMachinePaginationParams & {
   app: string;
 };
+export type DatabaseEngine = "MYSQL" | "POSTGRES" | "SQLITE";
 export type AppsDatabasesCreateInput = {
   app: string;
+  dbEngine?: DatabaseEngine | null;
   name?: string | null;
 };
 export type AppDatabaseWithPassword = {
@@ -286,6 +292,10 @@ export type DNSDomainsImportZoneFileInput = {
 };
 export type DNSRecordsListInput = {
   domain: string;
+};
+export type DNSRecordsListPageInput = StackMachinePaginationParams & {
+  domain: string;
+  sortBy?: DNSRecordsSortBy | null;
 };
 export type DNSCAAExtraInput = {
   flags: number;
@@ -326,6 +336,47 @@ export type DNSRecordsUpsertInput = {
   srv?: DNSSRVExtraInput | null;
   sshfp?: DNSSSHFPExtraInput | null;
 };
+export type DNSRecordUpdateInput = {
+  id?: string | null;
+  delete?: boolean | null;
+  kind?: DNSRecordKind | null;
+  name?: string | null;
+  value?: string | null;
+  ttl?: number | null;
+  caa?: DNSCAAExtraInput | null;
+  mx?: DNSMXExtraInput | null;
+  soa?: DNSSOAExtraInput | null;
+  srv?: DNSSRVExtraInput | null;
+  sshfp?: DNSSSHFPExtraInput | null;
+};
+export type DNSRecordsUpdateManyInput = {
+  domain: string;
+  records: ReadonlyArray<DNSRecordUpdateInput | null | undefined>;
+};
+export type EmailMessageDirection = "RECEIVED" | "SENT" | "%future added value";
+export type EmailMessageStatus =
+  | "DELIVERED"
+  | "FAILED"
+  | "QUEUED"
+  | "RECEIVED"
+  | "SENT"
+  | "%future added value";
+export type EmailsListInput = StackMachinePaginationParams & {
+  app?: string | null;
+  owner?: string | null;
+};
+export type EmailsSendInput = {
+  app: string;
+  to: ReadonlyArray<string>;
+  subject: string;
+  bcc?: ReadonlyArray<string> | null;
+  cc?: ReadonlyArray<string> | null;
+  fromAddress?: string | null;
+  fromEmailId?: string | null;
+  htmlBody?: string | null;
+  replyTo?: string | null;
+  textBody?: string | null;
+};
 export type AppAliasSortBy = "NEWEST" | "OLDEST";
 export type DeployAppsSortBy = "MOST_ACTIVE" | "NEWEST" | "OLDEST";
 export type DeployAppVersionsSortBy = "NEWEST" | "OLDEST";
@@ -362,7 +413,11 @@ export type AppsSshAuthorizedKeysCreateInput = {
   publicKey: string;
   name?: string;
 };
-export type AppsSshAuthorizedKeysDeleteInput = { user: string; name: string };
+export type AppsSshAuthorizedKeysDeleteInput = {
+  authorizedKeyId?: string;
+  user?: string;
+  name?: string;
+};
 export type AppsSshUsersUpdateInput = {
   username?: string;
   sftpRootFolder?: string;
@@ -673,6 +728,10 @@ export class DeployApp {
   }
 }
 
+export type DeployAppReference = {
+  id: string;
+};
+
 export type LogStream = "RUNTIME" | "STDERR" | "STDOUT" | "%future added value";
 
 export type Log = {
@@ -979,9 +1038,13 @@ export class DNSDomain {
   name: string;
   slug: string;
   zoneFile: string;
+  delegationStatus: string | null;
+  nameservers: string[];
   owner: StackMachineOwnerSummary;
   records: DNSRecord[];
   deletedAt: Date | null;
+  lastCheckedAt: Date | null;
+  verifiedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 
@@ -990,13 +1053,95 @@ export class DNSDomain {
     this.name = data.name;
     this.slug = data.slug;
     this.zoneFile = data.zoneFile;
+    this.delegationStatus = data.delegationStatus ?? null;
+    this.nameservers = (data.nameservers ?? []).filter(Boolean);
     this.owner = parseOwnerSummary(data.owner);
     this.records = (data.records ?? [])
       .filter(Boolean)
       .map((record: any) => new DNSRecord(record));
     this.deletedAt = parseDate(data.deletedAt);
+    this.lastCheckedAt = parseDate(data.lastCheckedAt);
+    this.verifiedAt = parseDate(data.verifiedAt);
     this.createdAt = parseDate(data.createdAt)!;
     this.updatedAt = parseDate(data.updatedAt)!;
+  }
+}
+
+export class EmailMessage {
+  static fragment = graphql`
+    fragment srcEmailMessageData on EmailMessage {
+      id
+      app {
+        id
+      }
+      bcc
+      cc
+      createdAt
+      direction
+      from
+      htmlBody
+      owner {
+        __typename
+        globalId
+        globalName
+        isPro
+        ... on Namespace {
+          id
+          name
+          displayName
+        }
+        ... on User {
+          id
+          username
+        }
+      }
+      receivedAt
+      replyTo
+      sentAt
+      status
+      subject
+      textBody
+      to
+    }
+  `;
+
+  id: string;
+  app: DeployAppReference | null;
+  appId: string | null;
+  owner: StackMachineOwnerSummary | null;
+  direction: EmailMessageDirection;
+  status: EmailMessageStatus;
+  from: string;
+  to: string[];
+  cc: string[];
+  bcc: string[];
+  replyTo: string | null;
+  subject: string;
+  textBody: string | null;
+  htmlBody: string | null;
+  receivedAt: Date | null;
+  sentAt: Date | null;
+  createdAt: Date;
+
+  constructor(data: any) {
+    const typedData = data as srcEmailMessageData$data;
+    this.id = data.id;
+    this.app = typedData.app ? { id: typedData.app.id } : null;
+    this.appId = typedData.app?.id ?? null;
+    this.owner = typedData.owner ? parseOwnerSummary(typedData.owner) : null;
+    this.direction = typedData.direction;
+    this.status = typedData.status;
+    this.from = typedData.from;
+    this.to = (typedData.to ?? []).filter(Boolean);
+    this.cc = (typedData.cc ?? []).filter(Boolean);
+    this.bcc = (typedData.bcc ?? []).filter(Boolean);
+    this.replyTo = typedData.replyTo ?? null;
+    this.subject = typedData.subject;
+    this.textBody = typedData.textBody ?? null;
+    this.htmlBody = typedData.htmlBody ?? null;
+    this.receivedAt = parseDate(typedData.receivedAt);
+    this.sentAt = parseDate(typedData.sentAt);
+    this.createdAt = parseDate(typedData.createdAt)!;
   }
 }
 
@@ -1953,6 +2098,67 @@ export class AppsDatabasesResource {
     input: AppsDatabasesCreateInput,
     options?: StackMachineRequestOptions,
   ): Promise<AppDatabaseWithPassword> {
+    if (input.dbEngine) {
+      const response = await this.client._mutation<any>(
+        graphql`
+          mutation srcCreateDatabaseAndLinkToAppMutation(
+            $input: CreateAppDatabaseInput!
+          ) {
+            createDatabaseAndLinkToApp(input: $input) {
+              database {
+                id
+                name
+                host
+                port
+                username
+                password
+                phpmyadminUrl
+                dbExplorerUrl
+                deletedAt
+                createdAt
+                updatedAt
+                app {
+                  id
+                  willPerishAt
+                  name
+                  url
+                  adminUrl
+                  activeVersion {
+                    id
+                  }
+                  favicon
+                  screenshot
+                }
+              }
+              password
+            }
+          }
+        `,
+        {
+          input: {
+            appId: input.app,
+            dbEngine: input.dbEngine,
+            name: input.name,
+          },
+        },
+        options,
+      );
+      const payload = requiredPayload(
+        response.createDatabaseAndLinkToApp,
+        "Failed to create database, mutation failed.",
+        "srcCreateDatabaseAndLinkToAppMutation",
+      );
+      const database = requiredPayload(
+        payload.database,
+        "Failed to create database, no database returned.",
+        "srcCreateDatabaseAndLinkToAppMutation",
+      );
+      return {
+        database: new AppDatabase(database, this.client),
+        password: payload.password,
+      };
+    }
+
     const response = await this.client._mutation<any>(
       graphql`
         mutation srcCreateAppDatabaseMutation($input: CreateAppDBInput!) {
@@ -2309,10 +2515,26 @@ export class AppsGitResource {
   }
 
   async update(
-    connectionId: string,
+    appOrConnectionId: string,
     input: AppsGitUpdateInput,
     options?: StackMachineRequestOptions,
   ): Promise<GithubRepoConnection> {
+    const target = await this.client._query<any>(
+      graphql`
+        query srcGetGithubRepoUpdateTargetQuery($id: ID!) {
+          node(id: $id) {
+            __typename
+          }
+        }
+      `,
+      { id: appOrConnectionId },
+      options,
+    );
+    const targetInput =
+      target?.node?.__typename === "GithubRepoConnection"
+        ? { connectionId: appOrConnectionId }
+        : { appId: appOrConnectionId };
+
     const response = await this.client._mutation<any>(
       graphql`
         mutation srcUpdateGithubRepoConnectionMutation(
@@ -2361,7 +2583,8 @@ export class AppsGitResource {
       `,
       {
         input: {
-          connectionId,
+          ...targetInput,
+          deployBranch: input.deployBranch,
           deploymentStatusEvents: input.deploymentStatusEvents,
           pullRequestComments: input.pullRequestComments,
         },
@@ -2780,9 +3003,54 @@ export class AppsSshUsersAuthorizedKeysResource {
   }
 
   async del(
-    input: AppsSshAuthorizedKeysDeleteInput,
+    input: string | AppsSshAuthorizedKeysDeleteInput,
     options?: StackMachineRequestOptions,
   ): Promise<void> {
+    const authorizedKeyId =
+      typeof input === "string" ? input : input.authorizedKeyId;
+    if (authorizedKeyId) {
+      const response = await this.client._mutation<any>(
+        graphql`
+          mutation srcDeleteSshAuthorizedKeyByIdMutation(
+            $input: DeleteSshAuthorizedKeyByIdInput!
+          ) {
+            deleteSshAuthorizedKeyById(input: $input) {
+              success
+            }
+          }
+        `,
+        {
+          input: { authorizedKeyId },
+        },
+        options,
+      );
+      if (!response.deleteSshAuthorizedKeyById?.success) {
+        throw new StackMachineAPIError({
+          message: "Failed to delete SSH authorized key.",
+          operationName: "srcDeleteSshAuthorizedKeyByIdMutation",
+        });
+      }
+      return;
+    }
+
+    if (typeof input === "string") {
+      throw new StackMachineValidationError({
+        message:
+          "`authorizedKeyId` is required to delete an SSH authorized key.",
+        code: "invalid_ssh_authorized_key_delete_input",
+        param: "authorizedKeyId",
+      });
+    }
+
+    if (!input.user || !input.name) {
+      throw new StackMachineValidationError({
+        message:
+          "`authorizedKeyId` or both `user` and `name` are required to delete an SSH authorized key.",
+        code: "invalid_ssh_authorized_key_delete_input",
+        param: "authorizedKeyId",
+      });
+    }
+
     const response = await this.client._mutation<any>(
       graphql`
         mutation srcDeleteSshAuthorizedKeyMutation(
@@ -2794,7 +3062,6 @@ export class AppsSshUsersAuthorizedKeysResource {
         }
       `,
       {
-        // TODO: support key deletion by authorized-key ID when backend exposes it.
         input: { sshUserId: input.user, name: input.name },
       },
       options,
@@ -3357,14 +3624,14 @@ export class DNSDomainsResource {
         const query = await this.client._query<any>(
           graphql`
             query srcListDNSDomainsQuery(
-              $owner: String
+              $owner: ID
               $first: Int
               $after: String
               $last: Int
               $before: String
             ) {
               getAllDomains(
-                namespace: $owner
+                ownerId: $owner
                 first: $first
                 after: $after
                 last: $last
@@ -3377,6 +3644,10 @@ export class DNSDomainsResource {
                     name
                     slug
                     zoneFile
+                    delegationStatus
+                    nameservers
+                    lastCheckedAt
+                    verifiedAt
                     deletedAt
                     createdAt
                     updatedAt
@@ -3443,6 +3714,10 @@ export class DNSDomainsResource {
               name
               slug
               zoneFile
+              delegationStatus
+              nameservers
+              lastCheckedAt
+              verifiedAt
               deletedAt
               createdAt
               updatedAt
@@ -3570,6 +3845,10 @@ export class DNSDomainsResource {
             name
             slug
             zoneFile
+            delegationStatus
+            nameservers
+            lastCheckedAt
+            verifiedAt
             deletedAt
             createdAt
             updatedAt
@@ -3691,6 +3970,10 @@ export class DNSDomainsResource {
               name
               slug
               zoneFile
+              delegationStatus
+              nameservers
+              lastCheckedAt
+              verifiedAt
               deletedAt
               createdAt
               updatedAt
@@ -3788,7 +4071,7 @@ export class DNSDomainsResource {
       {
         input: {
           name: input.name,
-          namespace: input.owner,
+          ownerId: input.owner,
           importRecords: input.importRecords,
         },
       },
@@ -3829,6 +4112,10 @@ export class DNSDomainsResource {
               name
               slug
               zoneFile
+              delegationStatus
+              nameservers
+              lastCheckedAt
+              verifiedAt
               deletedAt
               createdAt
               updatedAt
@@ -4078,6 +4365,148 @@ export class DNSRecordsResource {
       .map((record: any) => new DNSRecord(record));
   }
 
+  listPage(
+    input: DNSRecordsListPageInput,
+    options?: StackMachineRequestOptions,
+  ): StackMachineListPromise<DNSRecord> {
+    return createStackMachineListPromise<DNSRecord, DNSRecordsListPageInput>({
+      params: input,
+      options,
+      url: "/v1/dns/records",
+      fetchPage: async (pagination, params, requestOptions) => {
+        const query = await this.client._query<any>(
+          graphql`
+            query srcListDNSRecordsConnectionQuery(
+              $domainId: ID!
+              $first: Int
+              $after: String
+              $last: Int
+              $before: String
+              $sortBy: DNSRecordsSortBy
+            ) {
+              node(id: $domainId) {
+                __typename
+                ... on DNSDomain {
+                  recordsConnection(
+                    first: $first
+                    after: $after
+                    last: $last
+                    before: $before
+                    sortBy: $sortBy
+                  ) {
+                    edges {
+                      cursor
+                      node {
+                        __typename
+                        ... on Node {
+                          id
+                        }
+                        ... on DNSRecordInterface {
+                          createdAt
+                          deletedAt
+                          dnsClass
+                          domain {
+                            id
+                            name
+                            slug
+                          }
+                          name
+                          text
+                          ttl
+                          updatedAt
+                        }
+                        ... on AAAARecord {
+                          address
+                        }
+                        ... on ARecord {
+                          address
+                        }
+                        ... on CAARecord {
+                          flags
+                          tag
+                          value
+                        }
+                        ... on CNAMERecord {
+                          cName
+                        }
+                        ... on DNAMERecord {
+                          dName
+                        }
+                        ... on MXRecord {
+                          exchange
+                          preference
+                        }
+                        ... on NSRecord {
+                          nsdname
+                        }
+                        ... on PTRRecord {
+                          ptrdname
+                        }
+                        ... on SOARecord {
+                          expire
+                          minimum
+                          mname
+                          refresh
+                          retry
+                          rname
+                          serial
+                        }
+                        ... on SRVRecord {
+                          port
+                          priority
+                          protocol
+                          service
+                          target
+                          weight
+                        }
+                        ... on SSHFPRecord {
+                          algorithm
+                          fingerprint
+                          type
+                        }
+                        ... on TXTRecord {
+                          data
+                        }
+                      }
+                    }
+                    pageInfo {
+                      hasNextPage
+                      hasPreviousPage
+                      endCursor
+                      startCursor
+                    }
+                    totalCount
+                  }
+                }
+              }
+            }
+          `,
+          {
+            domainId: params.domain,
+            first: pagination.first,
+            after: pagination.after,
+            last: pagination.last,
+            before: pagination.before,
+            sortBy: params.sortBy,
+          },
+          requestOptions,
+        );
+        if (!query?.node || query.node.__typename !== "DNSDomain") {
+          throw resourceMissingError(
+            "DNS domain",
+            params.domain,
+            "srcListDNSRecordsConnectionQuery",
+            "domain",
+          );
+        }
+        return connectionToListPageData(
+          query.node.recordsConnection,
+          (node: any) => new DNSRecord(node),
+        );
+      },
+    });
+  }
+
   async retrieveMany(
     ids: string[],
     options?: StackMachineRequestOptions,
@@ -4320,6 +4749,114 @@ export class DNSRecordsResource {
     return this.upsert(input, id, options);
   }
 
+  async updateMany(
+    input: DNSRecordsUpdateManyInput,
+    options?: StackMachineRequestOptions,
+  ): Promise<DNSRecord[]> {
+    const response = await this.client._mutation<any>(
+      graphql`
+        mutation srcUpdateDNSRecordsMutation($input: UpdateDNSRecordsInput!) {
+          updateDNSRecords(input: $input) {
+            success
+            records {
+              __typename
+              ... on Node {
+                id
+              }
+              ... on DNSRecordInterface {
+                createdAt
+                deletedAt
+                dnsClass
+                domain {
+                  id
+                  name
+                  slug
+                }
+                name
+                text
+                ttl
+                updatedAt
+              }
+              ... on AAAARecord {
+                address
+              }
+              ... on ARecord {
+                address
+              }
+              ... on CAARecord {
+                flags
+                tag
+                value
+              }
+              ... on CNAMERecord {
+                cName
+              }
+              ... on DNAMERecord {
+                dName
+              }
+              ... on MXRecord {
+                exchange
+                preference
+              }
+              ... on NSRecord {
+                nsdname
+              }
+              ... on PTRRecord {
+                ptrdname
+              }
+              ... on SOARecord {
+                expire
+                minimum
+                mname
+                refresh
+                retry
+                rname
+                serial
+              }
+              ... on SRVRecord {
+                port
+                priority
+                protocol
+                service
+                target
+                weight
+              }
+              ... on SSHFPRecord {
+                algorithm
+                fingerprint
+                type
+              }
+              ... on TXTRecord {
+                data
+              }
+            }
+          }
+        }
+      `,
+      {
+        input: {
+          domainId: input.domain,
+          records: input.records,
+        },
+      },
+      options,
+    );
+    const payload = requiredPayload(
+      response.updateDNSRecords,
+      "Failed to update DNS records, mutation failed.",
+      "srcUpdateDNSRecordsMutation",
+    );
+    if (!payload.success) {
+      throw new StackMachineAPIError({
+        message: "Failed to update DNS records, mutation was not successful.",
+        operationName: "srcUpdateDNSRecordsMutation",
+      });
+    }
+    return (payload.records ?? [])
+      .filter(Boolean)
+      .map((record: any) => new DNSRecord(record));
+  }
+
   async del(id: string, options?: StackMachineRequestOptions): Promise<void> {
     const response = await this.client._mutation<any>(
       graphql`
@@ -4350,6 +4887,303 @@ export class DNSResource {
   constructor(client: SdkContext) {
     this.domains = new DNSDomainsResource(client);
     this.records = new DNSRecordsResource(client);
+  }
+}
+
+export class EmailsMessagesResource {
+  constructor(
+    private client: SdkContext,
+    private direction: "sent" | "received",
+  ) {}
+
+  list(
+    input: EmailsListInput,
+    options?: StackMachineRequestOptions,
+  ): StackMachineListPromise<EmailMessage> {
+    const id = input.app ?? input.owner;
+    if (!id || (input.app && input.owner)) {
+      throw new StackMachineValidationError({
+        message: "`app` or `owner` is required, but not both.",
+        code: "invalid_email_list_input",
+        param: "app",
+      });
+    }
+    const operationName =
+      this.direction === "sent"
+        ? "srcListSentEmailsQuery"
+        : "srcListReceivedEmailsQuery";
+
+    return createStackMachineListPromise<EmailMessage, EmailsListInput>({
+      params: input,
+      options,
+      url: `/v1/emails/${this.direction}`,
+      fetchPage: async (pagination, params, requestOptions) => {
+        const query =
+          this.direction === "sent"
+            ? await this.client._query<any>(
+                graphql`
+                  query srcListSentEmailsQuery(
+                    $id: ID!
+                    $first: Int
+                    $after: String
+                    $last: Int
+                    $before: String
+                  ) {
+                    node(id: $id) {
+                      __typename
+                      ... on DeployApp {
+                        emails: sentEmails(
+                          first: $first
+                          after: $after
+                          last: $last
+                          before: $before
+                        ) {
+                          edges {
+                            cursor
+                            node {
+                              ...srcEmailMessageData
+                            }
+                          }
+                          pageInfo {
+                            hasNextPage
+                            hasPreviousPage
+                            endCursor
+                            startCursor
+                          }
+                          totalCount
+                        }
+                      }
+                      ... on Namespace {
+                        emails: sentEmails(
+                          first: $first
+                          after: $after
+                          last: $last
+                          before: $before
+                        ) {
+                          edges {
+                            cursor
+                            node {
+                              ...srcEmailMessageData
+                            }
+                          }
+                          pageInfo {
+                            hasNextPage
+                            hasPreviousPage
+                            endCursor
+                            startCursor
+                          }
+                          totalCount
+                        }
+                      }
+                      ... on User {
+                        emails: sentEmails(
+                          first: $first
+                          after: $after
+                          last: $last
+                          before: $before
+                        ) {
+                          edges {
+                            cursor
+                            node {
+                              ...srcEmailMessageData
+                            }
+                          }
+                          pageInfo {
+                            hasNextPage
+                            hasPreviousPage
+                            endCursor
+                            startCursor
+                          }
+                          totalCount
+                        }
+                      }
+                    }
+                  }
+                `,
+                {
+                  id: params.app ?? params.owner,
+                  first: pagination.first,
+                  after: pagination.after,
+                  last: pagination.last,
+                  before: pagination.before,
+                },
+                requestOptions,
+              )
+            : await this.client._query<any>(
+                graphql`
+                  query srcListReceivedEmailsQuery(
+                    $id: ID!
+                    $first: Int
+                    $after: String
+                    $last: Int
+                    $before: String
+                  ) {
+                    node(id: $id) {
+                      __typename
+                      ... on DeployApp {
+                        emails: receivedEmails(
+                          first: $first
+                          after: $after
+                          last: $last
+                          before: $before
+                        ) {
+                          edges {
+                            cursor
+                            node {
+                              ...srcEmailMessageData
+                            }
+                          }
+                          pageInfo {
+                            hasNextPage
+                            hasPreviousPage
+                            endCursor
+                            startCursor
+                          }
+                          totalCount
+                        }
+                      }
+                      ... on Namespace {
+                        emails: receivedEmails(
+                          first: $first
+                          after: $after
+                          last: $last
+                          before: $before
+                        ) {
+                          edges {
+                            cursor
+                            node {
+                              ...srcEmailMessageData
+                            }
+                          }
+                          pageInfo {
+                            hasNextPage
+                            hasPreviousPage
+                            endCursor
+                            startCursor
+                          }
+                          totalCount
+                        }
+                      }
+                      ... on User {
+                        emails: receivedEmails(
+                          first: $first
+                          after: $after
+                          last: $last
+                          before: $before
+                        ) {
+                          edges {
+                            cursor
+                            node {
+                              ...srcEmailMessageData
+                            }
+                          }
+                          pageInfo {
+                            hasNextPage
+                            hasPreviousPage
+                            endCursor
+                            startCursor
+                          }
+                          totalCount
+                        }
+                      }
+                    }
+                  }
+                `,
+                {
+                  id: params.app ?? params.owner,
+                  first: pagination.first,
+                  after: pagination.after,
+                  last: pagination.last,
+                  before: pagination.before,
+                },
+                requestOptions,
+              );
+
+        if (!query?.node?.emails) {
+          throw resourceMissingError(
+            input.app ? "app" : "owner",
+            id,
+            operationName,
+            input.app ? "app" : "owner",
+          );
+        }
+        return connectionToListPageData(
+          query.node.emails,
+          (node: any) =>
+            new EmailMessage(
+              this.client._getFragmentData<srcEmailMessageData$data>(
+                nodeEmailMessage,
+                node,
+              ),
+            ),
+        );
+      },
+    });
+  }
+}
+
+export class EmailsResource {
+  sent: EmailsMessagesResource;
+  received: EmailsMessagesResource;
+
+  constructor(private client: SdkContext) {
+    this.sent = new EmailsMessagesResource(client, "sent");
+    this.received = new EmailsMessagesResource(client, "received");
+  }
+
+  async send(
+    input: EmailsSendInput,
+    options?: StackMachineRequestOptions,
+  ): Promise<EmailMessage> {
+    const response = await this.client._mutation<any>(
+      graphql`
+        mutation srcSendAppEmailMutation($input: SendAppEmailInput!) {
+          sendAppEmail(input: $input) {
+            success
+            message {
+              ...srcEmailMessageData
+            }
+          }
+        }
+      `,
+      {
+        input: {
+          appId: input.app,
+          to: input.to,
+          subject: input.subject,
+          bcc: input.bcc,
+          cc: input.cc,
+          fromAddress: input.fromAddress,
+          fromEmailId: input.fromEmailId,
+          htmlBody: input.htmlBody,
+          replyTo: input.replyTo,
+          textBody: input.textBody,
+        },
+      },
+      options,
+    );
+    const payload = requiredPayload(
+      response.sendAppEmail,
+      "Failed to send app email, mutation failed.",
+      "srcSendAppEmailMutation",
+    );
+    if (!payload.success) {
+      throw new StackMachineAPIError({
+        message: "Failed to send app email, mutation was not successful.",
+        operationName: "srcSendAppEmailMutation",
+      });
+    }
+    const message = requiredPayload(
+      payload.message,
+      "Failed to send app email, no message returned.",
+      "srcSendAppEmailMutation",
+    );
+    return new EmailMessage(
+      this.client._getFragmentData<srcEmailMessageData$data>(
+        nodeEmailMessage,
+        message,
+      ),
+    );
   }
 }
 
@@ -4384,6 +5218,7 @@ export class StackMachine implements SdkContext {
   deployments: DeploymentsResource;
   apps: DeployAppsResource;
   dns: DNSResource;
+  emails: EmailsResource;
   files: FilesResource;
   readonly apiUrl: string;
   readonly timeout: number;
@@ -4414,6 +5249,7 @@ export class StackMachine implements SdkContext {
     this.deployments = new DeploymentsResource(this, this.files);
     this.apps = new DeployAppsResource(this, this.deployments);
     this.dns = new DNSResource(this);
+    this.emails = new EmailsResource(this);
   }
 
   static async init(settings: StackMachineRegistryConfig) {

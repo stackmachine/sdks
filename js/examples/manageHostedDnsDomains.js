@@ -8,7 +8,7 @@ if (!STACKMACHINE_API_KEY) {
 
 const client = new StackMachine(STACKMACHINE_API_KEY);
 
-const owner = "owner_example";
+const owner = "owner_id_example";
 const domainName = "example.com";
 
 const domains = await client.dns.domains

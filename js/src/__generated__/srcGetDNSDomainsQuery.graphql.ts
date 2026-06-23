@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c5dc2119be68a3f17dc9ed46bf59921a>>
+ * @generated SignedSource<<bf92d5dfa6460d8bfd8982c44063b1d4>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,6 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type DNSDelegationStatus = "MISCONFIGURED" | "PENDING" | "UNKNOWN" | "VERIFIED" | "%future added value";
 export type DnsmanagerCertificationAuthorityAuthorizationRecordTagChoices = "IODEF" | "ISSUE" | "ISSUEWILD" | "%future added value";
 export type DnsmanagerSshFingerprintRecordAlgorithmChoices = "A_1" | "A_2" | "A_3" | "A_4" | "%future added value";
 export type DnsmanagerSshFingerprintRecordTypeChoices = "A_1" | "A_2" | "%future added value";
@@ -19,9 +20,12 @@ export type srcGetDNSDomainsQuery$data = {
   readonly nodes: ReadonlyArray<{
     readonly __typename: "DNSDomain";
     readonly createdAt: any;
+    readonly delegationStatus: DNSDelegationStatus;
     readonly deletedAt: any | null | undefined;
     readonly id: string;
+    readonly lastCheckedAt: any | null | undefined;
     readonly name: string;
+    readonly nameservers: ReadonlyArray<string>;
     readonly owner: {
       readonly __typename: string;
       readonly displayName?: string | null | undefined;
@@ -77,6 +81,7 @@ export type srcGetDNSDomainsQuery$data = {
     } | null | undefined> | null | undefined;
     readonly slug: string;
     readonly updatedAt: any;
+    readonly verifiedAt: any | null | undefined;
     readonly zoneFile: string;
   } | {
     // This will never be '%other', but we need some
@@ -143,45 +148,73 @@ v7 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "deletedAt",
+  "name": "delegationStatus",
   "storageKey": null
 },
 v8 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "createdAt",
+  "name": "nameservers",
   "storageKey": null
 },
 v9 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "updatedAt",
+  "name": "lastCheckedAt",
   "storageKey": null
 },
 v10 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "globalId",
+  "name": "verifiedAt",
   "storageKey": null
 },
 v11 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "globalName",
+  "name": "deletedAt",
   "storageKey": null
 },
 v12 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "isPro",
+  "name": "createdAt",
   "storageKey": null
 },
 v13 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "updatedAt",
+  "storageKey": null
+},
+v14 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "globalId",
+  "storageKey": null
+},
+v15 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "globalName",
+  "storageKey": null
+},
+v16 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "isPro",
+  "storageKey": null
+},
+v17 = {
   "kind": "InlineFragment",
   "selections": [
     (v3/*: any*/),
@@ -197,7 +230,7 @@ v13 = {
   "type": "Namespace",
   "abstractKey": null
 },
-v14 = {
+v18 = {
   "kind": "InlineFragment",
   "selections": [
     (v3/*: any*/),
@@ -212,7 +245,7 @@ v14 = {
   "type": "User",
   "abstractKey": null
 },
-v15 = {
+v19 = {
   "kind": "InlineFragment",
   "selections": [
     (v3/*: any*/)
@@ -220,7 +253,7 @@ v15 = {
   "type": "Node",
   "abstractKey": "__isNode"
 },
-v16 = [
+v20 = [
   {
     "alias": null,
     "args": null,
@@ -229,7 +262,7 @@ v16 = [
     "storageKey": null
   }
 ],
-v17 = {
+v21 = {
   "alias": null,
   "args": null,
   "concreteType": null,
@@ -238,12 +271,12 @@ v17 = {
   "plural": true,
   "selections": [
     (v2/*: any*/),
-    (v15/*: any*/),
+    (v19/*: any*/),
     {
       "kind": "InlineFragment",
       "selections": [
-        (v8/*: any*/),
-        (v7/*: any*/),
+        (v12/*: any*/),
+        (v11/*: any*/),
         {
           "alias": null,
           "args": null,
@@ -280,20 +313,20 @@ v17 = {
           "name": "ttl",
           "storageKey": null
         },
-        (v9/*: any*/)
+        (v13/*: any*/)
       ],
       "type": "DNSRecordInterface",
       "abstractKey": "__isDNSRecordInterface"
     },
     {
       "kind": "InlineFragment",
-      "selections": (v16/*: any*/),
+      "selections": (v20/*: any*/),
       "type": "AAAARecord",
       "abstractKey": null
     },
     {
       "kind": "InlineFragment",
-      "selections": (v16/*: any*/),
+      "selections": (v20/*: any*/),
       "type": "ARecord",
       "abstractKey": null
     },
@@ -578,6 +611,10 @@ return {
               (v7/*: any*/),
               (v8/*: any*/),
               (v9/*: any*/),
+              (v10/*: any*/),
+              (v11/*: any*/),
+              (v12/*: any*/),
+              (v13/*: any*/),
               {
                 "alias": null,
                 "args": null,
@@ -587,15 +624,15 @@ return {
                 "plural": false,
                 "selections": [
                   (v2/*: any*/),
-                  (v10/*: any*/),
-                  (v11/*: any*/),
-                  (v12/*: any*/),
-                  (v13/*: any*/),
-                  (v14/*: any*/)
+                  (v14/*: any*/),
+                  (v15/*: any*/),
+                  (v16/*: any*/),
+                  (v17/*: any*/),
+                  (v18/*: any*/)
                 ],
                 "storageKey": null
               },
-              (v17/*: any*/)
+              (v21/*: any*/)
             ],
             "type": "DNSDomain",
             "abstractKey": null
@@ -632,6 +669,10 @@ return {
               (v7/*: any*/),
               (v8/*: any*/),
               (v9/*: any*/),
+              (v10/*: any*/),
+              (v11/*: any*/),
+              (v12/*: any*/),
+              (v13/*: any*/),
               {
                 "alias": null,
                 "args": null,
@@ -641,16 +682,16 @@ return {
                 "plural": false,
                 "selections": [
                   (v2/*: any*/),
-                  (v10/*: any*/),
-                  (v11/*: any*/),
-                  (v12/*: any*/),
-                  (v13/*: any*/),
                   (v14/*: any*/),
-                  (v15/*: any*/)
+                  (v15/*: any*/),
+                  (v16/*: any*/),
+                  (v17/*: any*/),
+                  (v18/*: any*/),
+                  (v19/*: any*/)
                 ],
                 "storageKey": null
               },
-              (v17/*: any*/)
+              (v21/*: any*/)
             ],
             "type": "DNSDomain",
             "abstractKey": null
@@ -661,16 +702,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "c84a90e27d8d81a7d9e63b5962fc4e04",
+    "cacheID": "7320608e3f0d58db28e317e2ead8948b",
     "id": null,
     "metadata": {},
     "name": "srcGetDNSDomainsQuery",
     "operationKind": "query",
-    "text": "query srcGetDNSDomainsQuery(\n  $ids: [ID!]!\n) {\n  nodes(ids: $ids) {\n    __typename\n    ... on DNSDomain {\n      id\n      name\n      slug\n      zoneFile\n      deletedAt\n      createdAt\n      updatedAt\n      owner {\n        __typename\n        globalId\n        globalName\n        isPro\n        ... on Namespace {\n          id\n          name\n          displayName\n        }\n        ... on User {\n          id\n          username\n        }\n        ... on Node {\n          __isNode: __typename\n          id\n        }\n      }\n      records {\n        __typename\n        ... on Node {\n          __isNode: __typename\n          id\n        }\n        ... on DNSRecordInterface {\n          __isDNSRecordInterface: __typename\n          createdAt\n          deletedAt\n          dnsClass\n          domain {\n            id\n            name\n            slug\n          }\n          name\n          text\n          ttl\n          updatedAt\n        }\n        ... on AAAARecord {\n          address\n        }\n        ... on ARecord {\n          address\n        }\n        ... on CAARecord {\n          flags\n          tag\n          value\n        }\n        ... on CNAMERecord {\n          cName\n        }\n        ... on DNAMERecord {\n          dName\n        }\n        ... on MXRecord {\n          exchange\n          preference\n        }\n        ... on NSRecord {\n          nsdname\n        }\n        ... on PTRRecord {\n          ptrdname\n        }\n        ... on SOARecord {\n          expire\n          minimum\n          mname\n          refresh\n          retry\n          rname\n          serial\n        }\n        ... on SRVRecord {\n          port\n          priority\n          protocol\n          service\n          target\n          weight\n        }\n        ... on SSHFPRecord {\n          algorithm\n          fingerprint\n          type\n        }\n        ... on TXTRecord {\n          data\n        }\n      }\n    }\n    id\n  }\n}\n"
+    "text": "query srcGetDNSDomainsQuery(\n  $ids: [ID!]!\n) {\n  nodes(ids: $ids) {\n    __typename\n    ... on DNSDomain {\n      id\n      name\n      slug\n      zoneFile\n      delegationStatus\n      nameservers\n      lastCheckedAt\n      verifiedAt\n      deletedAt\n      createdAt\n      updatedAt\n      owner {\n        __typename\n        globalId\n        globalName\n        isPro\n        ... on Namespace {\n          id\n          name\n          displayName\n        }\n        ... on User {\n          id\n          username\n        }\n        ... on Node {\n          __isNode: __typename\n          id\n        }\n      }\n      records {\n        __typename\n        ... on Node {\n          __isNode: __typename\n          id\n        }\n        ... on DNSRecordInterface {\n          __isDNSRecordInterface: __typename\n          createdAt\n          deletedAt\n          dnsClass\n          domain {\n            id\n            name\n            slug\n          }\n          name\n          text\n          ttl\n          updatedAt\n        }\n        ... on AAAARecord {\n          address\n        }\n        ... on ARecord {\n          address\n        }\n        ... on CAARecord {\n          flags\n          tag\n          value\n        }\n        ... on CNAMERecord {\n          cName\n        }\n        ... on DNAMERecord {\n          dName\n        }\n        ... on MXRecord {\n          exchange\n          preference\n        }\n        ... on NSRecord {\n          nsdname\n        }\n        ... on PTRRecord {\n          ptrdname\n        }\n        ... on SOARecord {\n          expire\n          minimum\n          mname\n          refresh\n          retry\n          rname\n          serial\n        }\n        ... on SRVRecord {\n          port\n          priority\n          protocol\n          service\n          target\n          weight\n        }\n        ... on SSHFPRecord {\n          algorithm\n          fingerprint\n          type\n        }\n        ... on TXTRecord {\n          data\n        }\n      }\n    }\n    id\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "d8027c6e3fec4e852a8da7f5ccda5882";
+(node as any).hash = "188debe08360e1ff1e94f9dba17f1a13";
 
 export default node;

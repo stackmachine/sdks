@@ -99,17 +99,30 @@ class AppsGitResource:
 
     def update(
         self,
-        connection_id: str,
+        app_or_connection_id: str,
         *,
+        deploy_branch: Optional[str] = None,
         deployment_status_events: Optional[bool] = None,
         pull_request_comments: Optional[bool] = None,
         request_options: Optional[RequestOptionsLike] = None,
     ) -> GithubRepoConnection:
+        target = self._client._query(
+            gql.GET_GITHUB_REPO_UPDATE_TARGET_QUERY,
+            {"id": app_or_connection_id},
+            request_options=request_options,
+        )
+        target_type = ((target or {}).get("node") or {}).get("__typename")
+        target_input = (
+            {"connectionId": app_or_connection_id}
+            if target_type == "GithubRepoConnection"
+            else {"appId": app_or_connection_id}
+        )
         response = self._client._mutation(
             gql.UPDATE_GITHUB_REPO_CONNECTION_MUTATION,
             {
                 "input": {
-                    "connectionId": connection_id,
+                    **target_input,
+                    "deployBranch": deploy_branch,
                     "deploymentStatusEvents": deployment_status_events,
                     "pullRequestComments": pull_request_comments,
                 }
@@ -242,17 +255,30 @@ class AsyncAppsGitResource:
 
     async def update(
         self,
-        connection_id: str,
+        app_or_connection_id: str,
         *,
+        deploy_branch: Optional[str] = None,
         deployment_status_events: Optional[bool] = None,
         pull_request_comments: Optional[bool] = None,
         request_options: Optional[RequestOptionsLike] = None,
     ) -> GithubRepoConnection:
+        target = await self._client._query(
+            gql.GET_GITHUB_REPO_UPDATE_TARGET_QUERY,
+            {"id": app_or_connection_id},
+            request_options=request_options,
+        )
+        target_type = ((target or {}).get("node") or {}).get("__typename")
+        target_input = (
+            {"connectionId": app_or_connection_id}
+            if target_type == "GithubRepoConnection"
+            else {"appId": app_or_connection_id}
+        )
         response = await self._client._mutation(
             gql.UPDATE_GITHUB_REPO_CONNECTION_MUTATION,
             {
                 "input": {
-                    "connectionId": connection_id,
+                    **target_input,
+                    "deployBranch": deploy_branch,
                     "deploymentStatusEvents": deployment_status_events,
                     "pullRequestComments": pull_request_comments,
                 }

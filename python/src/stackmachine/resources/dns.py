@@ -15,7 +15,12 @@ from .._pagination import (
     create_async_list,
     create_list,
 )
-from .._types import DNSRecordKind, PaginationOptions, RequestOptionsLike
+from .._types import (
+    DNSRecordKind,
+    DNSRecordsSortBy,
+    PaginationOptions,
+    RequestOptionsLike,
+)
 from ._shared import page_variables, required_payload, resource_missing_error
 
 DNS_RECORD_EXTRA_KEYS = {"caa", "mx", "soa", "srv", "sshfp"}
@@ -78,7 +83,7 @@ class DNSDomainsResource:
         ):
             response = self._client._query(
                 gql.LIST_DNS_DOMAINS_QUERY,
-                {"namespace": page_params.get("owner"), **page_variables(normalized)},
+                {"owner": page_params.get("owner"), **page_variables(normalized)},
                 request_options=request_options,
             )
             return connection_to_page_data(
@@ -145,7 +150,7 @@ class DNSDomainsResource:
             {
                 "input": {
                     "name": name,
-                    "namespace": owner,
+                    "ownerId": owner,
                     "importRecords": import_records,
                 }
             },
@@ -245,6 +250,43 @@ class DNSRecordsResource:
             if record
         ]
 
+    def list_page(
+        self,
+        *,
+        domain: str,
+        sort_by: Optional[DNSRecordsSortBy] = None,
+        request_options: Optional[RequestOptionsLike] = None,
+        **pagination: Unpack[PaginationOptions],
+    ) -> StackMachineList[DNSRecord]:
+        params = {"domain": domain, "sort_by": sort_by, **pagination}
+
+        def fetch_page(
+            normalized: NormalizedPagination, page_params: Mapping[str, Any]
+        ):
+            response = self._client._query(
+                gql.LIST_DNS_RECORDS_CONNECTION_QUERY,
+                {
+                    "domainId": page_params["domain"],
+                    "sortBy": page_params.get("sort_by") or page_params.get("sortBy"),
+                    **page_variables(normalized),
+                },
+                request_options=request_options,
+            )
+            node = response.get("node") if response else None
+            if not node or node.get("__typename") != "DNSDomain":
+                raise resource_missing_error(
+                    "DNS domain",
+                    page_params["domain"],
+                    "srcListDNSRecordsConnectionQuery",
+                    "domain",
+                )
+            return connection_to_page_data(
+                node.get("recordsConnection"),
+                DNSRecord.from_graphql,
+            )
+
+        return create_list(params, "/v1/dns/records", fetch_page)
+
     def retrieve_many(
         self, ids: List[str], *, request_options: Optional[RequestOptionsLike] = None
     ) -> List[Optional[DNSRecord]]:
@@ -339,6 +381,34 @@ class DNSRecordsResource:
             **extras,
         )
 
+    def update_many(
+        self,
+        *,
+        domain: str,
+        records: List[Mapping[str, Any]],
+        request_options: Optional[RequestOptionsLike] = None,
+    ) -> List[DNSRecord]:
+        response = self._client._mutation(
+            gql.UPDATE_DNS_RECORDS_MUTATION,
+            {"input": {"domainId": domain, "records": records}},
+            request_options=request_options,
+        )
+        payload = required_payload(
+            response.get("updateDNSRecords") if response else None,
+            "Failed to update DNS records, mutation failed.",
+            "srcUpdateDNSRecordsMutation",
+        )
+        if not payload.get("success"):
+            raise StackMachineAPIError(
+                "Failed to update DNS records, mutation was not successful.",
+                operation_name="srcUpdateDNSRecordsMutation",
+            )
+        return [
+            DNSRecord.from_graphql(record)
+            for record in payload.get("records") or []
+            if record
+        ]
+
     def _upsert(
         self,
         record_id: Optional[str],
@@ -409,6 +479,8 @@ class DNSRecordsResource:
 
     del_ = delete
     retrieveMany = retrieve_many
+    listPage = list_page
+    updateMany = update_many
 
 
 class DNSResource:
@@ -435,7 +507,7 @@ class AsyncDNSDomainsResource:
         ):
             response = await self._client._query(
                 gql.LIST_DNS_DOMAINS_QUERY,
-                {"namespace": page_params.get("owner"), **page_variables(normalized)},
+                {"owner": page_params.get("owner"), **page_variables(normalized)},
                 request_options=request_options,
             )
             return connection_to_page_data(
@@ -502,7 +574,7 @@ class AsyncDNSDomainsResource:
             {
                 "input": {
                     "name": name,
-                    "namespace": owner,
+                    "ownerId": owner,
                     "importRecords": import_records,
                 }
             },
@@ -602,6 +674,43 @@ class AsyncDNSRecordsResource:
             if record
         ]
 
+    def list_page(
+        self,
+        *,
+        domain: str,
+        sort_by: Optional[DNSRecordsSortBy] = None,
+        request_options: Optional[RequestOptionsLike] = None,
+        **pagination: Unpack[PaginationOptions],
+    ) -> AsyncStackMachineListRequest[DNSRecord]:
+        params = {"domain": domain, "sort_by": sort_by, **pagination}
+
+        async def fetch_page(
+            normalized: NormalizedPagination, page_params: Mapping[str, Any]
+        ):
+            response = await self._client._query(
+                gql.LIST_DNS_RECORDS_CONNECTION_QUERY,
+                {
+                    "domainId": page_params["domain"],
+                    "sortBy": page_params.get("sort_by") or page_params.get("sortBy"),
+                    **page_variables(normalized),
+                },
+                request_options=request_options,
+            )
+            node = response.get("node") if response else None
+            if not node or node.get("__typename") != "DNSDomain":
+                raise resource_missing_error(
+                    "DNS domain",
+                    page_params["domain"],
+                    "srcListDNSRecordsConnectionQuery",
+                    "domain",
+                )
+            return connection_to_page_data(
+                node.get("recordsConnection"),
+                DNSRecord.from_graphql,
+            )
+
+        return create_async_list(params, "/v1/dns/records", fetch_page)
+
     async def retrieve_many(
         self, ids: List[str], *, request_options: Optional[RequestOptionsLike] = None
     ) -> List[Optional[DNSRecord]]:
@@ -696,6 +805,34 @@ class AsyncDNSRecordsResource:
             **extras,
         )
 
+    async def update_many(
+        self,
+        *,
+        domain: str,
+        records: List[Mapping[str, Any]],
+        request_options: Optional[RequestOptionsLike] = None,
+    ) -> List[DNSRecord]:
+        response = await self._client._mutation(
+            gql.UPDATE_DNS_RECORDS_MUTATION,
+            {"input": {"domainId": domain, "records": records}},
+            request_options=request_options,
+        )
+        payload = required_payload(
+            response.get("updateDNSRecords") if response else None,
+            "Failed to update DNS records, mutation failed.",
+            "srcUpdateDNSRecordsMutation",
+        )
+        if not payload.get("success"):
+            raise StackMachineAPIError(
+                "Failed to update DNS records, mutation was not successful.",
+                operation_name="srcUpdateDNSRecordsMutation",
+            )
+        return [
+            DNSRecord.from_graphql(record)
+            for record in payload.get("records") or []
+            if record
+        ]
+
     async def _upsert(
         self,
         record_id: Optional[str],
@@ -766,6 +903,8 @@ class AsyncDNSRecordsResource:
 
     del_ = delete
     retrieveMany = retrieve_many
+    listPage = list_page
+    updateMany = update_many
 
 
 class AsyncDNSResource:

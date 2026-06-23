@@ -18,6 +18,7 @@ from ._uploads import SyncUploader
 from .resources.apps import DeployAppsResource
 from .resources.deployments import DeploymentsResource
 from .resources.dns import DNSResource
+from .resources.emails import EmailsResource
 from .resources.files import FilesResource
 
 
@@ -66,6 +67,7 @@ class StackMachine:
         self.deployments = DeploymentsResource(self)
         self.apps = DeployAppsResource(self, self.deployments)
         self.dns = DNSResource(self)
+        self.emails = EmailsResource(self)
         self.files = FilesResource(self, SyncUploader(self._transport))
 
     @classmethod

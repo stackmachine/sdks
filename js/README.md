@@ -156,6 +156,7 @@ Manage app databases:
 ```js
 const { database, password } = await client.apps.databases.create({
   app: app.id,
+  dbEngine: "POSTGRES",
   name: "primary",
 });
 
@@ -180,7 +181,8 @@ const connection = await client.apps.git.connect({
 
 const current = await client.apps.git.retrieve(app.id);
 
-await client.apps.git.update(connection.id, {
+await client.apps.git.update(app.id, {
+  deployBranch: "main",
   deploymentStatusEvents: true,
   pullRequestComments: true,
 });
@@ -193,12 +195,12 @@ Manage hosted DNS domains and records:
 ```js
 const domain = await client.dns.domains.create({
   name: "example.com",
-  owner: "stackmachine",
+  owner: "owner-id",
   importRecords: true,
 });
 
 const domains = await client.dns.domains
-  .list({ owner: "stackmachine", limit: 25 })
+  .list({ owner: "owner-id", limit: 25 })
   .autoPagingToArray({ limit: 100 });
 
 const record = await client.dns.records.create({
@@ -221,6 +223,29 @@ await client.dns.records.update(record.id, {
 
 await client.dns.records.del(record.id);
 await client.dns.domains.del(domain.id);
+```
+
+List and send app emails:
+
+```js
+const appSent = await client.emails.sent
+  .list({ app: app.id, limit: 25 })
+  .autoPagingToArray({ limit: 100 });
+
+const ownerReceived = await client.emails.received
+  .list({ owner: "owner-id", limit: 25 })
+  .autoPagingToArray({ limit: 100 });
+
+const sentFromApp =
+  appSent[0]?.appId ? await client.apps.retrieve(appSent[0].appId) : null;
+
+const message = await client.emails.send({
+  app: app.id,
+  to: ["user@example.com"],
+  subject: "Hello from StackMachine",
+  textBody: "Plain text body",
+  htmlBody: "<p>HTML body</p>",
+});
 ```
 
 Check out the examples below for more client usage.

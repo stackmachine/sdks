@@ -150,7 +150,8 @@ connection = stackmachine.apps.git.connect(
 
 connection = stackmachine.apps.git.retrieve("app_id")
 updated = stackmachine.apps.git.update(
-    connection.id,
+    "app_id",
+    deploy_branch="main",
     deployment_status_events=True,
     pull_request_comments=True,
 )
@@ -162,6 +163,7 @@ stackmachine.apps.git.delete("app_id")
 ```python
 result = stackmachine.apps.databases.create(
     app="app_id",
+    db_engine="POSTGRES",
     name="primary",
 )
 
@@ -228,7 +230,24 @@ key = stackmachine.apps.ssh.users.authorized_keys.create(
 
 ## Emails
 
-Email message list and send operations are pending backend GraphQL support.
+```python
+app_sent = stackmachine.emails.sent.list(app="app_id", limit=25)
+owner_received = stackmachine.emails.received.list(owner="owner_id", limit=25)
+
+sent_from_app = (
+    stackmachine.apps.retrieve(app_sent.data[0].app_id)
+    if app_sent.data and app_sent.data[0].app_id
+    else None
+)
+
+message = stackmachine.emails.send(
+    app="app_id",
+    to=["user@example.com"],
+    subject="Hello from StackMachine",
+    text_body="Plain text body",
+    html_body="<p>HTML body</p>",
+)
+```
 
 ## Request Options
 

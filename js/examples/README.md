@@ -7,7 +7,8 @@ export STACKMACHINE_API_KEY=sk_stackmachine_...
 ```
 
 Each example uses editable placeholder IDs near the top of the file, such as
-`da_example`, `github_repo_example`, and `dns_domain_example`.
+`da_example`, `github_repo_example`, `dns_domain_example`, and
+`owner_id_example`.
 
 Run an example with Node:
 
@@ -23,6 +24,7 @@ Examples that create or update resources:
 - `manageHostedDnsDomains.js`
 - `manageHostedDnsRecords.js`
 - `importHostedDnsZoneFile.js`
+- `manageEmails.js`
 
 Destructive cleanup calls are included as commented lines. Uncomment them only
 when you intend to delete or disconnect the resource shown in the example.

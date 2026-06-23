@@ -10,6 +10,7 @@ with StackMachine(os.environ["STACKMACHINE_API_KEY"]) as client:
 
     result = client.apps.databases.create(
         app=app_id,
+        db_engine="POSTGRES",
         name="primary",
     )
     print("Created database:", result.database.id)

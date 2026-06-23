@@ -8,6 +8,7 @@ import StackMachineDefault, {
   DNSDomain,
   DNSRecord,
   Deployment,
+  EmailMessage,
   GithubRepoConnection,
   StackMachine,
   StackMachineAPIError,
@@ -220,11 +221,36 @@ const dnsDomainNode = (id, overrides = {}) => ({
   name: "example.com",
   slug: "example-com",
   zoneFile: "$ORIGIN example.com.",
+  delegationStatus: "VERIFIED",
+  nameservers: ["ns1.stackmachine.example.", "ns2.stackmachine.example."],
   deletedAt: null,
+  lastCheckedAt: "2026-01-02T00:00:00Z",
+  verifiedAt: "2026-01-02T00:00:00Z",
   createdAt: "2026-01-01T00:00:00Z",
   updatedAt: "2026-01-01T00:00:00Z",
   owner: dnsOwnerNode(),
   records: [dnsRecordNode("dns_record_1")],
+  ...overrides,
+});
+
+const emailMessageNode = (id, overrides = {}) => ({
+  __typename: "EmailMessage",
+  id,
+  app: appNode("app_1"),
+  bcc: [],
+  cc: [],
+  createdAt: "2026-01-01T00:00:00Z",
+  direction: "SENT",
+  from: "app@example.com",
+  htmlBody: "<p>Hello</p>",
+  owner: dnsOwnerNode(),
+  receivedAt: null,
+  replyTo: null,
+  sentAt: "2026-01-01T00:00:00Z",
+  status: "SENT",
+  subject: "Hello",
+  textBody: "Hello",
+  to: ["user@example.com"],
   ...overrides,
 });
 
@@ -464,6 +490,9 @@ test("clients keep independent keys, endpoints, caches, and resources", async ()
   assert.notEqual(clientA.dns, clientB.dns);
   assert.notEqual(clientA.dns.domains, clientB.dns.domains);
   assert.notEqual(clientA.dns.records, clientB.dns.records);
+  assert.notEqual(clientA.emails, clientB.emails);
+  assert.notEqual(clientA.emails.sent, clientB.emails.sent);
+  assert.notEqual(clientA.emails.received, clientB.emails.received);
   assert.notEqual(clientA.deployments, clientB.deployments);
   assert.notEqual(clientA.files, clientB.files);
 
@@ -1610,10 +1639,10 @@ test("app databases list, create, rotate credentials, and delete map to GraphQL 
           },
           2,
         );
-      case "srcCreateAppDatabaseMutation":
+      case "srcCreateDatabaseAndLinkToAppMutation":
         return jsonResponse({
           data: {
-            createAppDb: {
+            createDatabaseAndLinkToApp: {
               database: appDatabaseNode("db_created", { name: "primary" }),
               password: "created-password",
             },
@@ -1649,7 +1678,7 @@ test("app databases list, create, rotate credentials, and delete map to GraphQL 
     .list({ app: "app_1", limit: 1 })
     .autoPagingToArray({ limit: 2 });
   const created = await client.apps.databases.create(
-    { app: "app_1", name: "primary" },
+    { app: "app_1", dbEngine: "POSTGRES", name: "primary" },
     { clientMutationId: "cmid-create-db" },
   );
   const rotated = await client.apps.databases.rotateCredentials("db_created", {
@@ -1676,7 +1705,8 @@ test("app databases list, create, rotate credentials, and delete map to GraphQL 
   assert.equal(fetch.calls[0].body.variables.first, 1);
   assert.equal(fetch.calls[1].body.variables.after, "cursor_1");
   assert.deepEqual(fetch.calls[2].body.variables.input, {
-    id: "app_1",
+    appId: "app_1",
+    dbEngine: "POSTGRES",
     name: "primary",
     clientMutationId: "cmid-create-db",
   });
@@ -1690,9 +1720,45 @@ test("app databases list, create, rotate credentials, and delete map to GraphQL 
   });
 });
 
+test("app databases create remains compatible with legacy createAppDb mutation", async () => {
+  const fetch = mockFetch((call) => {
+    switch (call.body.operationName) {
+      case "srcCreateAppDatabaseMutation":
+        return jsonResponse({
+          data: {
+            createAppDb: {
+              database: appDatabaseNode("db_created", { name: "legacy" }),
+              password: "legacy-password",
+            },
+          },
+        });
+      default:
+        throw new Error(`Unexpected operation ${call.body.operationName}`);
+    }
+  });
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  const created = await client.apps.databases.create({ app: "app_1" });
+
+  assert.equal(created.database.name, "legacy");
+  assert.equal(created.password, "legacy-password");
+  assert.equal(
+    fetch.calls[0].body.operationName,
+    "srcCreateAppDatabaseMutation",
+  );
+  assert.equal(fetch.calls[0].body.variables.input.id, "app_1");
+  assert.equal(fetch.calls[0].body.variables.input.dbEngine, undefined);
+  assert.ok(fetch.calls[0].body.variables.input.clientMutationId);
+});
+
 test("app database mutations throw when backend payloads are missing or unsuccessful", async () => {
   const fetch = mockFetch((call) => {
     switch (call.body.operationName) {
+      case "srcCreateDatabaseAndLinkToAppMutation":
+        return jsonResponse({ data: { createDatabaseAndLinkToApp: null } });
       case "srcCreateAppDatabaseMutation":
         return jsonResponse({ data: { createAppDb: null } });
       case "srcRotateAppDatabaseCredentialsMutation":
@@ -1712,6 +1778,10 @@ test("app database mutations throw when backend payloads are missing or unsucces
 
   await assert.rejects(
     client.apps.databases.create({ app: "app_1" }),
+    StackMachineAPIError,
+  );
+  await assert.rejects(
+    client.apps.databases.create({ app: "app_1", dbEngine: "MYSQL" }),
     StackMachineAPIError,
   );
   await assert.rejects(
@@ -1745,12 +1815,21 @@ test("app git connections retrieve, connect, update, and delete map to GraphQL o
             },
           },
         });
+      case "srcGetGithubRepoUpdateTargetQuery":
+        return jsonResponse({
+          data: {
+            node: {
+              __typename: "DeployApp",
+            },
+          },
+        });
       case "srcUpdateGithubRepoConnectionMutation":
         return jsonResponse({
           data: {
             updateGithubRepoConnection: {
               success: true,
               githubRepoConnection: githubRepoConnectionNode("git_connected", {
+                deployBranch: "release",
                 deploymentStatusEvents: false,
                 pullRequestComments: true,
               }),
@@ -1784,8 +1863,9 @@ test("app git connections retrieve, connect, update, and delete map to GraphQL o
     { clientMutationId: "cmid-connect-git" },
   );
   const updated = await client.apps.git.update(
-    "git_connected",
+    "app_1",
     {
+      deployBranch: "release",
       deploymentStatusEvents: false,
       pullRequestComments: true,
     },
@@ -1800,6 +1880,7 @@ test("app git connections retrieve, connect, update, and delete map to GraphQL o
   assert.equal(retrieved.connectedBy.username, "octocat");
   assert.equal(retrieved.githubRepoInstallation.namespace, "stackmachine");
   assert.equal(connected.deployBranch, "production");
+  assert.equal(updated.deployBranch, "release");
   assert.equal(updated.deploymentStatusEvents, false);
   assert.equal(updated.pullRequestComments, true);
 
@@ -1810,16 +1891,64 @@ test("app git connections retrieve, connect, update, and delete map to GraphQL o
     deployBranch: "production",
     clientMutationId: "cmid-connect-git",
   });
-  assert.deepEqual(fetch.calls[2].body.variables.input, {
-    connectionId: "git_connected",
+  assert.deepEqual(fetch.calls[2].body.variables, { id: "app_1" });
+  assert.deepEqual(fetch.calls[3].body.variables.input, {
+    appId: "app_1",
+    deployBranch: "release",
     deploymentStatusEvents: false,
     pullRequestComments: true,
     clientMutationId: "idem-update-git",
   });
-  assert.deepEqual(fetch.calls[3].body.variables.input, {
+  assert.deepEqual(fetch.calls[4].body.variables.input, {
     appId: "app_1",
     clientMutationId: "cmid-delete-git",
   });
+});
+
+test("app git update accepts legacy connection ids without breaking old callers", async () => {
+  const fetch = mockFetch((call) => {
+    switch (call.body.operationName) {
+      case "srcGetGithubRepoUpdateTargetQuery":
+        return jsonResponse({
+          data: {
+            node: {
+              __typename: "GithubRepoConnection",
+            },
+          },
+        });
+      case "srcUpdateGithubRepoConnectionMutation":
+        return jsonResponse({
+          data: {
+            updateGithubRepoConnection: {
+              success: true,
+              githubRepoConnection: githubRepoConnectionNode("git_connected", {
+                pullRequestComments: true,
+              }),
+            },
+          },
+        });
+      default:
+        throw new Error(`Unexpected operation ${call.body.operationName}`);
+    }
+  });
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  const updated = await client.apps.git.update("git_connected", {
+    pullRequestComments: true,
+  });
+
+  assert.equal(updated.id, "git_connected");
+  assert.deepEqual(fetch.calls[0].body.variables, { id: "git_connected" });
+  assert.equal(
+    fetch.calls[1].body.variables.input.connectionId,
+    "git_connected",
+  );
+  assert.equal(fetch.calls[1].body.variables.input.appId, undefined);
+  assert.equal(fetch.calls[1].body.variables.input.pullRequestComments, true);
+  assert.ok(fetch.calls[1].body.variables.input.clientMutationId);
 });
 
 test("app git mutations throw when backend success is false", async () => {
@@ -1831,6 +1960,14 @@ test("app git mutations throw when backend success is false", async () => {
             connectGithubRepoToApp: {
               success: false,
               githubRepoConnection: githubRepoConnectionNode("git_failed"),
+            },
+          },
+        });
+      case "srcGetGithubRepoUpdateTargetQuery":
+        return jsonResponse({
+          data: {
+            node: {
+              __typename: "DeployApp",
             },
           },
         });
@@ -1936,13 +2073,13 @@ test("hosted DNS domains use owner input and map to GraphQL domain operations", 
   });
 
   const domains = await client.dns.domains
-    .list({ owner: "stackmachine", limit: 1 })
+    .list({ owner: "owner_1", limit: 1 })
     .autoPagingToArray({ limit: 2 });
   const byName = await client.dns.domains.retrieveByName("example.com");
   const created = await client.dns.domains.create(
     {
       name: "created.example.com",
-      owner: "stackmachine",
+      owner: "owner_1",
       importRecords: false,
     },
     { clientMutationId: "cmid-create-dns-domain" },
@@ -1964,17 +2101,27 @@ test("hosted DNS domains use owner input and map to GraphQL domain operations", 
   );
   assert.ok(domains[0] instanceof DNSDomain);
   assert.equal(domains[0].owner.globalName, "stackmachine");
+  assert.equal(domains[0].delegationStatus, "VERIFIED");
+  assert.deepEqual(domains[0].nameservers, [
+    "ns1.stackmachine.example.",
+    "ns2.stackmachine.example.",
+  ]);
+  assert.equal(
+    domains[0].lastCheckedAt.toISOString(),
+    "2026-01-02T00:00:00.000Z",
+  );
+  assert.equal(domains[0].verifiedAt.toISOString(), "2026-01-02T00:00:00.000Z");
   assert.equal(byName.records[0].kind, "A");
   assert.equal(created.name, "created.example.com");
   assert.equal(imported.name, "imported.example.com");
 
-  assert.equal(fetch.calls[0].body.variables.owner, "stackmachine");
-  assert.match(fetch.calls[0].body.query, /namespace: \$owner/);
+  assert.equal(fetch.calls[0].body.variables.owner, "owner_1");
+  assert.match(fetch.calls[0].body.query, /ownerId: \$owner/);
   assert.equal(fetch.calls[0].body.variables.first, 1);
   assert.equal(fetch.calls[1].body.variables.after, "cursor_1");
   assert.deepEqual(fetch.calls[3].body.variables.input, {
     name: "created.example.com",
-    namespace: "stackmachine",
+    ownerId: "owner_1",
     importRecords: false,
     clientMutationId: "cmid-create-dns-domain",
   });
@@ -2047,7 +2194,7 @@ test("hosted DNS records list, create, update, and delete map all record types",
     "SSHFPRecord",
     "TXTRecord",
   ];
-  const fetch = mockFetch((call, index) => {
+  const fetch = mockFetch((call) => {
     switch (call.body.operationName) {
       case "srcListDNSRecordsQuery":
         return jsonResponse({
@@ -2061,21 +2208,61 @@ test("hosted DNS records list, create, update, and delete map all record types",
             },
           },
         });
+      case "srcListDNSRecordsConnectionQuery":
+        return jsonResponse({
+          data: {
+            node: {
+              __typename: "DNSDomain",
+              id: "dns_domain_1",
+              recordsConnection: {
+                edges: [
+                  {
+                    cursor: "cursor_record_1",
+                    node: dnsRecordNode("dns_record_paged", "TXTRecord", {
+                      data: "paged=1",
+                    }),
+                  },
+                ],
+                pageInfo: {
+                  hasNextPage: false,
+                  hasPreviousPage: false,
+                  endCursor: "cursor_record_1",
+                  startCursor: "cursor_record_1",
+                },
+                totalCount: 1,
+              },
+            },
+          },
+        });
       case "srcUpsertDNSRecordMutation":
         return jsonResponse({
           data: {
             upsertDNSRecord: {
               success: true,
-              record:
-                index === 1
-                  ? dnsRecordNode("dns_record_created", "CAARecord", {
-                      name: "@",
-                      value: "letsencrypt.org",
-                    })
-                  : dnsRecordNode("dns_record_updated", "MXRecord", {
-                      exchange: "mail.example.com.",
-                      preference: 20,
-                    }),
+              record: call.body.variables.input.recordId
+                ? dnsRecordNode("dns_record_updated", "MXRecord", {
+                    exchange: "mail.example.com.",
+                    preference: 20,
+                  })
+                : dnsRecordNode("dns_record_created", "CAARecord", {
+                    name: "@",
+                    value: "letsencrypt.org",
+                  }),
+            },
+          },
+        });
+      case "srcUpdateDNSRecordsMutation":
+        return jsonResponse({
+          data: {
+            updateDNSRecords: {
+              success: true,
+              records: [
+                dnsRecordNode("dns_record_bulk", "ARecord", {
+                  name: "api",
+                  text: "192.0.2.2",
+                  address: "192.0.2.2",
+                }),
+              ],
             },
           },
         });
@@ -2097,6 +2284,13 @@ test("hosted DNS records list, create, update, and delete map all record types",
   });
 
   const records = await client.dns.records.list({ domain: "dns_domain_1" });
+  const pagedRecords = await client.dns.records
+    .listPage({
+      domain: "dns_domain_1",
+      limit: 1,
+      sortBy: "NEWEST",
+    })
+    .autoPagingToArray({ limit: 1 });
   const created = await client.dns.records.create(
     {
       domain: "dns_domain_1",
@@ -2118,6 +2312,20 @@ test("hosted DNS records list, create, update, and delete map all record types",
       mx: { preference: 20 },
     },
     { idempotencyKey: "idem-update-dns-record" },
+  );
+  const updatedMany = await client.dns.records.updateMany(
+    {
+      domain: "dns_domain_1",
+      records: [
+        {
+          kind: "A",
+          name: "api",
+          value: "192.0.2.2",
+          ttl: 60,
+        },
+      ],
+    },
+    { clientMutationId: "cmid-update-dns-records" },
   );
   await client.dns.records.del("dns_record_created", {
     clientMutationId: "cmid-delete-dns-record",
@@ -2145,15 +2353,25 @@ test("hosted DNS records list, create, update, and delete map all record types",
   assert.equal(records[2].value, "letsencrypt.org");
   assert.equal(records[5].preference, 10);
   assert.equal(records[11].data, "hello=world");
+  assert.deepEqual(
+    pagedRecords.map((record) => record.id),
+    ["dns_record_paged"],
+  );
   assert.equal(created.kind, "CAA");
   assert.equal(created.value, "letsencrypt.org");
   assert.equal(updated.kind, "MX");
   assert.equal(updated.preference, 20);
+  assert.equal(updatedMany[0].id, "dns_record_bulk");
+  assert.equal(updatedMany[0].value, "192.0.2.2");
 
   assert.deepEqual(fetch.calls[0].body.variables, {
     domainId: "dns_domain_1",
   });
-  assert.deepEqual(fetch.calls[1].body.variables.input, {
+  assert.equal(fetch.calls[1].body.variables.domainId, "dns_domain_1");
+  assert.equal(fetch.calls[1].body.variables.first, 1);
+  assert.equal(fetch.calls[1].body.variables.after, undefined);
+  assert.equal(fetch.calls[1].body.variables.sortBy, "NEWEST");
+  assert.deepEqual(fetch.calls[2].body.variables.input, {
     domainId: "dns_domain_1",
     kind: "CAA",
     name: "@",
@@ -2162,7 +2380,7 @@ test("hosted DNS records list, create, update, and delete map all record types",
     caa: { flags: 0, tag: "issue" },
     clientMutationId: "cmid-create-dns-record",
   });
-  assert.deepEqual(fetch.calls[2].body.variables.input, {
+  assert.deepEqual(fetch.calls[3].body.variables.input, {
     domainId: "dns_domain_1",
     kind: "MX",
     name: "@",
@@ -2171,7 +2389,19 @@ test("hosted DNS records list, create, update, and delete map all record types",
     recordId: "dns_record_created",
     clientMutationId: "idem-update-dns-record",
   });
-  assert.deepEqual(fetch.calls[3].body.variables.input, {
+  assert.deepEqual(fetch.calls[4].body.variables.input, {
+    domainId: "dns_domain_1",
+    records: [
+      {
+        kind: "A",
+        name: "api",
+        value: "192.0.2.2",
+        ttl: 60,
+      },
+    ],
+    clientMutationId: "cmid-update-dns-records",
+  });
+  assert.deepEqual(fetch.calls[5].body.variables.input, {
     recordId: "dns_record_created",
     clientMutationId: "cmid-delete-dns-record",
   });
@@ -2197,6 +2427,15 @@ test("hosted DNS record mutations throw when backend success is false", async ()
             },
           },
         });
+      case "srcUpdateDNSRecordsMutation":
+        return jsonResponse({
+          data: {
+            updateDNSRecords: {
+              success: false,
+              records: [dnsRecordNode("dns_failed")],
+            },
+          },
+        });
       default:
         throw new Error(`Unexpected operation ${call.body.operationName}`);
     }
@@ -2217,6 +2456,229 @@ test("hosted DNS record mutations throw when backend success is false", async ()
   );
   await assert.rejects(
     client.dns.records.del("dns_record_1"),
+    StackMachineAPIError,
+  );
+  await assert.rejects(
+    client.dns.records.updateMany({
+      domain: "dns_domain_1",
+      records: [{ kind: "A", name: "www", value: "192.0.2.1" }],
+    }),
+    StackMachineAPIError,
+  );
+});
+
+test("app SSH authorized key delete accepts key ids and legacy user/name inputs", async () => {
+  const fetch = mockFetch((call) => {
+    switch (call.body.operationName) {
+      case "srcDeleteSshAuthorizedKeyByIdMutation":
+        return jsonResponse({
+          data: {
+            deleteSshAuthorizedKeyById: {
+              success: true,
+            },
+          },
+        });
+      case "srcDeleteSshAuthorizedKeyMutation":
+        return jsonResponse({
+          data: {
+            deleteSshAuthorizedKey: {
+              success: true,
+            },
+          },
+        });
+      default:
+        throw new Error(`Unexpected operation ${call.body.operationName}`);
+    }
+  });
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  await client.apps.ssh.users.authorizedKeys.del("key_1", {
+    clientMutationId: "cmid-delete-key-id",
+  });
+  await client.apps.ssh.users.authorizedKeys.del(
+    { user: "ssh_user_1", name: "laptop" },
+    { clientMutationId: "cmid-delete-key-legacy" },
+  );
+
+  assert.deepEqual(fetch.calls[0].body.variables.input, {
+    authorizedKeyId: "key_1",
+    clientMutationId: "cmid-delete-key-id",
+  });
+  assert.deepEqual(fetch.calls[1].body.variables.input, {
+    sshUserId: "ssh_user_1",
+    name: "laptop",
+    clientMutationId: "cmid-delete-key-legacy",
+  });
+});
+
+test("emails list by app or owner and send from app map to GraphQL operations", async () => {
+  const emailConnection = (message) => ({
+    edges: [
+      {
+        cursor: `cursor_${message.id}`,
+        node: message,
+      },
+    ],
+    pageInfo: {
+      hasNextPage: false,
+      hasPreviousPage: false,
+      endCursor: `cursor_${message.id}`,
+      startCursor: `cursor_${message.id}`,
+    },
+    totalCount: 1,
+  });
+  const fetch = mockFetch((call) => {
+    switch (call.body.operationName) {
+      case "srcListSentEmailsQuery":
+        return jsonResponse({
+          data: {
+            node: {
+              __typename: "DeployApp",
+              id: "app_1",
+              emails: emailConnection(
+                emailMessageNode("email_sent", {
+                  subject: "Sent message",
+                  status: "SENT",
+                }),
+              ),
+            },
+          },
+        });
+      case "srcListReceivedEmailsQuery":
+        return jsonResponse({
+          data: {
+            node: {
+              __typename: "Namespace",
+              id: "owner_1",
+              emails: emailConnection(
+                emailMessageNode("email_received", {
+                  app: null,
+                  direction: "RECEIVED",
+                  receivedAt: "2026-01-02T00:00:00Z",
+                  sentAt: null,
+                  status: "RECEIVED",
+                  subject: "Received message",
+                }),
+              ),
+            },
+          },
+        });
+      case "srcSendAppEmailMutation":
+        return jsonResponse({
+          data: {
+            sendAppEmail: {
+              success: true,
+              message: emailMessageNode("email_new", {
+                subject: "Hello from SDK",
+                to: ["user@example.com", "second@example.com"],
+              }),
+            },
+          },
+        });
+      default:
+        throw new Error(`Unexpected operation ${call.body.operationName}`);
+    }
+  });
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  const sent = await client.emails.sent
+    .list({ app: "app_1", limit: 1 })
+    .autoPagingToArray({ limit: 1 });
+  const received = await client.emails.received
+    .list({ owner: "owner_1", limit: 1 })
+    .autoPagingToArray({ limit: 1 });
+  const message = await client.emails.send(
+    {
+      app: "app_1",
+      to: ["user@example.com", "second@example.com"],
+      cc: ["cc@example.com"],
+      bcc: ["bcc@example.com"],
+      replyTo: "reply@example.com",
+      fromAddress: "app@example.com",
+      subject: "Hello from SDK",
+      textBody: "Plain text body",
+      htmlBody: "<p>HTML body</p>",
+    },
+    { clientMutationId: "cmid-send-email" },
+  );
+
+  assert.ok(sent[0] instanceof EmailMessage);
+  assert.equal(sent[0].id, "email_sent");
+  assert.equal(sent[0].app.id, "app_1");
+  assert.equal(sent[0].appId, "app_1");
+  assert.equal(sent[0].owner.globalName, "stackmachine");
+  assert.equal(received[0].direction, "RECEIVED");
+  assert.equal(
+    received[0].receivedAt.toISOString(),
+    "2026-01-02T00:00:00.000Z",
+  );
+  assert.equal(message.id, "email_new");
+  assert.deepEqual(message.to, ["user@example.com", "second@example.com"]);
+
+  assert.deepEqual(fetch.calls[0].body.variables, {
+    id: "app_1",
+    first: 1,
+  });
+  assert.deepEqual(fetch.calls[1].body.variables, {
+    id: "owner_1",
+    first: 1,
+  });
+  assert.deepEqual(fetch.calls[2].body.variables.input, {
+    appId: "app_1",
+    to: ["user@example.com", "second@example.com"],
+    subject: "Hello from SDK",
+    bcc: ["bcc@example.com"],
+    cc: ["cc@example.com"],
+    fromAddress: "app@example.com",
+    htmlBody: "<p>HTML body</p>",
+    replyTo: "reply@example.com",
+    textBody: "Plain text body",
+    clientMutationId: "cmid-send-email",
+  });
+});
+
+test("emails validate list targets and throw when send fails", async () => {
+  const fetch = mockFetch((call) => {
+    switch (call.body.operationName) {
+      case "srcSendAppEmailMutation":
+        return jsonResponse({
+          data: {
+            sendAppEmail: {
+              success: false,
+              message: emailMessageNode("email_failed"),
+            },
+          },
+        });
+      default:
+        throw new Error(`Unexpected operation ${call.body.operationName}`);
+    }
+  });
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  assert.throws(
+    () => client.emails.sent.list({ app: "app_1", owner: "owner_1" }),
+    StackMachineValidationError,
+  );
+  assert.throws(
+    () => client.emails.received.list({}),
+    StackMachineValidationError,
+  );
+  await assert.rejects(
+    client.emails.send({
+      app: "app_1",
+      to: ["user@example.com"],
+      subject: "Hello",
+      textBody: "Hello",
+    }),
     StackMachineAPIError,
   );
 });
