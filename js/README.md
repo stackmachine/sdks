@@ -236,8 +236,9 @@ const ownerReceived = await client.emails.received
   .list({ owner: "owner-id", limit: 25 })
   .autoPagingToArray({ limit: 100 });
 
-const sentFromApp =
-  appSent[0]?.appId ? await client.apps.retrieve(appSent[0].appId) : null;
+const sentFromApp = appSent[0]?.appId
+  ? await client.apps.retrieve(appSent[0].appId)
+  : null;
 
 const message = await client.emails.send({
   app: app.id,
