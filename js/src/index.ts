@@ -4,6 +4,9 @@ import nodeAppAlias, {
   srcAppAlias$data,
 } from "__generated__/srcAppAlias.graphql";
 import { srcDeleteAppMutation } from "__generated__/srcDeleteAppMutation.graphql";
+import nodeAppDatabase, {
+  srcAppDatabaseData$data,
+} from "__generated__/srcAppDatabaseData.graphql";
 import nodeAppVolume, {
   srcAppVolume$data,
 } from "__generated__/srcAppVolume.graphql";
@@ -15,9 +18,18 @@ import { srcDeployAppKindWordPress$data } from "__generated__/srcDeployAppKindWo
 import nodeAppVersion, {
   srcDeployAppVersionData$data,
 } from "__generated__/srcDeployAppVersionData.graphql";
+import nodeDNSDomain, {
+  srcDNSDomainData$data,
+} from "__generated__/srcDNSDomainData.graphql";
+import nodeDNSRecord, {
+  srcDNSRecordData$data,
+} from "__generated__/srcDNSRecordData.graphql";
 import nodeEmailMessage, {
   srcEmailMessageData$data,
 } from "__generated__/srcEmailMessageData.graphql";
+import nodeGithubRepoConnection, {
+  srcGithubRepoConnectionData$data,
+} from "__generated__/srcGithubRepoConnectionData.graphql";
 import { srcGetAppAliasesQuery } from "__generated__/srcGetAppAliasesQuery.graphql";
 import { srcGetAppByIdQuery } from "__generated__/srcGetAppByIdQuery.graphql";
 import { srcGetAppByNameQuery } from "__generated__/srcGetAppByNameQuery.graphql";
@@ -811,6 +823,25 @@ function parseUserSummary(data: any): StackMachineUserSummary {
 }
 
 export class AppDatabase {
+  static fragment = graphql`
+    fragment srcAppDatabaseData on AppDatabase {
+      id
+      name
+      host
+      port
+      username
+      password
+      phpmyadminUrl
+      dbExplorerUrl
+      deletedAt
+      createdAt
+      updatedAt
+      app {
+        ...srcDeployAppData
+      }
+    }
+  `;
+
   id: string;
   name: string;
   host: string;
@@ -825,18 +856,27 @@ export class AppDatabase {
   app: DeployApp | null;
 
   constructor(data: any, client?: SdkContext) {
-    this.id = data.id;
-    this.name = data.name;
-    this.host = data.host;
-    this.port = data.port;
-    this.username = data.username;
-    this.password = data.password ?? null;
-    this.phpmyadminUrl = data.phpmyadminUrl ?? null;
-    this.dbExplorerUrl = data.dbExplorerUrl ?? null;
-    this.deletedAt = parseDate(data.deletedAt);
-    this.createdAt = parseDate(data.createdAt)!;
-    this.updatedAt = parseDate(data.updatedAt)!;
-    this.app = data.app && client ? new DeployApp(data.app, client) : null;
+    const typedData = data as srcAppDatabaseData$data;
+    this.id = typedData.id;
+    this.name = typedData.name;
+    this.host = typedData.host;
+    this.port = typedData.port;
+    this.username = typedData.username;
+    this.password = typedData.password ?? null;
+    this.phpmyadminUrl = typedData.phpmyadminUrl ?? null;
+    this.dbExplorerUrl = typedData.dbExplorerUrl ?? null;
+    this.deletedAt = parseDate(typedData.deletedAt);
+    this.createdAt = parseDate(typedData.createdAt)!;
+    this.updatedAt = parseDate(typedData.updatedAt)!;
+    if (typedData.app && client) {
+      const appData = client._getFragmentData<srcDeployAppData$data>(
+        nodeApp,
+        typedData.app,
+      );
+      this.app = new DeployApp(appData, client);
+    } else {
+      this.app = null;
+    }
   }
 }
 
@@ -871,6 +911,36 @@ export class GithubInstallationRepository {
 }
 
 export class GithubRepoConnection {
+  static fragment = graphql`
+    fragment srcGithubRepoConnectionData on GithubRepoConnection {
+      id
+      connectedAt
+      deployBranch
+      deploymentStatusEvents
+      pullRequestComments
+      connectedBy {
+        id
+        username
+        globalName
+      }
+      app {
+        ...srcDeployAppData
+      }
+      githubRepoInstallation {
+        id
+        name
+        namespace
+        repoUrl
+        url
+        installation {
+          id
+          slug
+          githubConfigureUrl
+        }
+      }
+    }
+  `;
+
   id: string;
   app: DeployApp;
   connectedAt: Date;
@@ -881,15 +951,20 @@ export class GithubRepoConnection {
   githubRepoInstallation: GithubInstallationRepository;
 
   constructor(data: any, client: SdkContext) {
-    this.id = data.id;
-    this.app = new DeployApp(data.app, client);
-    this.connectedAt = parseDate(data.connectedAt)!;
-    this.connectedBy = parseUserSummary(data.connectedBy);
-    this.deployBranch = data.deployBranch;
-    this.deploymentStatusEvents = data.deploymentStatusEvents;
-    this.pullRequestComments = data.pullRequestComments;
+    const typedData = data as srcGithubRepoConnectionData$data;
+    this.id = typedData.id;
+    const appData = client._getFragmentData<srcDeployAppData$data>(
+      nodeApp,
+      typedData.app,
+    );
+    this.app = new DeployApp(appData, client);
+    this.connectedAt = parseDate(typedData.connectedAt)!;
+    this.connectedBy = parseUserSummary(typedData.connectedBy);
+    this.deployBranch = typedData.deployBranch;
+    this.deploymentStatusEvents = typedData.deploymentStatusEvents;
+    this.pullRequestComments = typedData.pullRequestComments;
     this.githubRepoInstallation = new GithubInstallationRepository(
-      data.githubRepoInstallation,
+      typedData.githubRepoInstallation,
     );
   }
 }
@@ -931,6 +1006,23 @@ function dnsRecordKindFromTypename(typename: string): DNSRecordKind {
   }
 }
 
+function isDNSRecordTypename(typename: string | null | undefined): boolean {
+  return (
+    typename === "AAAARecord" ||
+    typename === "ARecord" ||
+    typename === "CAARecord" ||
+    typename === "CNAMERecord" ||
+    typename === "DNAMERecord" ||
+    typename === "MXRecord" ||
+    typename === "NSRecord" ||
+    typename === "PTRRecord" ||
+    typename === "SOARecord" ||
+    typename === "SRVRecord" ||
+    typename === "SSHFPRecord" ||
+    typename === "TXTRecord"
+  );
+}
+
 function dnsRecordValueFromData(data: any): string {
   return (
     data.value ??
@@ -948,6 +1040,81 @@ function dnsRecordValueFromData(data: any): string {
 }
 
 export class DNSRecord {
+  static fragment = graphql`
+    fragment srcDNSRecordData on DNSRecord {
+      __typename
+      ... on Node {
+        id
+      }
+      ... on DNSRecordInterface {
+        createdAt
+        deletedAt
+        dnsClass
+        domain {
+          id
+          name
+          slug
+        }
+        name
+        text
+        ttl
+        updatedAt
+      }
+      ... on AAAARecord {
+        address
+      }
+      ... on ARecord {
+        address
+      }
+      ... on CAARecord {
+        flags
+        tag
+        value
+      }
+      ... on CNAMERecord {
+        cName
+      }
+      ... on DNAMERecord {
+        dName
+      }
+      ... on MXRecord {
+        exchange
+        preference
+      }
+      ... on NSRecord {
+        nsdname
+      }
+      ... on PTRRecord {
+        ptrdname
+      }
+      ... on SOARecord {
+        expire
+        minimum
+        mname
+        refresh
+        retry
+        rname
+        serial
+      }
+      ... on SRVRecord {
+        port
+        priority
+        protocol
+        service
+        target
+        weight
+      }
+      ... on SSHFPRecord {
+        algorithm
+        fingerprint
+        type
+      }
+      ... on TXTRecord {
+        data
+      }
+    }
+  `;
+
   id: string;
   type: string;
   kind: DNSRecordKind;
@@ -988,52 +1155,99 @@ export class DNSRecord {
   data?: string;
 
   constructor(data: any) {
-    this.id = data.id;
-    this.type = data.__typename;
-    this.kind = dnsRecordKindFromTypename(data.__typename);
+    const typedData = data as srcDNSRecordData$data;
+    if (
+      typedData.id == null ||
+      typedData.domain == null ||
+      typedData.name == null ||
+      typedData.text == null ||
+      typedData.ttl == null ||
+      typedData.createdAt == null ||
+      typedData.updatedAt == null
+    ) {
+      throw new StackMachineAPIError({
+        message: "DNS record response is missing required fields.",
+        operationName: "srcDNSRecordData",
+      });
+    }
+
+    this.id = typedData.id;
+    this.type = typedData.__typename;
+    this.kind = dnsRecordKindFromTypename(typedData.__typename);
     this.domain = {
-      id: data.domain.id,
-      name: data.domain.name,
-      slug: data.domain.slug,
+      id: typedData.domain.id,
+      name: typedData.domain.name,
+      slug: typedData.domain.slug,
     };
-    this.name = data.name;
-    this.text = data.text;
-    this.value = dnsRecordValueFromData(data);
-    this.ttl = data.ttl;
-    this.dnsClass = data.dnsClass ?? null;
-    this.deletedAt = parseDate(data.deletedAt);
-    this.createdAt = parseDate(data.createdAt)!;
-    this.updatedAt = parseDate(data.updatedAt)!;
-    this.address = data.address;
-    this.cName = data.cName;
-    this.dName = data.dName;
-    this.flags = data.flags;
-    this.tag = data.tag;
-    this.exchange = data.exchange;
-    this.preference = data.preference;
-    this.nsdname = data.nsdname;
-    this.ptrdname = data.ptrdname;
-    this.expire = data.expire;
-    this.minimum = data.minimum;
-    this.mname = data.mname;
-    this.refresh = data.refresh;
-    this.retry = data.retry;
-    this.rname = data.rname;
-    this.serial = data.serial;
-    this.port = data.port;
-    this.priority = data.priority;
-    this.protocol = data.protocol;
-    this.service = data.service;
-    this.target = data.target;
-    this.weight = data.weight;
-    this.algorithm = data.algorithm;
-    this.fingerprint = data.fingerprint;
-    this.sshfpType = data.type;
-    this.data = data.data;
+    this.name = typedData.name;
+    this.text = typedData.text;
+    this.value = dnsRecordValueFromData(typedData);
+    this.ttl = typedData.ttl;
+    this.dnsClass = typedData.dnsClass ?? null;
+    this.deletedAt = parseDate(typedData.deletedAt);
+    this.createdAt = parseDate(typedData.createdAt)!;
+    this.updatedAt = parseDate(typedData.updatedAt)!;
+    this.address = typedData.address;
+    this.cName = typedData.cName;
+    this.dName = typedData.dName;
+    this.flags = typedData.flags;
+    this.tag = typedData.tag;
+    this.exchange = typedData.exchange;
+    this.preference = typedData.preference;
+    this.nsdname = typedData.nsdname;
+    this.ptrdname = typedData.ptrdname;
+    this.expire = typedData.expire;
+    this.minimum = typedData.minimum;
+    this.mname = typedData.mname;
+    this.refresh = typedData.refresh;
+    this.retry = typedData.retry;
+    this.rname = typedData.rname;
+    this.serial = typedData.serial;
+    this.port = typedData.port;
+    this.priority = typedData.priority;
+    this.protocol = typedData.protocol;
+    this.service = typedData.service;
+    this.target = typedData.target;
+    this.weight = typedData.weight;
+    this.algorithm = typedData.algorithm;
+    this.fingerprint = typedData.fingerprint;
+    this.sshfpType = typedData.type;
+    this.data = typedData.data;
   }
 }
 
 export class DNSDomain {
+  static fragment = graphql`
+    fragment srcDNSDomainData on DNSDomain {
+      id
+      name
+      slug
+      zoneFile
+      delegationStatus
+      nameservers
+      lastCheckedAt
+      verifiedAt
+      deletedAt
+      createdAt
+      updatedAt
+      owner {
+        __typename
+        globalId
+        globalName
+        isPro
+        ... on Namespace {
+          id
+          name
+          displayName
+        }
+        ... on User {
+          id
+          username
+        }
+      }
+    }
+  `;
+
   id: string;
   name: string;
   slug: string;
@@ -1049,21 +1263,24 @@ export class DNSDomain {
   updatedAt: Date;
 
   constructor(data: any) {
-    this.id = data.id;
-    this.name = data.name;
-    this.slug = data.slug;
-    this.zoneFile = data.zoneFile;
-    this.delegationStatus = data.delegationStatus ?? null;
-    this.nameservers = (data.nameservers ?? []).filter(Boolean);
-    this.owner = parseOwnerSummary(data.owner);
+    const typedData = data as srcDNSDomainData$data & {
+      records?: srcDNSRecordData$data[] | null;
+    };
+    this.id = typedData.id;
+    this.name = typedData.name;
+    this.slug = typedData.slug;
+    this.zoneFile = typedData.zoneFile;
+    this.delegationStatus = typedData.delegationStatus ?? null;
+    this.nameservers = (typedData.nameservers ?? []).filter(Boolean);
+    this.owner = parseOwnerSummary(typedData.owner);
     this.records = (data.records ?? [])
       .filter(Boolean)
       .map((record: any) => new DNSRecord(record));
-    this.deletedAt = parseDate(data.deletedAt);
-    this.lastCheckedAt = parseDate(data.lastCheckedAt);
-    this.verifiedAt = parseDate(data.verifiedAt);
-    this.createdAt = parseDate(data.createdAt)!;
-    this.updatedAt = parseDate(data.updatedAt)!;
+    this.deletedAt = parseDate(typedData.deletedAt);
+    this.lastCheckedAt = parseDate(typedData.lastCheckedAt);
+    this.verifiedAt = parseDate(typedData.verifiedAt);
+    this.createdAt = parseDate(typedData.createdAt)!;
+    this.updatedAt = parseDate(typedData.updatedAt)!;
   }
 }
 
@@ -2010,6 +2227,16 @@ export class AppsVolumesResource {
 export class AppsDatabasesResource {
   constructor(private client: SdkContext) {}
 
+  private databaseFromNode(node: any): AppDatabase {
+    return new AppDatabase(
+      this.client._getFragmentData<srcAppDatabaseData$data>(
+        nodeAppDatabase,
+        node,
+      ),
+      this.client,
+    );
+  }
+
   list(
     input: AppsDatabasesListInput,
     options?: StackMachineRequestOptions,
@@ -2039,29 +2266,7 @@ export class AppsDatabasesResource {
                     edges {
                       cursor
                       node {
-                        id
-                        name
-                        host
-                        port
-                        username
-                        password
-                        phpmyadminUrl
-                        dbExplorerUrl
-                        deletedAt
-                        createdAt
-                        updatedAt
-                        app {
-                          id
-                          willPerishAt
-                          name
-                          url
-                          adminUrl
-                          activeVersion {
-                            id
-                          }
-                          favicon
-                          screenshot
-                        }
+                        ...srcAppDatabaseData
                       }
                     }
                     pageInfo {
@@ -2086,9 +2291,8 @@ export class AppsDatabasesResource {
           requestOptions,
         );
 
-        return connectionToListPageData(
-          query?.node?.databases,
-          (node: any) => new AppDatabase(node, this.client),
+        return connectionToListPageData(query?.node?.databases, (node: any) =>
+          this.databaseFromNode(node),
         );
       },
     });
@@ -2106,29 +2310,7 @@ export class AppsDatabasesResource {
           ) {
             createDatabaseAndLinkToApp(input: $input) {
               database {
-                id
-                name
-                host
-                port
-                username
-                password
-                phpmyadminUrl
-                dbExplorerUrl
-                deletedAt
-                createdAt
-                updatedAt
-                app {
-                  id
-                  willPerishAt
-                  name
-                  url
-                  adminUrl
-                  activeVersion {
-                    id
-                  }
-                  favicon
-                  screenshot
-                }
+                ...srcAppDatabaseData
               }
               password
             }
@@ -2154,7 +2336,7 @@ export class AppsDatabasesResource {
         "srcCreateDatabaseAndLinkToAppMutation",
       );
       return {
-        database: new AppDatabase(database, this.client),
+        database: this.databaseFromNode(database),
         password: payload.password,
       };
     }
@@ -2164,29 +2346,7 @@ export class AppsDatabasesResource {
         mutation srcCreateAppDatabaseMutation($input: CreateAppDBInput!) {
           createAppDb(input: $input) {
             database {
-              id
-              name
-              host
-              port
-              username
-              password
-              phpmyadminUrl
-              dbExplorerUrl
-              deletedAt
-              createdAt
-              updatedAt
-              app {
-                id
-                willPerishAt
-                name
-                url
-                adminUrl
-                activeVersion {
-                  id
-                }
-                favicon
-                screenshot
-              }
+              ...srcAppDatabaseData
             }
             password
           }
@@ -2212,7 +2372,7 @@ export class AppsDatabasesResource {
       "srcCreateAppDatabaseMutation",
     );
     return {
-      database: new AppDatabase(database, this.client),
+      database: this.databaseFromNode(database),
       password: payload.password,
     };
   }
@@ -2228,29 +2388,7 @@ export class AppsDatabasesResource {
         ) {
           rotateCredentialsForAppDb(input: $input) {
             database {
-              id
-              name
-              host
-              port
-              username
-              password
-              phpmyadminUrl
-              dbExplorerUrl
-              deletedAt
-              createdAt
-              updatedAt
-              app {
-                id
-                willPerishAt
-                name
-                url
-                adminUrl
-                activeVersion {
-                  id
-                }
-                favicon
-                screenshot
-              }
+              ...srcAppDatabaseData
             }
             password
           }
@@ -2273,7 +2411,7 @@ export class AppsDatabasesResource {
       "srcRotateAppDatabaseCredentialsMutation",
     );
     return {
-      database: new AppDatabase(database, this.client),
+      database: this.databaseFromNode(database),
       password: payload.password,
     };
   }
@@ -2304,6 +2442,16 @@ export class AppsDatabasesResource {
 export class AppsGitResource {
   constructor(private client: SdkContext) {}
 
+  private connectionFromNode(node: any): GithubRepoConnection {
+    return new GithubRepoConnection(
+      this.client._getFragmentData<srcGithubRepoConnectionData$data>(
+        nodeGithubRepoConnection,
+        node,
+      ),
+      this.client,
+    );
+  }
+
   async retrieve(
     appId: string,
     options?: StackMachineRequestOptions,
@@ -2315,40 +2463,7 @@ export class AppsGitResource {
             __typename
             ... on DeployApp {
               githubRepoConnection {
-                id
-                connectedAt
-                deployBranch
-                deploymentStatusEvents
-                pullRequestComments
-                connectedBy {
-                  id
-                  username
-                  globalName
-                }
-                app {
-                  id
-                  willPerishAt
-                  name
-                  url
-                  adminUrl
-                  activeVersion {
-                    id
-                  }
-                  favicon
-                  screenshot
-                }
-                githubRepoInstallation {
-                  id
-                  name
-                  namespace
-                  repoUrl
-                  url
-                  installation {
-                    id
-                    slug
-                    githubConfigureUrl
-                  }
-                }
+                ...srcGithubRepoConnectionData
               }
             }
           }
@@ -2366,7 +2481,7 @@ export class AppsGitResource {
         "app",
       );
     }
-    return new GithubRepoConnection(connection, this.client);
+    return this.connectionFromNode(connection);
   }
 
   async retrieveMany(
@@ -2384,40 +2499,7 @@ export class AppsGitResource {
             __typename
             ... on DeployApp {
               githubRepoConnection {
-                id
-                connectedAt
-                deployBranch
-                deploymentStatusEvents
-                pullRequestComments
-                connectedBy {
-                  id
-                  username
-                  globalName
-                }
-                app {
-                  id
-                  willPerishAt
-                  name
-                  url
-                  adminUrl
-                  activeVersion {
-                    id
-                  }
-                  favicon
-                  screenshot
-                }
-                githubRepoInstallation {
-                  id
-                  name
-                  namespace
-                  repoUrl
-                  url
-                  installation {
-                    id
-                    slug
-                    githubConfigureUrl
-                  }
-                }
+                ...srcGithubRepoConnectionData
               }
             }
           }
@@ -2430,7 +2512,7 @@ export class AppsGitResource {
     return appIds.map((_, index) => {
       const node = nodes[index];
       return node?.__typename === "DeployApp" && node.githubRepoConnection
-        ? new GithubRepoConnection(node.githubRepoConnection, this.client)
+        ? this.connectionFromNode(node.githubRepoConnection)
         : null;
     });
   }
@@ -2447,40 +2529,7 @@ export class AppsGitResource {
           connectGithubRepoToApp(input: $input) {
             success
             githubRepoConnection {
-              id
-              connectedAt
-              deployBranch
-              deploymentStatusEvents
-              pullRequestComments
-              connectedBy {
-                id
-                username
-                globalName
-              }
-              app {
-                id
-                willPerishAt
-                name
-                url
-                adminUrl
-                activeVersion {
-                  id
-                }
-                favicon
-                screenshot
-              }
-              githubRepoInstallation {
-                id
-                name
-                namespace
-                repoUrl
-                url
-                installation {
-                  id
-                  slug
-                  githubConfigureUrl
-                }
-              }
+              ...srcGithubRepoConnectionData
             }
           }
         }
@@ -2511,7 +2560,7 @@ export class AppsGitResource {
       "Failed to connect GitHub repo to app, no connection returned.",
       "srcConnectGithubRepoToAppMutation",
     );
-    return new GithubRepoConnection(connection, this.client);
+    return this.connectionFromNode(connection);
   }
 
   async update(
@@ -2543,40 +2592,7 @@ export class AppsGitResource {
           updateGithubRepoConnection(input: $input) {
             success
             githubRepoConnection {
-              id
-              connectedAt
-              deployBranch
-              deploymentStatusEvents
-              pullRequestComments
-              connectedBy {
-                id
-                username
-                globalName
-              }
-              app {
-                id
-                willPerishAt
-                name
-                url
-                adminUrl
-                activeVersion {
-                  id
-                }
-                favicon
-                screenshot
-              }
-              githubRepoInstallation {
-                id
-                name
-                namespace
-                repoUrl
-                url
-                installation {
-                  id
-                  slug
-                  githubConfigureUrl
-                }
-              }
+              ...srcGithubRepoConnectionData
             }
           }
         }
@@ -2608,7 +2624,7 @@ export class AppsGitResource {
       "Failed to update GitHub repo connection, no connection returned.",
       "srcUpdateGithubRepoConnectionMutation",
     );
-    return new GithubRepoConnection(connection, this.client);
+    return this.connectionFromNode(connection);
   }
 
   async del(
@@ -3612,6 +3628,24 @@ export class DeployAppsResource {
 export class DNSDomainsResource {
   constructor(private client: SdkContext) {}
 
+  private recordFromNode(node: any): srcDNSRecordData$data {
+    return this.client._getFragmentData<srcDNSRecordData$data>(
+      nodeDNSRecord,
+      node,
+    );
+  }
+
+  private domainFromNode(node: any): DNSDomain {
+    const domainData = this.client._getFragmentData<srcDNSDomainData$data>(
+      nodeDNSDomain,
+      node,
+    );
+    const records = (node.records ?? [])
+      .filter(Boolean)
+      .map((record: any) => this.recordFromNode(record));
+    return new DNSDomain({ ...domainData, records });
+  }
+
   list(
     input: DNSDomainsListInput = {},
     options?: StackMachineRequestOptions,
@@ -3640,32 +3674,7 @@ export class DNSDomainsResource {
                 edges {
                   cursor
                   node {
-                    id
-                    name
-                    slug
-                    zoneFile
-                    delegationStatus
-                    nameservers
-                    lastCheckedAt
-                    verifiedAt
-                    deletedAt
-                    createdAt
-                    updatedAt
-                    owner {
-                      __typename
-                      globalId
-                      globalName
-                      isPro
-                      ... on Namespace {
-                        id
-                        name
-                        displayName
-                      }
-                      ... on User {
-                        id
-                        username
-                      }
-                    }
+                    ...srcDNSDomainData
                   }
                 }
                 pageInfo {
@@ -3688,9 +3697,8 @@ export class DNSDomainsResource {
           requestOptions,
         );
 
-        return connectionToListPageData(
-          query?.getAllDomains,
-          (node: any) => new DNSDomain(node),
+        return connectionToListPageData(query?.getAllDomains, (node: any) =>
+          this.domainFromNode(node),
         );
       },
     });
@@ -3710,103 +3718,9 @@ export class DNSDomainsResource {
           nodes(ids: $ids) {
             __typename
             ... on DNSDomain {
-              id
-              name
-              slug
-              zoneFile
-              delegationStatus
-              nameservers
-              lastCheckedAt
-              verifiedAt
-              deletedAt
-              createdAt
-              updatedAt
-              owner {
-                __typename
-                globalId
-                globalName
-                isPro
-                ... on Namespace {
-                  id
-                  name
-                  displayName
-                }
-                ... on User {
-                  id
-                  username
-                }
-              }
+              ...srcDNSDomainData
               records {
-                __typename
-                ... on Node {
-                  id
-                }
-                ... on DNSRecordInterface {
-                  createdAt
-                  deletedAt
-                  dnsClass
-                  domain {
-                    id
-                    name
-                    slug
-                  }
-                  name
-                  text
-                  ttl
-                  updatedAt
-                }
-                ... on AAAARecord {
-                  address
-                }
-                ... on ARecord {
-                  address
-                }
-                ... on CAARecord {
-                  flags
-                  tag
-                  value
-                }
-                ... on CNAMERecord {
-                  cName
-                }
-                ... on DNAMERecord {
-                  dName
-                }
-                ... on MXRecord {
-                  exchange
-                  preference
-                }
-                ... on NSRecord {
-                  nsdname
-                }
-                ... on PTRRecord {
-                  ptrdname
-                }
-                ... on SOARecord {
-                  expire
-                  minimum
-                  mname
-                  refresh
-                  retry
-                  rname
-                  serial
-                }
-                ... on SRVRecord {
-                  port
-                  priority
-                  protocol
-                  service
-                  target
-                  weight
-                }
-                ... on SSHFPRecord {
-                  algorithm
-                  fingerprint
-                  type
-                }
-                ... on TXTRecord {
-                  data
-                }
+                ...srcDNSRecordData
               }
             }
           }
@@ -3818,7 +3732,9 @@ export class DNSDomainsResource {
     const nodes = query?.nodes ?? [];
     return ids.map((_, index) => {
       const node = nodes[index];
-      return node?.__typename === "DNSDomain" ? new DNSDomain(node) : null;
+      return node?.__typename === "DNSDomain"
+        ? this.domainFromNode(node)
+        : null;
     });
   }
 
@@ -3841,103 +3757,9 @@ export class DNSDomainsResource {
       graphql`
         query srcGetDNSDomainByNameQuery($name: String!) {
           getDomain(name: $name) {
-            id
-            name
-            slug
-            zoneFile
-            delegationStatus
-            nameservers
-            lastCheckedAt
-            verifiedAt
-            deletedAt
-            createdAt
-            updatedAt
-            owner {
-              __typename
-              globalId
-              globalName
-              isPro
-              ... on Namespace {
-                id
-                name
-                displayName
-              }
-              ... on User {
-                id
-                username
-              }
-            }
+            ...srcDNSDomainData
             records {
-              __typename
-              ... on Node {
-                id
-              }
-              ... on DNSRecordInterface {
-                createdAt
-                deletedAt
-                dnsClass
-                domain {
-                  id
-                  name
-                  slug
-                }
-                name
-                text
-                ttl
-                updatedAt
-              }
-              ... on AAAARecord {
-                address
-              }
-              ... on ARecord {
-                address
-              }
-              ... on CAARecord {
-                flags
-                tag
-                value
-              }
-              ... on CNAMERecord {
-                cName
-              }
-              ... on DNAMERecord {
-                dName
-              }
-              ... on MXRecord {
-                exchange
-                preference
-              }
-              ... on NSRecord {
-                nsdname
-              }
-              ... on PTRRecord {
-                ptrdname
-              }
-              ... on SOARecord {
-                expire
-                minimum
-                mname
-                refresh
-                retry
-                rname
-                serial
-              }
-              ... on SRVRecord {
-                port
-                priority
-                protocol
-                service
-                target
-                weight
-              }
-              ... on SSHFPRecord {
-                algorithm
-                fingerprint
-                type
-              }
-              ... on TXTRecord {
-                data
-              }
+              ...srcDNSRecordData
             }
           }
         }
@@ -3953,7 +3775,7 @@ export class DNSDomainsResource {
         "name",
       );
     }
-    return new DNSDomain(query.getDomain);
+    return this.domainFromNode(query.getDomain);
   }
 
   async create(
@@ -3966,103 +3788,9 @@ export class DNSDomainsResource {
           registerDomain(input: $input) {
             success
             domain {
-              id
-              name
-              slug
-              zoneFile
-              delegationStatus
-              nameservers
-              lastCheckedAt
-              verifiedAt
-              deletedAt
-              createdAt
-              updatedAt
-              owner {
-                __typename
-                globalId
-                globalName
-                isPro
-                ... on Namespace {
-                  id
-                  name
-                  displayName
-                }
-                ... on User {
-                  id
-                  username
-                }
-              }
+              ...srcDNSDomainData
               records {
-                __typename
-                ... on Node {
-                  id
-                }
-                ... on DNSRecordInterface {
-                  createdAt
-                  deletedAt
-                  dnsClass
-                  domain {
-                    id
-                    name
-                    slug
-                  }
-                  name
-                  text
-                  ttl
-                  updatedAt
-                }
-                ... on AAAARecord {
-                  address
-                }
-                ... on ARecord {
-                  address
-                }
-                ... on CAARecord {
-                  flags
-                  tag
-                  value
-                }
-                ... on CNAMERecord {
-                  cName
-                }
-                ... on DNAMERecord {
-                  dName
-                }
-                ... on MXRecord {
-                  exchange
-                  preference
-                }
-                ... on NSRecord {
-                  nsdname
-                }
-                ... on PTRRecord {
-                  ptrdname
-                }
-                ... on SOARecord {
-                  expire
-                  minimum
-                  mname
-                  refresh
-                  retry
-                  rname
-                  serial
-                }
-                ... on SRVRecord {
-                  port
-                  priority
-                  protocol
-                  service
-                  target
-                  weight
-                }
-                ... on SSHFPRecord {
-                  algorithm
-                  fingerprint
-                  type
-                }
-                ... on TXTRecord {
-                  data
-                }
+                ...srcDNSRecordData
               }
             }
           }
@@ -4093,7 +3821,7 @@ export class DNSDomainsResource {
       "Failed to create DNS domain, no domain returned.",
       "srcRegisterDNSDomainMutation",
     );
-    return new DNSDomain(domain);
+    return this.domainFromNode(domain);
   }
 
   async importZoneFile(
@@ -4108,103 +3836,9 @@ export class DNSDomainsResource {
           upsertDomainFromZoneFile(input: $input) {
             success
             domain {
-              id
-              name
-              slug
-              zoneFile
-              delegationStatus
-              nameservers
-              lastCheckedAt
-              verifiedAt
-              deletedAt
-              createdAt
-              updatedAt
-              owner {
-                __typename
-                globalId
-                globalName
-                isPro
-                ... on Namespace {
-                  id
-                  name
-                  displayName
-                }
-                ... on User {
-                  id
-                  username
-                }
-              }
+              ...srcDNSDomainData
               records {
-                __typename
-                ... on Node {
-                  id
-                }
-                ... on DNSRecordInterface {
-                  createdAt
-                  deletedAt
-                  dnsClass
-                  domain {
-                    id
-                    name
-                    slug
-                  }
-                  name
-                  text
-                  ttl
-                  updatedAt
-                }
-                ... on AAAARecord {
-                  address
-                }
-                ... on ARecord {
-                  address
-                }
-                ... on CAARecord {
-                  flags
-                  tag
-                  value
-                }
-                ... on CNAMERecord {
-                  cName
-                }
-                ... on DNAMERecord {
-                  dName
-                }
-                ... on MXRecord {
-                  exchange
-                  preference
-                }
-                ... on NSRecord {
-                  nsdname
-                }
-                ... on PTRRecord {
-                  ptrdname
-                }
-                ... on SOARecord {
-                  expire
-                  minimum
-                  mname
-                  refresh
-                  retry
-                  rname
-                  serial
-                }
-                ... on SRVRecord {
-                  port
-                  priority
-                  protocol
-                  service
-                  target
-                  weight
-                }
-                ... on SSHFPRecord {
-                  algorithm
-                  fingerprint
-                  type
-                }
-                ... on TXTRecord {
-                  data
-                }
+                ...srcDNSRecordData
               }
             }
           }
@@ -4234,7 +3868,7 @@ export class DNSDomainsResource {
       "Failed to import DNS zone file, no domain returned.",
       "srcUpsertDNSDomainFromZoneFileMutation",
     );
-    return new DNSDomain(domain);
+    return this.domainFromNode(domain);
   }
 
   async del(id: string, options?: StackMachineRequestOptions): Promise<void> {
@@ -4263,6 +3897,12 @@ export class DNSDomainsResource {
 export class DNSRecordsResource {
   constructor(private client: SdkContext) {}
 
+  private recordFromNode(node: any): DNSRecord {
+    return new DNSRecord(
+      this.client._getFragmentData<srcDNSRecordData$data>(nodeDNSRecord, node),
+    );
+  }
+
   async list(
     input: DNSRecordsListInput,
     options?: StackMachineRequestOptions,
@@ -4274,76 +3914,7 @@ export class DNSRecordsResource {
             __typename
             ... on DNSDomain {
               records {
-                __typename
-                ... on Node {
-                  id
-                }
-                ... on DNSRecordInterface {
-                  createdAt
-                  deletedAt
-                  dnsClass
-                  domain {
-                    id
-                    name
-                    slug
-                  }
-                  name
-                  text
-                  ttl
-                  updatedAt
-                }
-                ... on AAAARecord {
-                  address
-                }
-                ... on ARecord {
-                  address
-                }
-                ... on CAARecord {
-                  flags
-                  tag
-                  value
-                }
-                ... on CNAMERecord {
-                  cName
-                }
-                ... on DNAMERecord {
-                  dName
-                }
-                ... on MXRecord {
-                  exchange
-                  preference
-                }
-                ... on NSRecord {
-                  nsdname
-                }
-                ... on PTRRecord {
-                  ptrdname
-                }
-                ... on SOARecord {
-                  expire
-                  minimum
-                  mname
-                  refresh
-                  retry
-                  rname
-                  serial
-                }
-                ... on SRVRecord {
-                  port
-                  priority
-                  protocol
-                  service
-                  target
-                  weight
-                }
-                ... on SSHFPRecord {
-                  algorithm
-                  fingerprint
-                  type
-                }
-                ... on TXTRecord {
-                  data
-                }
+                ...srcDNSRecordData
               }
             }
           }
@@ -4362,7 +3933,7 @@ export class DNSRecordsResource {
     }
     return (domain.node.records ?? [])
       .filter(Boolean)
-      .map((record: any) => new DNSRecord(record));
+      .map((record: any) => this.recordFromNode(record));
   }
 
   listPage(
@@ -4397,76 +3968,7 @@ export class DNSRecordsResource {
                     edges {
                       cursor
                       node {
-                        __typename
-                        ... on Node {
-                          id
-                        }
-                        ... on DNSRecordInterface {
-                          createdAt
-                          deletedAt
-                          dnsClass
-                          domain {
-                            id
-                            name
-                            slug
-                          }
-                          name
-                          text
-                          ttl
-                          updatedAt
-                        }
-                        ... on AAAARecord {
-                          address
-                        }
-                        ... on ARecord {
-                          address
-                        }
-                        ... on CAARecord {
-                          flags
-                          tag
-                          value
-                        }
-                        ... on CNAMERecord {
-                          cName
-                        }
-                        ... on DNAMERecord {
-                          dName
-                        }
-                        ... on MXRecord {
-                          exchange
-                          preference
-                        }
-                        ... on NSRecord {
-                          nsdname
-                        }
-                        ... on PTRRecord {
-                          ptrdname
-                        }
-                        ... on SOARecord {
-                          expire
-                          minimum
-                          mname
-                          refresh
-                          retry
-                          rname
-                          serial
-                        }
-                        ... on SRVRecord {
-                          port
-                          priority
-                          protocol
-                          service
-                          target
-                          weight
-                        }
-                        ... on SSHFPRecord {
-                          algorithm
-                          fingerprint
-                          type
-                        }
-                        ... on TXTRecord {
-                          data
-                        }
+                        ...srcDNSRecordData
                       }
                     }
                     pageInfo {
@@ -4501,7 +4003,7 @@ export class DNSRecordsResource {
         }
         return connectionToListPageData(
           query.node.recordsConnection,
-          (node: any) => new DNSRecord(node),
+          (node: any) => this.recordFromNode(node),
         );
       },
     });
@@ -4520,74 +4022,8 @@ export class DNSRecordsResource {
         query srcGetDNSRecordsQuery($ids: [ID!]!) {
           nodes(ids: $ids) {
             __typename
-            ... on Node {
-              id
-            }
-            ... on DNSRecordInterface {
-              createdAt
-              deletedAt
-              dnsClass
-              domain {
-                id
-                name
-                slug
-              }
-              name
-              text
-              ttl
-              updatedAt
-            }
-            ... on AAAARecord {
-              address
-            }
-            ... on ARecord {
-              address
-            }
-            ... on CAARecord {
-              flags
-              tag
-              value
-            }
-            ... on CNAMERecord {
-              cName
-            }
-            ... on DNAMERecord {
-              dName
-            }
-            ... on MXRecord {
-              exchange
-              preference
-            }
-            ... on NSRecord {
-              nsdname
-            }
-            ... on PTRRecord {
-              ptrdname
-            }
-            ... on SOARecord {
-              expire
-              minimum
-              mname
-              refresh
-              retry
-              rname
-              serial
-            }
-            ... on SRVRecord {
-              port
-              priority
-              protocol
-              service
-              target
-              weight
-            }
-            ... on SSHFPRecord {
-              algorithm
-              fingerprint
-              type
-            }
-            ... on TXTRecord {
-              data
+            ... on DNSRecord {
+              ...srcDNSRecordData
             }
           }
         }
@@ -4598,7 +4034,9 @@ export class DNSRecordsResource {
     const nodes = query?.nodes ?? [];
     return ids.map((_, index) => {
       const node = nodes[index];
-      return node?.name && node?.text ? new DNSRecord(node) : null;
+      return isDNSRecordTypename(node?.__typename)
+        ? this.recordFromNode(node)
+        : null;
     });
   }
 
@@ -4624,76 +4062,7 @@ export class DNSRecordsResource {
           upsertDNSRecord(input: $input) {
             success
             record {
-              __typename
-              ... on Node {
-                id
-              }
-              ... on DNSRecordInterface {
-                createdAt
-                deletedAt
-                dnsClass
-                domain {
-                  id
-                  name
-                  slug
-                }
-                name
-                text
-                ttl
-                updatedAt
-              }
-              ... on AAAARecord {
-                address
-              }
-              ... on ARecord {
-                address
-              }
-              ... on CAARecord {
-                flags
-                tag
-                value
-              }
-              ... on CNAMERecord {
-                cName
-              }
-              ... on DNAMERecord {
-                dName
-              }
-              ... on MXRecord {
-                exchange
-                preference
-              }
-              ... on NSRecord {
-                nsdname
-              }
-              ... on PTRRecord {
-                ptrdname
-              }
-              ... on SOARecord {
-                expire
-                minimum
-                mname
-                refresh
-                retry
-                rname
-                serial
-              }
-              ... on SRVRecord {
-                port
-                priority
-                protocol
-                service
-                target
-                weight
-              }
-              ... on SSHFPRecord {
-                algorithm
-                fingerprint
-                type
-              }
-              ... on TXTRecord {
-                data
-              }
+              ...srcDNSRecordData
             }
           }
         }
@@ -4731,7 +4100,7 @@ export class DNSRecordsResource {
       "Failed to upsert DNS record, no record returned.",
       "srcUpsertDNSRecordMutation",
     );
-    return new DNSRecord(record);
+    return this.recordFromNode(record);
   }
 
   async create(
@@ -4759,76 +4128,7 @@ export class DNSRecordsResource {
           updateDNSRecords(input: $input) {
             success
             records {
-              __typename
-              ... on Node {
-                id
-              }
-              ... on DNSRecordInterface {
-                createdAt
-                deletedAt
-                dnsClass
-                domain {
-                  id
-                  name
-                  slug
-                }
-                name
-                text
-                ttl
-                updatedAt
-              }
-              ... on AAAARecord {
-                address
-              }
-              ... on ARecord {
-                address
-              }
-              ... on CAARecord {
-                flags
-                tag
-                value
-              }
-              ... on CNAMERecord {
-                cName
-              }
-              ... on DNAMERecord {
-                dName
-              }
-              ... on MXRecord {
-                exchange
-                preference
-              }
-              ... on NSRecord {
-                nsdname
-              }
-              ... on PTRRecord {
-                ptrdname
-              }
-              ... on SOARecord {
-                expire
-                minimum
-                mname
-                refresh
-                retry
-                rname
-                serial
-              }
-              ... on SRVRecord {
-                port
-                priority
-                protocol
-                service
-                target
-                weight
-              }
-              ... on SSHFPRecord {
-                algorithm
-                fingerprint
-                type
-              }
-              ... on TXTRecord {
-                data
-              }
+              ...srcDNSRecordData
             }
           }
         }
@@ -4854,7 +4154,7 @@ export class DNSRecordsResource {
     }
     return (payload.records ?? [])
       .filter(Boolean)
-      .map((record: any) => new DNSRecord(record));
+      .map((record: any) => this.recordFromNode(record));
   }
 
   async del(id: string, options?: StackMachineRequestOptions): Promise<void> {

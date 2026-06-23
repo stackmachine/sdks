@@ -160,6 +160,7 @@ const dnsRecordNode = (id, kind = "ARecord", overrides = {}) => {
   const base = {
     __typename: kind,
     __isNode: kind,
+    __isDNSRecord: kind,
     __isDNSRecordInterface: kind,
     id,
     createdAt: "2026-01-01T00:00:00Z",

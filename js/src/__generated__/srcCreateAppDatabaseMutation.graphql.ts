@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7f26ba47188a15ff394d3da6dba4ff12>>
+ * @generated SignedSource<<c739acf602d409dbf6b515f336729c06>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,6 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+import { FragmentRefs } from "relay-runtime";
 export type CreateAppDBInput = {
   clientMutationId?: string | null | undefined;
   id: string;
@@ -20,29 +21,7 @@ export type srcCreateAppDatabaseMutation$variables = {
 export type srcCreateAppDatabaseMutation$data = {
   readonly createAppDb: {
     readonly database: {
-      readonly app: {
-        readonly activeVersion: {
-          readonly id: string;
-        } | null | undefined;
-        readonly adminUrl: string;
-        readonly favicon: any | null | undefined;
-        readonly id: string;
-        readonly name: string;
-        readonly screenshot: any | null | undefined;
-        readonly url: string;
-        readonly willPerishAt: any | null | undefined;
-      };
-      readonly createdAt: any;
-      readonly dbExplorerUrl: string | null | undefined;
-      readonly deletedAt: any | null | undefined;
-      readonly host: string;
-      readonly id: string;
-      readonly name: string;
-      readonly password: string | null | undefined;
-      readonly phpmyadminUrl: string | null | undefined;
-      readonly port: string;
-      readonly updatedAt: any;
-      readonly username: string;
+      readonly " $fragmentSpreads": FragmentRefs<"srcAppDatabaseData">;
     };
     readonly password: string;
   } | null | undefined;
@@ -60,184 +39,70 @@ var v0 = [
     "name": "input"
   }
 ],
-v1 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "id",
-  "storageKey": null
-},
+v1 = [
+  {
+    "kind": "Variable",
+    "name": "input",
+    "variableName": "input"
+  }
+],
 v2 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "name",
-  "storageKey": null
-},
-v3 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "password",
   "storageKey": null
 },
-v4 = [
-  {
-    "alias": null,
-    "args": [
-      {
-        "kind": "Variable",
-        "name": "input",
-        "variableName": "input"
-      }
-    ],
-    "concreteType": "CreateAppDBPayload",
-    "kind": "LinkedField",
-    "name": "createAppDb",
-    "plural": false,
-    "selections": [
-      {
-        "alias": null,
-        "args": null,
-        "concreteType": "AppDatabase",
-        "kind": "LinkedField",
-        "name": "database",
-        "plural": false,
-        "selections": [
-          (v1/*: any*/),
-          (v2/*: any*/),
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "host",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "port",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "username",
-            "storageKey": null
-          },
-          (v3/*: any*/),
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "phpmyadminUrl",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "dbExplorerUrl",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "deletedAt",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "createdAt",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "updatedAt",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "concreteType": "DeployApp",
-            "kind": "LinkedField",
-            "name": "app",
-            "plural": false,
-            "selections": [
-              (v1/*: any*/),
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "willPerishAt",
-                "storageKey": null
-              },
-              (v2/*: any*/),
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "url",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "adminUrl",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "concreteType": "DeployAppVersion",
-                "kind": "LinkedField",
-                "name": "activeVersion",
-                "plural": false,
-                "selections": [
-                  (v1/*: any*/)
-                ],
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "favicon",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "screenshot",
-                "storageKey": null
-              }
-            ],
-            "storageKey": null
-          }
-        ],
-        "storageKey": null
-      },
-      (v3/*: any*/)
-    ],
-    "storageKey": null
-  }
-];
+v3 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "id",
+  "storageKey": null
+},
+v4 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "name",
+  "storageKey": null
+};
 return {
   "fragment": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
     "name": "srcCreateAppDatabaseMutation",
-    "selections": (v4/*: any*/),
+    "selections": [
+      {
+        "alias": null,
+        "args": (v1/*: any*/),
+        "concreteType": "CreateAppDBPayload",
+        "kind": "LinkedField",
+        "name": "createAppDb",
+        "plural": false,
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "AppDatabase",
+            "kind": "LinkedField",
+            "name": "database",
+            "plural": false,
+            "selections": [
+              {
+                "args": null,
+                "kind": "FragmentSpread",
+                "name": "srcAppDatabaseData"
+              }
+            ],
+            "storageKey": null
+          },
+          (v2/*: any*/)
+        ],
+        "storageKey": null
+      }
+    ],
     "type": "Mutation",
     "abstractKey": null
   },
@@ -246,19 +111,162 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "srcCreateAppDatabaseMutation",
-    "selections": (v4/*: any*/)
+    "selections": [
+      {
+        "alias": null,
+        "args": (v1/*: any*/),
+        "concreteType": "CreateAppDBPayload",
+        "kind": "LinkedField",
+        "name": "createAppDb",
+        "plural": false,
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "AppDatabase",
+            "kind": "LinkedField",
+            "name": "database",
+            "plural": false,
+            "selections": [
+              (v3/*: any*/),
+              (v4/*: any*/),
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "host",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "port",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "username",
+                "storageKey": null
+              },
+              (v2/*: any*/),
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "phpmyadminUrl",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "dbExplorerUrl",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "deletedAt",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "createdAt",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "updatedAt",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "concreteType": "DeployApp",
+                "kind": "LinkedField",
+                "name": "app",
+                "plural": false,
+                "selections": [
+                  (v3/*: any*/),
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "willPerishAt",
+                    "storageKey": null
+                  },
+                  (v4/*: any*/),
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "url",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "adminUrl",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "concreteType": "DeployAppVersion",
+                    "kind": "LinkedField",
+                    "name": "activeVersion",
+                    "plural": false,
+                    "selections": [
+                      (v3/*: any*/)
+                    ],
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "favicon",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "screenshot",
+                    "storageKey": null
+                  }
+                ],
+                "storageKey": null
+              }
+            ],
+            "storageKey": null
+          },
+          (v2/*: any*/)
+        ],
+        "storageKey": null
+      }
+    ]
   },
   "params": {
-    "cacheID": "6f24209e3a98290ec92302d53d4ac444",
+    "cacheID": "85e7808d27929a59b92102f6e2fef074",
     "id": null,
     "metadata": {},
     "name": "srcCreateAppDatabaseMutation",
     "operationKind": "mutation",
-    "text": "mutation srcCreateAppDatabaseMutation(\n  $input: CreateAppDBInput!\n) {\n  createAppDb(input: $input) {\n    database {\n      id\n      name\n      host\n      port\n      username\n      password\n      phpmyadminUrl\n      dbExplorerUrl\n      deletedAt\n      createdAt\n      updatedAt\n      app {\n        id\n        willPerishAt\n        name\n        url\n        adminUrl\n        activeVersion {\n          id\n        }\n        favicon\n        screenshot\n      }\n    }\n    password\n  }\n}\n"
+    "text": "mutation srcCreateAppDatabaseMutation(\n  $input: CreateAppDBInput!\n) {\n  createAppDb(input: $input) {\n    database {\n      ...srcAppDatabaseData\n      id\n    }\n    password\n  }\n}\n\nfragment srcAppDatabaseData on AppDatabase {\n  id\n  name\n  host\n  port\n  username\n  password\n  phpmyadminUrl\n  dbExplorerUrl\n  deletedAt\n  createdAt\n  updatedAt\n  app {\n    ...srcDeployAppData\n    id\n  }\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  name\n  url\n  adminUrl\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n"
   }
 };
 })();
 
-(node as any).hash = "775a1f6ec505bd47311ec2ffa30cad2f";
+(node as any).hash = "f9854678f38a7c7d5f9e53d0deee3819";
 
 export default node;

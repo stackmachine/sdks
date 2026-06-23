@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<52fb936ff2e7a44687364ee6a28f9b78>>
+ * @generated SignedSource<<98e398c8b81b1df592ff240d2b5a124a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type DNSDelegationStatus = "MISCONFIGURED" | "PENDING" | "UNKNOWN" | "VERIFIED" | "%future added value";
+import { FragmentRefs } from "relay-runtime";
 export type srcListDNSDomainsQuery$variables = {
   after?: string | null | undefined;
   before?: string | null | undefined;
@@ -22,27 +22,7 @@ export type srcListDNSDomainsQuery$data = {
     readonly edges: ReadonlyArray<{
       readonly cursor: string;
       readonly node: {
-        readonly createdAt: any;
-        readonly delegationStatus: DNSDelegationStatus;
-        readonly deletedAt: any | null | undefined;
-        readonly id: string;
-        readonly lastCheckedAt: any | null | undefined;
-        readonly name: string;
-        readonly nameservers: ReadonlyArray<string>;
-        readonly owner: {
-          readonly __typename: string;
-          readonly displayName?: string | null | undefined;
-          readonly globalId: string;
-          readonly globalName: string;
-          readonly id?: string;
-          readonly isPro: boolean;
-          readonly name?: string;
-          readonly username?: string;
-        };
-        readonly slug: string;
-        readonly updatedAt: any;
-        readonly verifiedAt: any | null | undefined;
-        readonly zoneFile: string;
+        readonly " $fragmentSpreads": FragmentRefs<"srcDNSDomainData">;
       };
     }>;
     readonly pageInfo: {
@@ -122,142 +102,6 @@ v6 = {
 v7 = {
   "alias": null,
   "args": null,
-  "kind": "ScalarField",
-  "name": "id",
-  "storageKey": null
-},
-v8 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "name",
-  "storageKey": null
-},
-v9 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "slug",
-  "storageKey": null
-},
-v10 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "zoneFile",
-  "storageKey": null
-},
-v11 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "delegationStatus",
-  "storageKey": null
-},
-v12 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "nameservers",
-  "storageKey": null
-},
-v13 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "lastCheckedAt",
-  "storageKey": null
-},
-v14 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "verifiedAt",
-  "storageKey": null
-},
-v15 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "deletedAt",
-  "storageKey": null
-},
-v16 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "createdAt",
-  "storageKey": null
-},
-v17 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "updatedAt",
-  "storageKey": null
-},
-v18 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "__typename",
-  "storageKey": null
-},
-v19 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "globalId",
-  "storageKey": null
-},
-v20 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "globalName",
-  "storageKey": null
-},
-v21 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "isPro",
-  "storageKey": null
-},
-v22 = {
-  "kind": "InlineFragment",
-  "selections": [
-    (v7/*: any*/),
-    (v8/*: any*/),
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "displayName",
-      "storageKey": null
-    }
-  ],
-  "type": "Namespace",
-  "abstractKey": null
-},
-v23 = {
-  "kind": "InlineFragment",
-  "selections": [
-    (v7/*: any*/),
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "username",
-      "storageKey": null
-    }
-  ],
-  "type": "User",
-  "abstractKey": null
-},
-v24 = {
-  "alias": null,
-  "args": null,
   "concreteType": "PageInfo",
   "kind": "LinkedField",
   "name": "pageInfo",
@@ -294,11 +138,25 @@ v24 = {
   ],
   "storageKey": null
 },
-v25 = {
+v8 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "totalCount",
+  "storageKey": null
+},
+v9 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "id",
+  "storageKey": null
+},
+v10 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "name",
   "storageKey": null
 };
 return {
@@ -339,33 +197,10 @@ return {
                 "name": "node",
                 "plural": false,
                 "selections": [
-                  (v7/*: any*/),
-                  (v8/*: any*/),
-                  (v9/*: any*/),
-                  (v10/*: any*/),
-                  (v11/*: any*/),
-                  (v12/*: any*/),
-                  (v13/*: any*/),
-                  (v14/*: any*/),
-                  (v15/*: any*/),
-                  (v16/*: any*/),
-                  (v17/*: any*/),
                   {
-                    "alias": null,
                     "args": null,
-                    "concreteType": null,
-                    "kind": "LinkedField",
-                    "name": "owner",
-                    "plural": false,
-                    "selections": [
-                      (v18/*: any*/),
-                      (v19/*: any*/),
-                      (v20/*: any*/),
-                      (v21/*: any*/),
-                      (v22/*: any*/),
-                      (v23/*: any*/)
-                    ],
-                    "storageKey": null
+                    "kind": "FragmentSpread",
+                    "name": "srcDNSDomainData"
                   }
                 ],
                 "storageKey": null
@@ -373,8 +208,8 @@ return {
             ],
             "storageKey": null
           },
-          (v24/*: any*/),
-          (v25/*: any*/)
+          (v7/*: any*/),
+          (v8/*: any*/)
         ],
         "storageKey": null
       }
@@ -419,17 +254,71 @@ return {
                 "name": "node",
                 "plural": false,
                 "selections": [
-                  (v7/*: any*/),
-                  (v8/*: any*/),
                   (v9/*: any*/),
                   (v10/*: any*/),
-                  (v11/*: any*/),
-                  (v12/*: any*/),
-                  (v13/*: any*/),
-                  (v14/*: any*/),
-                  (v15/*: any*/),
-                  (v16/*: any*/),
-                  (v17/*: any*/),
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "slug",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "zoneFile",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "delegationStatus",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "nameservers",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "lastCheckedAt",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "verifiedAt",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "deletedAt",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "createdAt",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "updatedAt",
+                    "storageKey": null
+                  },
                   {
                     "alias": null,
                     "args": null,
@@ -438,16 +327,69 @@ return {
                     "name": "owner",
                     "plural": false,
                     "selections": [
-                      (v18/*: any*/),
-                      (v19/*: any*/),
-                      (v20/*: any*/),
-                      (v21/*: any*/),
-                      (v22/*: any*/),
-                      (v23/*: any*/),
+                      {
+                        "alias": null,
+                        "args": null,
+                        "kind": "ScalarField",
+                        "name": "__typename",
+                        "storageKey": null
+                      },
+                      {
+                        "alias": null,
+                        "args": null,
+                        "kind": "ScalarField",
+                        "name": "globalId",
+                        "storageKey": null
+                      },
+                      {
+                        "alias": null,
+                        "args": null,
+                        "kind": "ScalarField",
+                        "name": "globalName",
+                        "storageKey": null
+                      },
+                      {
+                        "alias": null,
+                        "args": null,
+                        "kind": "ScalarField",
+                        "name": "isPro",
+                        "storageKey": null
+                      },
                       {
                         "kind": "InlineFragment",
                         "selections": [
-                          (v7/*: any*/)
+                          (v9/*: any*/),
+                          (v10/*: any*/),
+                          {
+                            "alias": null,
+                            "args": null,
+                            "kind": "ScalarField",
+                            "name": "displayName",
+                            "storageKey": null
+                          }
+                        ],
+                        "type": "Namespace",
+                        "abstractKey": null
+                      },
+                      {
+                        "kind": "InlineFragment",
+                        "selections": [
+                          (v9/*: any*/),
+                          {
+                            "alias": null,
+                            "args": null,
+                            "kind": "ScalarField",
+                            "name": "username",
+                            "storageKey": null
+                          }
+                        ],
+                        "type": "User",
+                        "abstractKey": null
+                      },
+                      {
+                        "kind": "InlineFragment",
+                        "selections": [
+                          (v9/*: any*/)
                         ],
                         "type": "Node",
                         "abstractKey": "__isNode"
@@ -461,24 +403,24 @@ return {
             ],
             "storageKey": null
           },
-          (v24/*: any*/),
-          (v25/*: any*/)
+          (v7/*: any*/),
+          (v8/*: any*/)
         ],
         "storageKey": null
       }
     ]
   },
   "params": {
-    "cacheID": "2ce8d03db9b19daf18513e1c25995eee",
+    "cacheID": "fe2e7ff1f0b08bf7378148863ddacf9e",
     "id": null,
     "metadata": {},
     "name": "srcListDNSDomainsQuery",
     "operationKind": "query",
-    "text": "query srcListDNSDomainsQuery(\n  $owner: ID\n  $first: Int\n  $after: String\n  $last: Int\n  $before: String\n) {\n  getAllDomains(ownerId: $owner, first: $first, after: $after, last: $last, before: $before) {\n    edges {\n      cursor\n      node {\n        id\n        name\n        slug\n        zoneFile\n        delegationStatus\n        nameservers\n        lastCheckedAt\n        verifiedAt\n        deletedAt\n        createdAt\n        updatedAt\n        owner {\n          __typename\n          globalId\n          globalName\n          isPro\n          ... on Namespace {\n            id\n            name\n            displayName\n          }\n          ... on User {\n            id\n            username\n          }\n          ... on Node {\n            __isNode: __typename\n            id\n          }\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      endCursor\n      startCursor\n    }\n    totalCount\n  }\n}\n"
+    "text": "query srcListDNSDomainsQuery(\n  $owner: ID\n  $first: Int\n  $after: String\n  $last: Int\n  $before: String\n) {\n  getAllDomains(ownerId: $owner, first: $first, after: $after, last: $last, before: $before) {\n    edges {\n      cursor\n      node {\n        ...srcDNSDomainData\n        id\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      endCursor\n      startCursor\n    }\n    totalCount\n  }\n}\n\nfragment srcDNSDomainData on DNSDomain {\n  id\n  name\n  slug\n  zoneFile\n  delegationStatus\n  nameservers\n  lastCheckedAt\n  verifiedAt\n  deletedAt\n  createdAt\n  updatedAt\n  owner {\n    __typename\n    globalId\n    globalName\n    isPro\n    ... on Namespace {\n      id\n      name\n      displayName\n    }\n    ... on User {\n      id\n      username\n    }\n    ... on Node {\n      __isNode: __typename\n      id\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "9d6cf667a662251f9b7762caa7141950";
+(node as any).hash = "e0ab41b59337b90ab59445ccb03b434a";
 
 export default node;
