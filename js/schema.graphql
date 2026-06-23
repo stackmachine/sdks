@@ -960,6 +960,7 @@ type BuildConfiguration implements Node {
   repo: String @deprecated(reason: "This field is deprecated and return null always.")
   repoName: String @deprecated(reason: "This field is deprecated and return null always.")
   repoNamespace: String @deprecated(reason: "This field is deprecated and return null always.")
+  rootDir: String
   setupDb: Boolean! @deprecated(reason: "This field is deprecated and return null always.")
   startCmd: String
 }
@@ -1306,6 +1307,18 @@ type CreateAppDBPayload {
   password: String!
 }
 
+input CreateAppDatabaseInput {
+  """App ID."""
+  appId: ID!
+  clientMutationId: String
+
+  """Database engine to provision and link to the app."""
+  dbEngine: DatabaseEngine!
+
+  """Database name."""
+  name: String
+}
+
 input CreateAppVolumeInput {
   """App ID"""
   appId: ID!
@@ -1420,19 +1433,31 @@ input DNSCAAExtraInput {
   tag: String!
 }
 
+enum DNSDelegationStatus {
+  MISCONFIGURED
+  PENDING
+  UNKNOWN
+  VERIFIED
+}
+
 type DNSDomain implements Node {
   createdAt: DateTime!
+  delegationStatus: DNSDelegationStatus!
   deletedAt: DateTime
 
   """The ID of the object"""
   id: ID!
+  lastCheckedAt: DateTime
   name: String!
+  nameservers: [String!]!
   owner: Owner!
   records: [DNSRecord]
+  recordsConnection(after: String, before: String, first: Int, last: Int, sortBy: DNSRecordsSortBy): DNSRecordConnection!
 
   """This zone will be accessible at /dns/{slug}/."""
   slug: String!
   updatedAt: DateTime!
+  verifiedAt: DateTime
   zoneFile: String!
 }
 
@@ -1493,6 +1518,34 @@ interface DNSRecordInterface {
   updatedAt: DateTime!
 }
 
+input DNSRecordUpdate {
+  caa: DNSCAAExtraInput
+
+  """Whether the DNS record should be deleted instead of upserted."""
+  delete: Boolean = false
+
+  """ID of the DNS record to update or delete."""
+  id: ID
+
+  """
+  Record kind. Required when creating/upserting by name or deleting by natural key.
+  """
+  kind: RecordKind
+  mx: DNSMXExtraInput
+
+  """Record owner/name within the DNS domain."""
+  name: String
+  soa: DNSSOAExtraInput
+  srv: DNSSRVExtraInput
+  sshfp: DNSSSHFPExtraInput
+
+  """Time to live in seconds."""
+  ttl: Int
+
+  """Record value. Required when creating/upserting by name."""
+  value: String
+}
+
 enum DNSRecordsSortBy {
   NEWEST
   OLDEST
@@ -1519,6 +1572,12 @@ input DNSSRVExtraInput {
 input DNSSSHFPExtraInput {
   algorithm: Int!
   type: Int!
+}
+
+enum DatabaseEngine {
+  MYSQL
+  POSTGRES
+  SQLITE
 }
 
 """
@@ -1641,6 +1700,12 @@ type DeleteNamespacePayload {
   success: Boolean!
 }
 
+input DeleteSshAuthorizedKeyByIdInput {
+  """SSH authorized key ID."""
+  authorizedKeyId: ID!
+  clientMutationId: String
+}
+
 input DeleteSshAuthorizedKeyInput {
   clientMutationId: String
   name: String
@@ -1718,12 +1783,14 @@ type DeployApp implements Node {
   owner: Owner!
   perishReason: DeployDeployAppPerishReasonChoices
   permalink: String!
+  receivedEmails(after: String, before: String, first: Int, last: Int): EmailMessageConnection!
   region: AppRegion
   rollouts(after: String, before: String, first: Int, last: Int): RolloutConnection
   s3Credentials: S3Credentials
   s3Url: URL
   screenshot(appearance: AppScreenshotAppearance, viewportSize: AppScreenshotViewportSize): URL
   secrets(after: String, before: String, first: Int, last: Int, nameRegex: String, names: [String], offset: Int): SecretConnection! @deprecated(reason: "Use `envVars` instead.")
+  sentEmails(after: String, before: String, first: Int, last: Int): EmailMessageConnection!
   sshServer: AppSshServer
   state: String!
   updatedAt: DateTime!
@@ -2126,6 +2193,51 @@ input EditSshUserInput {
 type EditSshUserPayload {
   clientMutationId: String
   sshUser: SshUser!
+}
+
+type EmailMessage implements Node {
+  app: DeployApp
+  bcc: [String!]!
+  cc: [String!]!
+  createdAt: DateTime!
+  direction: EmailMessageDirection!
+  from: String!
+  htmlBody: String
+
+  """The ID of the object"""
+  id: ID!
+  owner: Owner
+  receivedAt: DateTime
+  replyTo: String
+  sentAt: DateTime
+  status: EmailMessageStatus!
+  subject: String!
+  textBody: String
+  to: [String!]!
+}
+
+type EmailMessageConnection {
+  edges: [EmailMessageEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+enum EmailMessageDirection {
+  RECEIVED
+  SENT
+}
+
+type EmailMessageEdge {
+  cursor: String!
+  node: EmailMessage!
+}
+
+enum EmailMessageStatus {
+  DELIVERED
+  FAILED
+  QUEUED
+  RECEIVED
+  SENT
 }
 
 type EmailUsageSummary {
@@ -2930,6 +3042,9 @@ type Mutation {
   """Create a UI-managed volume for an app."""
   createAppVolume(input: CreateAppVolumeInput!): CreateAppVolumePayload!
   createCheckoutSession(input: CreateCheckoutSessionInput!): CreateCheckoutSessionPayload!
+
+  """Create a new database and link it to an app."""
+  createDatabaseAndLinkToApp(input: CreateAppDatabaseInput!): CreateAppDBPayload
   createNamespace(input: CreateNamespaceInput!): CreateNamespacePayload!
   createNamespaceApiKey(input: CreateNamespaceAPIKeyInput!): CreateNamespaceAPIKeyPayload
   createRepoForAppTemplate(input: CreateRepoForAppTemplateInput!): CreateRepoForAppTemplatePayload
@@ -2953,6 +3068,9 @@ type Mutation {
 
   """Edit an SSH user."""
   deleteSshAuthorizedKey(input: DeleteSshAuthorizedKeyInput!): DeleteSshAuthorizedKeyPayload
+
+  """Delete an SSH authorized key by its node ID."""
+  deleteSshAuthorizedKeyById(input: DeleteSshAuthorizedKeyByIdInput!): DeleteSshAuthorizedKeyPayload
 
   """
   Delete a user with some reason. The deletion will be soft, so the
@@ -3030,8 +3148,14 @@ type Mutation {
 
   """Purges all cache for this app version"""
   purgeCacheForAppVersion(input: PurgeCacheForAppVersionInput!): PurgeCacheForAppVersionPayload
+
+  """Purges all cache for this app version by app version ID."""
+  purgeCacheForAppVersionById(input: PurgeCacheForAppVersionByIdInput!): PurgeCacheForAppVersionPayload
   pushPackageRelease(input: PushPackageReleaseInput!): PushPackageReleasePayload
   readNotification(input: ReadNotificationInput!): ReadNotificationPayload
+
+  """Redeploy the active version of an app by app ID."""
+  redeployActiveAppVersion(input: RedeployActiveAppVersionInput!): RedeployActiveVersionPayload
 
   """Redeploy the active version of an app."""
   redeployActiveVersion(input: RedeployActiveVersionInput!): RedeployActiveVersionPayload
@@ -3074,6 +3198,7 @@ type Mutation {
   rotateSshUserPassword(input: RotateSshUserPasswordInput!): RotateSshUserPasswordPayload
   runEdgeCommand(input: RunEdgeCommandInput!): RunEdgeCommandPayload
   seePendingNotifications(input: SeePendingNotificationsInput!): SeePendingNotificationsPayload
+  sendAppEmail(input: SendAppEmailInput!): SendAppEmailPayload!
 
   """Set the requested default domain for an app."""
   setAppDefaultAlias(input: SetAppDefaultAliasInput!): SetAppDefaultAliasPayload
@@ -3099,6 +3224,7 @@ type Mutation {
   """Update autobuild config for an app."""
   updateAutobuildConfigForApp(input: UpdateAutobuildConfigForAppInput!): UpdateAutobuildConfigForAppPayload!
   updateBuildConfig(input: UpdateBuildConfigInput!): UpdateBuildConfigPayload
+  updateDNSRecords(input: UpdateDNSRecordsInput!): UpdateDNSRecordsPayload
 
   """
   Create, update, or delete app environment variables on an app with given ID
@@ -3200,6 +3326,8 @@ type Namespace implements Node & Owner & PackageOwner {
   pendingInvites(after: String, before: String, first: Int, last: Int, offset: Int): NamespaceCollaboratorInviteConnection!
   probationStartedAt: DateTime
   publicActivity(after: String, before: String, first: Int, last: Int, offset: Int): ActivityEventConnection!
+  receivedEmails(after: String, before: String, first: Int, last: Int): EmailMessageConnection!
+  sentEmails(after: String, before: String, first: Int, last: Int): EmailMessageConnection!
   twitterHandle: String
   updatedAt: DateTime!
   usageMetrics(
@@ -4259,6 +4387,7 @@ union PaymentMethod = CardPaymentMethod
 """An enumeration."""
 enum PendingVerification {
   FINGERPRINT
+  SUBMIT_ACCEPTABLE_EMAIL
   VALIDATE_EMAIL
 }
 
@@ -4389,6 +4518,12 @@ type PublishPublicKeyPayload {
   success: Boolean!
 }
 
+input PurgeCacheForAppVersionByIdInput {
+  """App version ID to purge cache for."""
+  appVersionId: ID!
+  clientMutationId: String
+}
+
 input PurgeCacheForAppVersionInput {
   clientMutationId: String
 
@@ -4445,7 +4580,7 @@ type Query {
     namespace: String!
   ): Boolean!
   getAllDNSRecords(after: String, before: String, first: Int, last: Int, sortBy: DNSRecordsSortBy, updatedAfter: DateTime): DNSRecordConnection!
-  getAllDomains(after: String, before: String, first: Int, last: Int, namespace: String, offset: Int): DNSDomainConnection!
+  getAllDomains(after: String, before: String, first: Int, last: Int, namespace: String, offset: Int, ownerId: ID): DNSDomainConnection!
   getAppByGlobalAlias(alias: String!): DeployApp
   getAppEnvVarLog(after: String, appId: ID!, before: String, first: Int, last: Int, offset: Int): EnvVarLogConnection
   getAppRegions(active: Boolean, after: String, before: String, first: Int, last: Int, offset: Int, supportsDatabases: Boolean, supportsVolumes: Boolean): AppRegionConnection!
@@ -4560,6 +4695,12 @@ enum RecordKind {
   TXT
 }
 
+input RedeployActiveAppVersionInput {
+  """App ID to redeploy."""
+  appId: ID!
+  clientMutationId: String
+}
+
 input RedeployActiveVersionInput {
   clientMutationId: String
 
@@ -4585,6 +4726,7 @@ input RegisterDomainInput {
   importRecords: Boolean = true
   name: String!
   namespace: String
+  ownerId: ID
 }
 
 type RegisterDomainPayload {
@@ -4802,7 +4944,7 @@ type RenameAppAliasPayload {
 input RenameAppInput {
   clientMutationId: String
 
-  """App ID to delete."""
+  """App ID to rename."""
   id: ID!
 
   """New name for the app."""
@@ -5299,6 +5441,27 @@ type SeePendingNotificationsPayload {
   success: Boolean
 }
 
+input SendAppEmailInput {
+  appId: ID!
+  bcc: [String!]
+  cc: [String!]
+  clientMutationId: String
+  fromAddress: String
+  fromEmailId: ID
+  htmlBody: String
+  rawMessage: Upload
+  replyTo: String
+  subject: String!
+  textBody: String
+  to: [String!]!
+}
+
+type SendAppEmailPayload {
+  clientMutationId: String
+  message: EmailMessage!
+  success: Boolean!
+}
+
 input SetAppDefaultAliasInput {
   clientMutationId: String
 
@@ -5741,6 +5904,9 @@ input UpdateAutobuildConfigForAppInput {
   """Preset name of the build kind"""
   presetName: String
 
+  """Root directory for the app build"""
+  rootDir: String
+
   """Start command for the app"""
   startCmd: String
 }
@@ -5758,12 +5924,27 @@ input UpdateBuildConfigInput {
   clientMutationId: String
   installCmd: String
   presetName: String
+  rootDir: String
   startCmd: String
 }
 
 type UpdateBuildConfigPayload {
   buildConfig: BuildConfiguration!
   clientMutationId: String
+  success: Boolean!
+}
+
+input UpdateDNSRecordsInput {
+  clientMutationId: String
+
+  """ID of the DNS domain whose records should be changed."""
+  domainId: ID!
+  records: [DNSRecordUpdate]
+}
+
+type UpdateDNSRecordsPayload {
+  clientMutationId: String
+  records: [DNSRecord!]!
   success: Boolean!
 }
 
@@ -5784,10 +5965,19 @@ type UpdateEnvVarsPayload {
 }
 
 input UpdateGithubRepoAppConnectionInput {
+  """The app whose GitHub repo connection should be updated."""
+  appId: ID
   clientMutationId: String
 
-  """The ID of the GithubRepoConnection"""
-  connectionId: ID!
+  """
+  The ID of the GithubRepoConnection.
+  
+  Deprecated for app-scoped SDK usage; use `appId` instead.
+  """
+  connectionId: ID
+
+  """Optional deploy branch for the app-scoped GitHub repo connection."""
+  deployBranch: String
   deploymentStatusEvents: Boolean
   pullRequestComments: Boolean
 }
@@ -6133,6 +6323,7 @@ type User implements Node & Owner & PackageOwner {
 
   """The ID of the object"""
   id: ID!
+  isEmailAcceptable: Boolean!
   isEmailValidated: Boolean!
   isPro: Boolean!
   isStaff: Boolean
@@ -6151,7 +6342,9 @@ type User implements Node & Owner & PackageOwner {
   pendingVerifications: [PendingVerification!]!
   probationStartedAt: DateTime
   publicActivity(after: String, before: String, first: Int, last: Int, offset: Int): ActivityEventConnection!
+  receivedEmails(after: String, before: String, first: Int, last: Int): EmailMessageConnection!
   registerIntent: String
+  sentEmails(after: String, before: String, first: Int, last: Int): EmailMessageConnection!
   twitterUrl: String
   usageMetrics(
     """List of app IDs. Metrics gets filtered for the specific apps."""

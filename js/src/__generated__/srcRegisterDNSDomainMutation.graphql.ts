@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3cca23ed7aeb0c777ad4ca5e7e857619>>
+ * @generated SignedSource<<60323ac8a9d5cbdb621f99bda66efbb1>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,6 +17,7 @@ export type RegisterDomainInput = {
   importRecords?: boolean | null | undefined;
   name: string;
   namespace?: string | null | undefined;
+  ownerId?: string | null | undefined;
 };
 export type srcRegisterDNSDomainMutation$variables = {
   input: RegisterDomainInput;

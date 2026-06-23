@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<bd9df32c8267d72bc2ae95c1975387d5>>
+ * @generated SignedSource<<682e2ef7637b6177dcf683893d1c75ee>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,8 +10,10 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 export type UpdateGithubRepoAppConnectionInput = {
+  appId?: string | null | undefined;
   clientMutationId?: string | null | undefined;
-  connectionId: string;
+  connectionId?: string | null | undefined;
+  deployBranch?: string | null | undefined;
   deploymentStatusEvents?: boolean | null | undefined;
   pullRequestComments?: boolean | null | undefined;
 };
