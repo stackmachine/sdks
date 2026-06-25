@@ -120,6 +120,200 @@ explorerUrl
 isAddedByUi
 """
 
+APP_DATABASE_FIELDS = f"""
+id
+name
+host
+port
+username
+password
+phpmyadminUrl
+dbExplorerUrl
+deletedAt
+createdAt
+updatedAt
+app {{
+  {APP_FIELDS}
+}}
+"""
+
+GITHUB_REPO_CONNECTION_FIELDS = f"""
+id
+connectedAt
+deployBranch
+deploymentStatusEvents
+pullRequestComments
+connectedBy {{
+  id
+  username
+  globalName
+}}
+app {{
+  {APP_FIELDS}
+}}
+githubRepoInstallation {{
+  id
+  name
+  namespace
+  repoUrl
+  url
+  installation {{
+    id
+    slug
+    githubConfigureUrl
+  }}
+}}
+"""
+
+DNS_OWNER_FIELDS = """
+__typename
+globalId
+globalName
+isPro
+... on Namespace {
+  id
+  name
+  displayName
+}
+... on User {
+  id
+  username
+}
+"""
+
+DNS_RECORD_FIELDS = """
+__typename
+... on Node {
+  id
+}
+... on DNSRecordInterface {
+  createdAt
+  deletedAt
+  dnsClass
+  domain {
+    id
+    name
+    slug
+  }
+  name
+  text
+  ttl
+  updatedAt
+}
+... on AAAARecord {
+  address
+}
+... on ARecord {
+  address
+}
+... on CAARecord {
+  flags
+  tag
+  value
+}
+... on CNAMERecord {
+  cName
+}
+... on DNAMERecord {
+  dName
+}
+... on MXRecord {
+  exchange
+  preference
+}
+... on NSRecord {
+  nsdname
+}
+... on PTRRecord {
+  ptrdname
+}
+... on SOARecord {
+  expire
+  minimum
+  mname
+  refresh
+  retry
+  rname
+  serial
+}
+... on SRVRecord {
+  port
+  priority
+  protocol
+  service
+  target
+  weight
+}
+... on SSHFPRecord {
+  algorithm
+  fingerprint
+  type
+}
+... on TXTRecord {
+  data
+}
+"""
+
+DNS_DOMAIN_FIELDS = f"""
+id
+name
+slug
+zoneFile
+delegationStatus
+nameservers
+lastCheckedAt
+verifiedAt
+deletedAt
+createdAt
+updatedAt
+owner {{
+  {DNS_OWNER_FIELDS}
+}}
+records {{
+  {DNS_RECORD_FIELDS}
+}}
+"""
+
+DNS_DOMAIN_LIST_FIELDS = f"""
+id
+name
+slug
+zoneFile
+delegationStatus
+nameservers
+lastCheckedAt
+verifiedAt
+deletedAt
+createdAt
+updatedAt
+owner {{
+  {DNS_OWNER_FIELDS}
+}}
+"""
+
+EMAIL_MESSAGE_FIELDS = f"""
+id
+bcc
+cc
+createdAt
+direction
+from
+htmlBody
+receivedAt
+replyTo
+sentAt
+status
+subject
+textBody
+to
+app {{
+  id
+}}
+owner {{
+  {DNS_OWNER_FIELDS}
+}}
+"""
+
 SSH_USER_FIELDS = """
 id
 username
@@ -334,6 +528,156 @@ mutation srcUpdateVolumeMutation($input: UpdateVolumeInput!) {{
 DELETE_APP_VOLUME_MUTATION = """
 mutation srcDeleteAppVolumeMutation($input: DeleteAppVolumeInput!) {
   deleteAppVolume(input: $input) {
+    success
+  }
+}
+"""
+
+LIST_APP_DATABASES_QUERY = f"""
+query srcListAppDatabasesQuery(
+  $appId: ID!
+  $first: Int
+  $after: String
+  $last: Int
+  $before: String
+) {{
+  node(id: $appId) {{
+    ... on DeployApp {{
+      databases(
+        first: $first
+        after: $after
+        last: $last
+        before: $before
+      ) {{
+        edges {{
+          cursor
+          node {{
+            {APP_DATABASE_FIELDS}
+          }}
+        }}
+        pageInfo {{
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }}
+        totalCount
+      }}
+    }}
+  }}
+}}
+"""
+
+CREATE_APP_DATABASE_MUTATION = f"""
+mutation srcCreateAppDatabaseMutation($input: CreateAppDBInput!) {{
+  createAppDb(input: $input) {{
+    database {{
+      {APP_DATABASE_FIELDS}
+    }}
+    password
+  }}
+}}
+"""
+
+CREATE_DATABASE_AND_LINK_TO_APP_MUTATION = f"""
+mutation srcCreateDatabaseAndLinkToAppMutation(
+  $input: CreateAppDatabaseInput!
+) {{
+  createDatabaseAndLinkToApp(input: $input) {{
+    database {{
+      {APP_DATABASE_FIELDS}
+    }}
+    password
+  }}
+}}
+"""
+
+ROTATE_APP_DATABASE_CREDENTIALS_MUTATION = f"""
+mutation srcRotateAppDatabaseCredentialsMutation(
+  $input: RotateCredentialsForAppDBInput!
+) {{
+  rotateCredentialsForAppDb(input: $input) {{
+    database {{
+      {APP_DATABASE_FIELDS}
+    }}
+    password
+  }}
+}}
+"""
+
+DELETE_APP_DATABASE_MUTATION = """
+mutation srcDeleteAppDatabaseMutation($input: DeleteAppDBInput!) {
+  deleteAppDb(input: $input) {
+    success
+  }
+}
+"""
+
+GET_APP_GIT_CONNECTION_QUERY = f"""
+query srcGetAppGitConnectionQuery($id: ID!) {{
+  node(id: $id) {{
+    __typename
+    ... on DeployApp {{
+      githubRepoConnection {{
+        {GITHUB_REPO_CONNECTION_FIELDS}
+      }}
+    }}
+  }}
+}}
+"""
+
+GET_APP_GIT_CONNECTIONS_QUERY = f"""
+query srcGetAppGitConnectionsQuery($ids: [ID!]!) {{
+  nodes(ids: $ids) {{
+    __typename
+    ... on DeployApp {{
+      githubRepoConnection {{
+        {GITHUB_REPO_CONNECTION_FIELDS}
+      }}
+    }}
+  }}
+}}
+"""
+
+GET_GITHUB_REPO_UPDATE_TARGET_QUERY = """
+query srcGetGithubRepoUpdateTargetQuery($id: ID!) {
+  node(id: $id) {
+    __typename
+  }
+}
+"""
+
+CONNECT_GITHUB_REPO_TO_APP_MUTATION = f"""
+mutation srcConnectGithubRepoToAppMutation(
+  $input: ConnectGithubRepoToAppInput!
+) {{
+  connectGithubRepoToApp(input: $input) {{
+    success
+    githubRepoConnection {{
+      {GITHUB_REPO_CONNECTION_FIELDS}
+    }}
+  }}
+}}
+"""
+
+UPDATE_GITHUB_REPO_CONNECTION_MUTATION = f"""
+mutation srcUpdateGithubRepoConnectionMutation(
+  $input: UpdateGithubRepoAppConnectionInput!
+) {{
+  updateGithubRepoConnection(input: $input) {{
+    success
+    githubRepoConnection {{
+      {GITHUB_REPO_CONNECTION_FIELDS}
+    }}
+  }}
+}}
+"""
+
+DISCONNECT_GITHUB_REPO_FROM_APP_MUTATION = """
+mutation srcDisconnectGithubRepoFromAppMutation(
+  $input: DisconnectGithubRepoFromAppInput!
+) {
+  disconnectGithubRepoFromApp(input: $input) {
     success
   }
 }
@@ -624,4 +968,342 @@ mutation srcDeleteSshAuthorizedKeyMutation($input: DeleteSshAuthorizedKeyInput!)
     success
   }
 }
+"""
+
+DELETE_SSH_AUTHORIZED_KEY_BY_ID_MUTATION = """
+mutation srcDeleteSshAuthorizedKeyByIdMutation(
+  $input: DeleteSshAuthorizedKeyByIdInput!
+) {
+  deleteSshAuthorizedKeyById(input: $input) {
+    success
+  }
+}
+"""
+
+LIST_DNS_DOMAINS_QUERY = f"""
+query srcListDNSDomainsQuery(
+  $owner: ID
+  $first: Int
+  $after: String
+  $last: Int
+  $before: String
+) {{
+  getAllDomains(
+    ownerId: $owner
+    first: $first
+    after: $after
+    last: $last
+    before: $before
+  ) {{
+    edges {{
+      cursor
+      node {{
+        {DNS_DOMAIN_LIST_FIELDS}
+      }}
+    }}
+    pageInfo {{
+      hasNextPage
+      hasPreviousPage
+      endCursor
+      startCursor
+    }}
+    totalCount
+  }}
+}}
+"""
+
+GET_DNS_DOMAINS_QUERY = f"""
+query srcGetDNSDomainsQuery($ids: [ID!]!) {{
+  nodes(ids: $ids) {{
+    __typename
+    ... on DNSDomain {{
+      {DNS_DOMAIN_FIELDS}
+    }}
+  }}
+}}
+"""
+
+GET_DNS_DOMAIN_BY_NAME_QUERY = f"""
+query srcGetDNSDomainByNameQuery($name: String!) {{
+  getDomain(name: $name) {{
+    {DNS_DOMAIN_FIELDS}
+  }}
+}}
+"""
+
+REGISTER_DNS_DOMAIN_MUTATION = f"""
+mutation srcRegisterDNSDomainMutation($input: RegisterDomainInput!) {{
+  registerDomain(input: $input) {{
+    success
+    domain {{
+      {DNS_DOMAIN_FIELDS}
+    }}
+  }}
+}}
+"""
+
+UPSERT_DNS_DOMAIN_FROM_ZONE_FILE_MUTATION = f"""
+mutation srcUpsertDNSDomainFromZoneFileMutation(
+  $input: UpsertDomainFromZoneFileInput!
+) {{
+  upsertDomainFromZoneFile(input: $input) {{
+    success
+    domain {{
+      {DNS_DOMAIN_FIELDS}
+    }}
+  }}
+}}
+"""
+
+DELETE_DNS_DOMAIN_MUTATION = """
+mutation srcDeleteDNSDomainMutation($input: DeleteDomainInput!) {
+  deleteDomain(input: $input) {
+    success
+  }
+}
+"""
+
+LIST_DNS_RECORDS_QUERY = f"""
+query srcListDNSRecordsQuery($domainId: ID!) {{
+  node(id: $domainId) {{
+    __typename
+    ... on DNSDomain {{
+      records {{
+        {DNS_RECORD_FIELDS}
+      }}
+    }}
+  }}
+}}
+"""
+
+LIST_DNS_RECORDS_CONNECTION_QUERY = f"""
+query srcListDNSRecordsConnectionQuery(
+  $domainId: ID!
+  $first: Int
+  $after: String
+  $last: Int
+  $before: String
+  $sortBy: DNSRecordsSortBy
+) {{
+  node(id: $domainId) {{
+    __typename
+    ... on DNSDomain {{
+      recordsConnection(
+        first: $first
+        after: $after
+        last: $last
+        before: $before
+        sortBy: $sortBy
+      ) {{
+        edges {{
+          cursor
+          node {{
+            {DNS_RECORD_FIELDS}
+          }}
+        }}
+        pageInfo {{
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }}
+        totalCount
+      }}
+    }}
+  }}
+}}
+"""
+
+GET_DNS_RECORDS_QUERY = f"""
+query srcGetDNSRecordsQuery($ids: [ID!]!) {{
+  nodes(ids: $ids) {{
+    {DNS_RECORD_FIELDS}
+  }}
+}}
+"""
+
+UPSERT_DNS_RECORD_MUTATION = f"""
+mutation srcUpsertDNSRecordMutation($input: UpsertDNSRecordInput!) {{
+  upsertDNSRecord(input: $input) {{
+    success
+    record {{
+      {DNS_RECORD_FIELDS}
+    }}
+  }}
+}}
+"""
+
+DELETE_DNS_RECORD_MUTATION = """
+mutation srcDeleteDNSRecordMutation($input: DeleteDNSRecordInput!) {
+  deleteDNSRecord(input: $input) {
+    success
+  }
+}
+"""
+
+UPDATE_DNS_RECORDS_MUTATION = f"""
+mutation srcUpdateDNSRecordsMutation($input: UpdateDNSRecordsInput!) {{
+  updateDNSRecords(input: $input) {{
+    success
+    records {{
+      {DNS_RECORD_FIELDS}
+    }}
+  }}
+}}
+"""
+
+LIST_SENT_EMAILS_QUERY = f"""
+query srcListSentEmailsQuery(
+  $id: ID!
+  $first: Int
+  $after: String
+  $last: Int
+  $before: String
+) {{
+  node(id: $id) {{
+    __typename
+    ... on DeployApp {{
+      emails: sentEmails(first: $first, after: $after, last: $last, before: $before) {{
+        edges {{
+          cursor
+          node {{
+            {EMAIL_MESSAGE_FIELDS}
+          }}
+        }}
+        pageInfo {{
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }}
+        totalCount
+      }}
+    }}
+    ... on Namespace {{
+      emails: sentEmails(first: $first, after: $after, last: $last, before: $before) {{
+        edges {{
+          cursor
+          node {{
+            {EMAIL_MESSAGE_FIELDS}
+          }}
+        }}
+        pageInfo {{
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }}
+        totalCount
+      }}
+    }}
+    ... on User {{
+      emails: sentEmails(first: $first, after: $after, last: $last, before: $before) {{
+        edges {{
+          cursor
+          node {{
+            {EMAIL_MESSAGE_FIELDS}
+          }}
+        }}
+        pageInfo {{
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }}
+        totalCount
+      }}
+    }}
+  }}
+}}
+"""
+
+LIST_RECEIVED_EMAILS_QUERY = f"""
+query srcListReceivedEmailsQuery(
+  $id: ID!
+  $first: Int
+  $after: String
+  $last: Int
+  $before: String
+) {{
+  node(id: $id) {{
+    __typename
+    ... on DeployApp {{
+      emails: receivedEmails(
+        first: $first
+        after: $after
+        last: $last
+        before: $before
+      ) {{
+        edges {{
+          cursor
+          node {{
+            {EMAIL_MESSAGE_FIELDS}
+          }}
+        }}
+        pageInfo {{
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }}
+        totalCount
+      }}
+    }}
+    ... on Namespace {{
+      emails: receivedEmails(
+        first: $first
+        after: $after
+        last: $last
+        before: $before
+      ) {{
+        edges {{
+          cursor
+          node {{
+            {EMAIL_MESSAGE_FIELDS}
+          }}
+        }}
+        pageInfo {{
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }}
+        totalCount
+      }}
+    }}
+    ... on User {{
+      emails: receivedEmails(
+        first: $first
+        after: $after
+        last: $last
+        before: $before
+      ) {{
+        edges {{
+          cursor
+          node {{
+            {EMAIL_MESSAGE_FIELDS}
+          }}
+        }}
+        pageInfo {{
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }}
+        totalCount
+      }}
+    }}
+  }}
+}}
+"""
+
+SEND_APP_EMAIL_MUTATION = f"""
+mutation srcSendAppEmailMutation($input: SendAppEmailInput!) {{
+  sendAppEmail(input: $input) {{
+    success
+    message {{
+      {EMAIL_MESSAGE_FIELDS}
+    }}
+  }}
+}}
 """

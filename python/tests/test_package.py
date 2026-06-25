@@ -51,6 +51,187 @@ def volume_payload(id: str = "volume_1", **overrides: Any) -> dict[str, Any]:
     return payload
 
 
+def database_payload(id: str = "db_1", **overrides: Any) -> dict[str, Any]:
+    payload = {
+        "id": id,
+        "name": f"database_{id}",
+        "host": "db.example.test",
+        "port": "3306",
+        "username": f"user_{id}",
+        "password": None,
+        "phpmyadminUrl": f"https://console.example.test/db/{id}/phpmyadmin",
+        "dbExplorerUrl": f"https://console.example.test/db/{id}",
+        "deletedAt": None,
+        "createdAt": "2024-01-01T00:00:00Z",
+        "updatedAt": "2024-01-02T00:00:00Z",
+        "app": app_payload("app_1"),
+    }
+    payload.update(overrides)
+    return payload
+
+
+def git_connection_payload(id: str = "conn_1", **overrides: Any) -> dict[str, Any]:
+    payload = {
+        "id": id,
+        "connectedAt": "2024-01-01T00:00:00Z",
+        "deployBranch": "main",
+        "deploymentStatusEvents": True,
+        "pullRequestComments": False,
+        "connectedBy": {
+            "id": "user_1",
+            "username": "syrus",
+            "globalName": "syrus",
+        },
+        "app": app_payload("app_1"),
+        "githubRepoInstallation": {
+            "id": "repo_1",
+            "name": "stackmachine-js",
+            "namespace": "stackmachine",
+            "repoUrl": "https://github.com/stackmachine/sdks.git",
+            "url": "https://github.com/stackmachine/sdks",
+            "installation": {
+                "id": "install_1",
+                "slug": "stackmachine",
+                "githubConfigureUrl": "https://github.com/apps/stackmachine",
+            },
+        },
+    }
+    payload.update(overrides)
+    return payload
+
+
+def dns_owner_payload(**overrides: Any) -> dict[str, Any]:
+    payload = {
+        "__typename": "Namespace",
+        "id": "owner_1",
+        "globalId": "owner_1",
+        "globalName": "stackmachine",
+        "isPro": True,
+        "name": "stackmachine",
+        "displayName": "StackMachine",
+    }
+    payload.update(overrides)
+    return payload
+
+
+def dns_record_payload(kind: str = "A", id: str = "record_1") -> dict[str, Any]:
+    typenames = {
+        "A": "ARecord",
+        "AAAA": "AAAARecord",
+        "CAA": "CAARecord",
+        "CNAME": "CNAMERecord",
+        "DNAME": "DNAMERecord",
+        "MX": "MXRecord",
+        "NS": "NSRecord",
+        "PTR": "PTRRecord",
+        "SOA": "SOARecord",
+        "SRV": "SRVRecord",
+        "SSHFP": "SSHFPRecord",
+        "TXT": "TXTRecord",
+    }
+    payload: dict[str, Any] = {
+        "__typename": typenames[kind],
+        "id": id,
+        "createdAt": "2024-01-01T00:00:00Z",
+        "deletedAt": None,
+        "dnsClass": "IN",
+        "domain": {"id": "domain_1", "name": "example.com", "slug": "example-com"},
+        "name": "www",
+        "text": "www.example.com. 3600 IN A 192.0.2.1",
+        "ttl": 3600,
+        "updatedAt": "2024-01-02T00:00:00Z",
+    }
+    extras_by_kind: dict[str, dict[str, Any]] = {
+        "A": {"address": "192.0.2.1"},
+        "AAAA": {"address": "2001:db8::1"},
+        "CAA": {"flags": 0, "tag": "issue", "value": "letsencrypt.org"},
+        "CNAME": {"cName": "target.example.com"},
+        "DNAME": {"dName": "target.example.com"},
+        "MX": {"exchange": "mail.example.com", "preference": 10},
+        "NS": {"nsdname": "ns1.example.com"},
+        "PTR": {"ptrdname": "ptr.example.com"},
+        "SOA": {
+            "expire": 1_209_600,
+            "minimum": 3600,
+            "mname": "ns1.example.com",
+            "refresh": 3600,
+            "retry": 600,
+            "rname": "admin.example.com",
+            "serial": 1,
+        },
+        "SRV": {
+            "port": 443,
+            "priority": 10,
+            "protocol": "tcp",
+            "service": "xmpp",
+            "target": "xmpp.example.com",
+            "weight": 20,
+        },
+        "SSHFP": {"algorithm": 1, "fingerprint": "abcdef", "type": 1},
+        "TXT": {"data": "hello"},
+    }
+    payload.update(extras_by_kind[kind])
+    return payload
+
+
+def dns_domain_payload(id: str = "domain_1", **overrides: Any) -> dict[str, Any]:
+    payload = {
+        "__typename": "DNSDomain",
+        "id": id,
+        "name": "example.com",
+        "slug": "example-com",
+        "zoneFile": "$ORIGIN example.com.",
+        "delegationStatus": "VERIFIED",
+        "nameservers": ["ns1.stackmachine.example.", "ns2.stackmachine.example."],
+        "deletedAt": None,
+        "lastCheckedAt": "2024-01-03T00:00:00Z",
+        "verifiedAt": "2024-01-03T00:00:00Z",
+        "createdAt": "2024-01-01T00:00:00Z",
+        "updatedAt": "2024-01-02T00:00:00Z",
+        "owner": dns_owner_payload(),
+        "records": [dns_record_payload("A", "record_1")],
+    }
+    payload.update(overrides)
+    return payload
+
+
+def email_message_payload(id: str = "email_1", **overrides: Any) -> dict[str, Any]:
+    payload = {
+        "id": id,
+        "app": app_payload("app_1"),
+        "bcc": [],
+        "cc": [],
+        "createdAt": "2024-01-01T00:00:00Z",
+        "direction": "SENT",
+        "from": "app@example.com",
+        "htmlBody": "<p>Hello</p>",
+        "owner": dns_owner_payload(),
+        "receivedAt": None,
+        "replyTo": None,
+        "sentAt": "2024-01-01T00:00:00Z",
+        "status": "SENT",
+        "subject": "Hello",
+        "textBody": "Hello",
+        "to": ["user@example.com"],
+    }
+    payload.update(overrides)
+    return payload
+
+
+def email_connection_payload(message: dict[str, Any]) -> dict[str, Any]:
+    cursor = f"cursor_{message['id']}"
+    return {
+        "edges": [{"cursor": cursor, "node": message}],
+        "pageInfo": {
+            "hasNextPage": False,
+            "hasPreviousPage": False,
+            "endCursor": cursor,
+            "startCursor": cursor,
+        },
+        "totalCount": 1,
+    }
+
+
 def graphql_response(data: dict[str, Any], status_code: int = 200) -> httpx.Response:
     return httpx.Response(status_code, json={"data": data})
 
@@ -63,9 +244,21 @@ def test_exports_clients_and_models() -> None:
     assert stackmachine.StackMachine is StackMachine
     assert stackmachine.AsyncStackMachine is AsyncStackMachine
     assert stackmachine.AppVolume.__name__ == "AppVolume"
+    assert stackmachine.AppDatabase.__name__ == "AppDatabase"
+    assert stackmachine.DeployAppReference.__name__ == "DeployAppReference"
+    assert stackmachine.GithubRepoConnection.__name__ == "GithubRepoConnection"
+    assert stackmachine.DNSDomain.__name__ == "DNSDomain"
+    assert stackmachine.DNSRecord.__name__ == "DNSRecord"
+    assert stackmachine.EmailMessage.__name__ == "EmailMessage"
     assert "StackMachine" in stackmachine.__all__
     assert "AsyncStackMachine" in stackmachine.__all__
     assert "AppVolume" in stackmachine.__all__
+    assert "AppDatabase" in stackmachine.__all__
+    assert "DeployAppReference" in stackmachine.__all__
+    assert "GithubRepoConnection" in stackmachine.__all__
+    assert "DNSDomain" in stackmachine.__all__
+    assert "DNSRecord" in stackmachine.__all__
+    assert "EmailMessage" in stackmachine.__all__
 
 
 def test_exports_public_input_types() -> None:
@@ -74,12 +267,49 @@ def test_exports_public_input_types() -> None:
     assert "AppsVolumesCreateInput" in stackmachine.__all__
     assert "AppsVolumesListInput" in stackmachine.__all__
     assert "AppsVolumesUpdateInput" in stackmachine.__all__
+    assert "AppsGitConnectInput" in stackmachine.__all__
+    assert "AppsGitUpdateInput" in stackmachine.__all__
+    assert "AppsDatabasesCreateInput" in stackmachine.__all__
+    assert "AppsDatabasesListInput" in stackmachine.__all__
+    assert "DNSDomainsCreateInput" in stackmachine.__all__
+    assert "DNSRecordsUpsertInput" in stackmachine.__all__
+    assert "DNSRecordsUpdateManyInput" in stackmachine.__all__
+    assert "DatabaseEngine" in stackmachine.__all__
+    assert "EmailsListInput" in stackmachine.__all__
+    assert "EmailsSendInput" in stackmachine.__all__
     assert "RequestOptionsInput" in stackmachine.__all__
     assert "FileInput" in stackmachine.__all__
     assert stackmachine.DeployAppAutobuildInput.__name__ == "DeployAppAutobuildInput"
     assert stackmachine.AppsVolumesCreateInput.__name__ == "AppsVolumesCreateInput"
+    assert stackmachine.AppsGitConnectInput.__name__ == "AppsGitConnectInput"
+    assert stackmachine.DNSRecordKind is not None
     assert stackmachine.DeploymentFilesInput == stackmachine.CreateZipFiles
     assert stackmachine.RequestOptionsInput.__name__ == "RequestOptionsInput"
+
+
+def test_new_resource_trees_are_available() -> None:
+    transport = httpx.MockTransport(lambda _: graphql_response({}))
+    with StackMachine("secret", http_transport=transport) as client:
+        assert client.apps.git is not None
+        assert client.apps.databases is not None
+        assert client.dns.domains is not None
+        assert client.dns.records is not None
+        assert client.emails.sent is not None
+        assert client.emails.received is not None
+
+
+async def test_async_new_resource_trees_are_available() -> None:
+    transport = httpx.MockTransport(lambda _: graphql_response({}))
+    client = AsyncStackMachine("secret", http_transport=transport)
+    try:
+        assert client.apps.git is not None
+        assert client.apps.databases is not None
+        assert client.dns.domains is not None
+        assert client.dns.records is not None
+        assert client.emails.sent is not None
+        assert client.emails.received is not None
+    finally:
+        await client.close()
 
 
 def test_file_upload_signature_uses_public_types() -> None:
@@ -530,6 +760,783 @@ def test_sync_app_volume_mutations_raise_on_unsuccessful_payloads() -> None:
             client.apps.volumes.update("volume_1", mount_path="/data")
         with pytest.raises(StackMachineAPIError):
             client.apps.volumes.delete("volume_1")
+
+
+def test_sync_app_git_lifecycle() -> None:
+    calls: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        calls.append(body)
+        if body["operationName"] == "srcGetAppGitConnectionQuery":
+            return graphql_response(
+                {
+                    "node": {
+                        "__typename": "DeployApp",
+                        "githubRepoConnection": git_connection_payload("conn_1"),
+                    }
+                }
+            )
+        if body["operationName"] == "srcGetAppGitConnectionsQuery":
+            return graphql_response(
+                {
+                    "nodes": [
+                        {
+                            "__typename": "DeployApp",
+                            "githubRepoConnection": git_connection_payload("conn_1"),
+                        },
+                        {"__typename": "DeployApp", "githubRepoConnection": None},
+                    ]
+                }
+            )
+        if body["operationName"] == "srcConnectGithubRepoToAppMutation":
+            return graphql_response(
+                {
+                    "connectGithubRepoToApp": {
+                        "success": True,
+                        "githubRepoConnection": git_connection_payload("conn_new"),
+                    }
+                }
+            )
+        if body["operationName"] == "srcGetGithubRepoUpdateTargetQuery":
+            return graphql_response({"node": {"__typename": "DeployApp"}})
+        if body["operationName"] == "srcUpdateGithubRepoConnectionMutation":
+            return graphql_response(
+                {
+                    "updateGithubRepoConnection": {
+                        "success": True,
+                        "githubRepoConnection": git_connection_payload(
+                            "conn_new",
+                            deployBranch="release",
+                            deploymentStatusEvents=False,
+                            pullRequestComments=True,
+                        ),
+                    }
+                }
+            )
+        if body["operationName"] == "srcDisconnectGithubRepoFromAppMutation":
+            return graphql_response(
+                {"disconnectGithubRepoFromApp": {"success": True}}
+            )
+        raise AssertionError(f"Unexpected operation {body['operationName']}")
+
+    with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
+        connection = client.apps.git.retrieve("app_1")
+        many = client.apps.git.retrieve_many(["app_1", "app_2"])
+        connected = client.apps.git.connect(
+            app="app_1",
+            installation_repo_id="repo_1",
+            deploy_branch="main",
+            request_options={"client_mutation_id": "cmid-connect-git"},
+        )
+        updated = client.apps.git.update(
+            "app_1",
+            deploy_branch="release",
+            deployment_status_events=False,
+            pull_request_comments=True,
+        )
+        client.apps.git.delete("app_1")
+
+    assert connection.id == "conn_1"
+    assert connection.github_repo_installation.installation.slug == "stackmachine"
+    assert [item.id if item else None for item in many] == ["conn_1", None]
+    assert connected.id == "conn_new"
+    assert updated.deploy_branch == "release"
+    assert updated.deployment_status_events is False
+    assert updated.pull_request_comments is True
+    assert calls[0]["variables"] == {"id": "app_1"}
+    assert calls[1]["variables"] == {"ids": ["app_1", "app_2"]}
+    assert calls[2]["variables"]["input"] == {
+        "appId": "app_1",
+        "installationRepoId": "repo_1",
+        "deployBranch": "main",
+        "clientMutationId": "cmid-connect-git",
+    }
+    assert calls[3]["variables"] == {"id": "app_1"}
+    assert calls[4]["variables"]["input"] == {
+        "appId": "app_1",
+        "deployBranch": "release",
+        "deploymentStatusEvents": False,
+        "pullRequestComments": True,
+    }
+    assert calls[5]["variables"]["input"] == {"appId": "app_1"}
+
+
+def test_sync_app_git_update_accepts_legacy_connection_id() -> None:
+    calls: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        calls.append(body)
+        if body["operationName"] == "srcGetGithubRepoUpdateTargetQuery":
+            return graphql_response({"node": {"__typename": "GithubRepoConnection"}})
+        if body["operationName"] == "srcUpdateGithubRepoConnectionMutation":
+            return graphql_response(
+                {
+                    "updateGithubRepoConnection": {
+                        "success": True,
+                        "githubRepoConnection": git_connection_payload(
+                            "conn_1",
+                            pullRequestComments=True,
+                        ),
+                    }
+                }
+            )
+        raise AssertionError(f"Unexpected operation {body['operationName']}")
+
+    with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
+        updated = client.apps.git.update(
+            "conn_1",
+            pull_request_comments=True,
+        )
+
+    assert updated.id == "conn_1"
+    assert calls[0]["variables"] == {"id": "conn_1"}
+    assert calls[1]["variables"]["input"]["connectionId"] == "conn_1"
+    assert calls[1]["variables"]["input"].get("appId") is None
+    assert calls[1]["variables"]["input"]["pullRequestComments"] is True
+
+
+def test_sync_app_databases_lifecycle() -> None:
+    calls: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        calls.append(body)
+        variables = body["variables"]
+        if body["operationName"] == "srcListAppDatabasesQuery":
+            is_first_page = variables.get("after") is None
+            return graphql_response(
+                {
+                    "node": {
+                        "databases": {
+                            "edges": [
+                                {
+                                    "node": database_payload(
+                                        "db_1" if is_first_page else "db_2"
+                                    )
+                                }
+                            ],
+                            "pageInfo": {
+                                "hasNextPage": is_first_page,
+                                "hasPreviousPage": not is_first_page,
+                                "endCursor": "cursor-1"
+                                if is_first_page
+                                else "cursor-2",
+                                "startCursor": "cursor-1"
+                                if is_first_page
+                                else "cursor-2",
+                            },
+                            "totalCount": 2,
+                        }
+                    }
+                }
+            )
+        if body["operationName"] == "srcCreateDatabaseAndLinkToAppMutation":
+            return graphql_response(
+                {
+                    "createDatabaseAndLinkToApp": {
+                        "database": database_payload("db_created"),
+                        "password": "created-secret",
+                    }
+                }
+            )
+        if body["operationName"] == "srcRotateAppDatabaseCredentialsMutation":
+            return graphql_response(
+                {
+                    "rotateCredentialsForAppDb": {
+                        "database": database_payload("db_created"),
+                        "password": "rotated-secret",
+                    }
+                }
+            )
+        if body["operationName"] == "srcDeleteAppDatabaseMutation":
+            return graphql_response({"deleteAppDb": {"success": True}})
+        raise AssertionError(f"Unexpected operation {body['operationName']}")
+
+    with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
+        databases = client.apps.databases.list(app="app_1", limit=1)
+        data = databases.auto_paging_to_array(limit=2)
+        created = client.apps.databases.create(
+            app="app_1",
+            db_engine="POSTGRES",
+            name="primary",
+            request_options={"client_mutation_id": "cmid-create-db"},
+        )
+        rotated = client.apps.databases.rotate_credentials("db_created")
+        client.apps.databases.delete("db_created")
+
+    assert [database.id for database in data] == ["db_1", "db_2"]
+    assert isinstance(data[0], stackmachine.AppDatabase)
+    assert created.database.id == "db_created"
+    assert created.password == "created-secret"
+    assert rotated.password == "rotated-secret"
+    assert calls[0]["variables"] == {"appId": "app_1", "first": 1}
+    assert calls[1]["variables"] == {
+        "appId": "app_1",
+        "first": 1,
+        "after": "cursor-1",
+    }
+    assert calls[2]["variables"]["input"] == {
+        "appId": "app_1",
+        "dbEngine": "POSTGRES",
+        "name": "primary",
+        "clientMutationId": "cmid-create-db",
+    }
+    assert calls[3]["variables"]["input"] == {"id": "db_created"}
+    assert calls[4]["variables"]["input"] == {"id": "db_created"}
+
+
+def test_sync_app_database_create_without_engine_uses_legacy_mutation() -> None:
+    calls: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        calls.append(body)
+        if body["operationName"] == "srcCreateAppDatabaseMutation":
+            return graphql_response(
+                {
+                    "createAppDb": {
+                        "database": database_payload("db_legacy"),
+                        "password": "legacy-secret",
+                    }
+                }
+            )
+        raise AssertionError(f"Unexpected operation {body['operationName']}")
+
+    with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
+        created = client.apps.databases.create(app="app_1")
+
+    assert created.database.id == "db_legacy"
+    assert created.password == "legacy-secret"
+    assert calls[0]["variables"]["input"]["id"] == "app_1"
+    assert "dbEngine" not in calls[0]["variables"]["input"]
+
+
+def test_sync_dns_domains_lifecycle() -> None:
+    calls: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        calls.append(body)
+        variables = body["variables"]
+        if body["operationName"] == "srcListDNSDomainsQuery":
+            is_first_page = variables.get("after") is None
+            return graphql_response(
+                {
+                    "getAllDomains": {
+                        "edges": [
+                            {
+                                "node": dns_domain_payload(
+                                    "domain_1" if is_first_page else "domain_2",
+                                    records=[],
+                                )
+                            }
+                        ],
+                        "pageInfo": {
+                            "hasNextPage": is_first_page,
+                            "hasPreviousPage": not is_first_page,
+                            "endCursor": "cursor-1"
+                            if is_first_page
+                            else "cursor-2",
+                            "startCursor": "cursor-1"
+                            if is_first_page
+                            else "cursor-2",
+                        },
+                        "totalCount": 2,
+                    }
+                }
+            )
+        if body["operationName"] == "srcGetDNSDomainsQuery":
+            return graphql_response(
+                {
+                    "nodes": [
+                        dns_domain_payload("domain_1"),
+                        {"__typename": "DeployApp"},
+                    ]
+                }
+            )
+        if body["operationName"] == "srcGetDNSDomainByNameQuery":
+            return graphql_response({"getDomain": dns_domain_payload("domain_named")})
+        if body["operationName"] == "srcRegisterDNSDomainMutation":
+            return graphql_response(
+                {
+                    "registerDomain": {
+                        "success": True,
+                        "domain": dns_domain_payload("domain_created"),
+                    }
+                }
+            )
+        if body["operationName"] == "srcUpsertDNSDomainFromZoneFileMutation":
+            return graphql_response(
+                {
+                    "upsertDomainFromZoneFile": {
+                        "success": True,
+                        "domain": dns_domain_payload("domain_zone"),
+                    }
+                }
+            )
+        if body["operationName"] == "srcDeleteDNSDomainMutation":
+            return graphql_response({"deleteDomain": {"success": True}})
+        raise AssertionError(f"Unexpected operation {body['operationName']}")
+
+    with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
+        domains = client.dns.domains.list(owner="owner_1", limit=1)
+        data = domains.auto_paging_to_array(limit=2)
+        many = client.dns.domains.retrieve_many(["domain_1", "missing"])
+        named = client.dns.domains.retrieve_by_name("example.com")
+        created = client.dns.domains.create(
+            name="example.com",
+            owner="owner_1",
+            import_records=True,
+        )
+        imported = client.dns.domains.import_zone_file(
+            zone_file="$ORIGIN example.com.",
+            delete_missing_records=True,
+        )
+        client.dns.domains.delete("domain_created")
+
+    assert [domain.id for domain in data] == ["domain_1", "domain_2"]
+    assert data[0].owner and data[0].owner.global_name == "stackmachine"
+    assert data[0].delegation_status == "VERIFIED"
+    assert data[0].nameservers == [
+        "ns1.stackmachine.example.",
+        "ns2.stackmachine.example.",
+    ]
+    assert data[0].last_checked_at is not None
+    assert data[0].verified_at is not None
+    assert [domain.id if domain else None for domain in many] == ["domain_1", None]
+    assert named.id == "domain_named"
+    assert created.id == "domain_created"
+    assert imported.id == "domain_zone"
+    assert calls[0]["variables"] == {"owner": "owner_1", "first": 1}
+    assert calls[1]["variables"] == {
+        "owner": "owner_1",
+        "first": 1,
+        "after": "cursor-1",
+    }
+    assert calls[3]["variables"] == {"name": "example.com"}
+    assert calls[4]["variables"]["input"] == {
+        "name": "example.com",
+        "ownerId": "owner_1",
+        "importRecords": True,
+    }
+    assert calls[5]["variables"]["input"] == {
+        "zoneFile": "$ORIGIN example.com.",
+        "deleteMissingRecords": True,
+    }
+    assert calls[6]["variables"]["input"] == {"domainId": "domain_created"}
+
+
+def test_sync_dns_records_lifecycle_and_union_mapping() -> None:
+    calls: list[dict[str, Any]] = []
+    kinds = [
+        "A",
+        "AAAA",
+        "CAA",
+        "CNAME",
+        "DNAME",
+        "MX",
+        "NS",
+        "PTR",
+        "SOA",
+        "SRV",
+        "SSHFP",
+        "TXT",
+    ]
+    records = [
+        dns_record_payload(kind, f"record_{kind.lower()}")
+        for kind in kinds
+    ]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        calls.append(body)
+        if body["operationName"] == "srcListDNSRecordsQuery":
+            return graphql_response(
+                {"node": {"__typename": "DNSDomain", "records": records}}
+            )
+        if body["operationName"] == "srcListDNSRecordsConnectionQuery":
+            return graphql_response(
+                {
+                    "node": {
+                        "__typename": "DNSDomain",
+                        "recordsConnection": {
+                            "edges": [
+                                {
+                                    "node": dns_record_payload(
+                                        "TXT",
+                                        "record_paged",
+                                    )
+                                }
+                            ],
+                            "pageInfo": {
+                                "hasNextPage": False,
+                                "hasPreviousPage": False,
+                                "endCursor": "cursor-record",
+                                "startCursor": "cursor-record",
+                            },
+                            "totalCount": 1,
+                        },
+                    }
+                }
+            )
+        if body["operationName"] == "srcGetDNSRecordsQuery":
+            return graphql_response({"nodes": [records[0], None]})
+        if body["operationName"] == "srcUpsertDNSRecordMutation":
+            record_id = body["variables"]["input"].get("recordId")
+            return graphql_response(
+                {
+                    "upsertDNSRecord": {
+                        "success": True,
+                        "record": dns_record_payload(
+                            "MX" if record_id else "CAA",
+                            "record_updated" if record_id else "record_created",
+                        ),
+                    }
+                }
+            )
+        if body["operationName"] == "srcUpdateDNSRecordsMutation":
+            return graphql_response(
+                {
+                    "updateDNSRecords": {
+                        "success": True,
+                        "records": [
+                            dns_record_payload("A", "record_bulk"),
+                        ],
+                    }
+                }
+            )
+        if body["operationName"] == "srcDeleteDNSRecordMutation":
+            return graphql_response({"deleteDNSRecord": {"success": True}})
+        raise AssertionError(f"Unexpected operation {body['operationName']}")
+
+    with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
+        listed = client.dns.records.list(domain="domain_1")
+        paged = client.dns.records.list_page(
+            domain="domain_1",
+            limit=1,
+            sort_by="NEWEST",
+        ).auto_paging_to_array(limit=1)
+        many = client.dns.records.retrieve_many(["record_a", "missing"])
+        created = client.dns.records.create(
+            domain="domain_1",
+            kind="CAA",
+            name="@",
+            value="letsencrypt.org",
+            ttl=300,
+            caa={"flags": 0, "tag": "issue"},
+        )
+        updated = client.dns.records.update(
+            "record_created",
+            domain="domain_1",
+            kind="CAA",
+            name="@",
+            value="letsencrypt.org",
+            ttl=300,
+            caa={"flags": 0, "tag": "issue"},
+        )
+        updated_many = client.dns.records.update_many(
+            domain="domain_1",
+            records=[
+                {
+                    "kind": "A",
+                    "name": "api",
+                    "value": "192.0.2.2",
+                    "ttl": 60,
+                }
+            ],
+        )
+        client.dns.records.delete("record_created")
+
+    assert [record.kind for record in listed] == kinds
+    assert listed[0].address == "192.0.2.1"
+    assert listed[2].flags == 0
+    assert listed[2].value == "letsencrypt.org"
+    assert listed[5].preference == 10
+    assert listed[8].serial == 1
+    assert listed[9].priority == 10
+    assert listed[10].sshfp_type == 1
+    assert listed[11].data == "hello"
+    assert [record.id for record in paged] == ["record_paged"]
+    assert [record.id if record else None for record in many] == [
+        "record_a",
+        None,
+    ]
+    assert created.id == "record_created"
+    assert updated.id == "record_updated"
+    assert updated_many[0].id == "record_bulk"
+    assert calls[0]["variables"] == {"domainId": "domain_1"}
+    assert calls[1]["variables"] == {
+        "domainId": "domain_1",
+        "sortBy": "NEWEST",
+        "first": 1,
+    }
+    assert calls[2]["variables"] == {"ids": ["record_a", "missing"]}
+    assert calls[3]["variables"]["input"] == {
+        "domainId": "domain_1",
+        "kind": "CAA",
+        "name": "@",
+        "value": "letsencrypt.org",
+        "ttl": 300,
+        "caa": {"flags": 0, "tag": "issue"},
+    }
+    assert calls[4]["variables"]["input"] == {
+        "domainId": "domain_1",
+        "kind": "CAA",
+        "name": "@",
+        "value": "letsencrypt.org",
+        "ttl": 300,
+        "recordId": "record_created",
+        "caa": {"flags": 0, "tag": "issue"},
+    }
+    assert calls[5]["variables"]["input"] == {
+        "domainId": "domain_1",
+        "records": [
+            {
+                "kind": "A",
+                "name": "api",
+                "value": "192.0.2.2",
+                "ttl": 60,
+            }
+        ],
+    }
+    assert calls[6]["variables"]["input"] == {"recordId": "record_created"}
+
+
+def test_sync_ssh_authorized_key_delete_accepts_id_and_legacy_user_name() -> None:
+    calls: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        calls.append(body)
+        if body["operationName"] == "srcDeleteSshAuthorizedKeyByIdMutation":
+            return graphql_response({"deleteSshAuthorizedKeyById": {"success": True}})
+        if body["operationName"] == "srcDeleteSshAuthorizedKeyMutation":
+            return graphql_response({"deleteSshAuthorizedKey": {"success": True}})
+        raise AssertionError(f"Unexpected operation {body['operationName']}")
+
+    with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
+        client.apps.ssh.users.authorized_keys.delete("key_1")
+        client.apps.ssh.users.authorized_keys.delete(user="ssh_user_1", name="laptop")
+
+    assert calls[0]["variables"]["input"] == {"authorizedKeyId": "key_1"}
+    assert calls[1]["variables"]["input"] == {
+        "sshUserId": "ssh_user_1",
+        "name": "laptop",
+    }
+
+
+def test_sync_emails_list_and_send() -> None:
+    calls: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        calls.append(body)
+        if body["operationName"] == "srcListSentEmailsQuery":
+            return graphql_response(
+                {
+                    "node": {
+                        "__typename": "DeployApp",
+                        "emails": email_connection_payload(
+                            email_message_payload(
+                                "email_sent",
+                                subject="Sent message",
+                            )
+                        ),
+                    }
+                }
+            )
+        if body["operationName"] == "srcListReceivedEmailsQuery":
+            return graphql_response(
+                {
+                    "node": {
+                        "__typename": "Namespace",
+                        "emails": email_connection_payload(
+                            email_message_payload(
+                                "email_received",
+                                app=None,
+                                direction="RECEIVED",
+                                receivedAt="2024-01-03T00:00:00Z",
+                                sentAt=None,
+                                status="RECEIVED",
+                                subject="Received message",
+                            )
+                        ),
+                    }
+                }
+            )
+        if body["operationName"] == "srcSendAppEmailMutation":
+            return graphql_response(
+                {
+                    "sendAppEmail": {
+                        "success": True,
+                        "message": email_message_payload(
+                            "email_new",
+                            subject="Hello from SDK",
+                            to=["user@example.com", "second@example.com"],
+                        ),
+                    }
+                }
+            )
+        raise AssertionError(f"Unexpected operation {body['operationName']}")
+
+    with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
+        sent = client.emails.sent.list(
+            app="app_1",
+            limit=1,
+        ).auto_paging_to_array(limit=1)
+        received = client.emails.received.list(
+            owner="owner_1",
+            limit=1,
+        ).auto_paging_to_array(limit=1)
+        message = client.emails.send(
+            app="app_1",
+            to=["user@example.com", "second@example.com"],
+            cc=["cc@example.com"],
+            bcc=["bcc@example.com"],
+            reply_to="reply@example.com",
+            from_address="app@example.com",
+            subject="Hello from SDK",
+            text_body="Plain text body",
+            html_body="<p>HTML body</p>",
+        )
+
+    assert isinstance(sent[0], stackmachine.EmailMessage)
+    assert sent[0].id == "email_sent"
+    assert sent[0].app and sent[0].app.id == "app_1"
+    assert sent[0].app_id == "app_1"
+    assert sent[0].owner and sent[0].owner.global_name == "stackmachine"
+    assert received[0].direction == "RECEIVED"
+    assert received[0].received_at is not None
+    assert message.id == "email_new"
+    assert message.to == ["user@example.com", "second@example.com"]
+    assert calls[0]["variables"] == {"id": "app_1", "first": 1}
+    assert calls[1]["variables"] == {"id": "owner_1", "first": 1}
+    assert calls[2]["variables"]["input"] == {
+        "appId": "app_1",
+        "to": ["user@example.com", "second@example.com"],
+        "subject": "Hello from SDK",
+        "bcc": ["bcc@example.com"],
+        "cc": ["cc@example.com"],
+        "fromAddress": "app@example.com",
+        "htmlBody": "<p>HTML body</p>",
+        "replyTo": "reply@example.com",
+        "textBody": "Plain text body",
+    }
+
+
+def test_sync_emails_validate_list_target_and_raise_on_send_failure() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        if body["operationName"] == "srcSendAppEmailMutation":
+            return graphql_response(
+                {
+                    "sendAppEmail": {
+                        "success": False,
+                        "message": email_message_payload("email_failed"),
+                    }
+                }
+            )
+        raise AssertionError(f"Unexpected operation {body['operationName']}")
+
+    with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(StackMachineValidationError):
+            client.emails.sent.list(app="app_1", owner="owner_1")
+        with pytest.raises(StackMachineValidationError):
+            client.emails.received.list()
+        with pytest.raises(StackMachineAPIError):
+            client.emails.send(
+                app="app_1",
+                to=["user@example.com"],
+                subject="Hello",
+                text_body="Hello",
+            )
+
+
+def test_sync_new_mutations_raise_on_unsuccessful_or_null_payloads() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        operation_name = json.loads(request.content)["operationName"]
+        if operation_name == "srcConnectGithubRepoToAppMutation":
+            return graphql_response({"connectGithubRepoToApp": {"success": False}})
+        if operation_name == "srcGetGithubRepoUpdateTargetQuery":
+            return graphql_response({"node": {"__typename": "DeployApp"}})
+        if operation_name == "srcUpdateGithubRepoConnectionMutation":
+            return graphql_response(
+                {"updateGithubRepoConnection": {"success": False}}
+            )
+        if operation_name == "srcDisconnectGithubRepoFromAppMutation":
+            return graphql_response(
+                {"disconnectGithubRepoFromApp": {"success": False}}
+            )
+        if operation_name == "srcCreateAppDatabaseMutation":
+            return graphql_response({"createAppDb": None})
+        if operation_name == "srcCreateDatabaseAndLinkToAppMutation":
+            return graphql_response({"createDatabaseAndLinkToApp": None})
+        if operation_name == "srcRotateAppDatabaseCredentialsMutation":
+            return graphql_response({"rotateCredentialsForAppDb": None})
+        if operation_name == "srcDeleteAppDatabaseMutation":
+            return graphql_response({"deleteAppDb": {"success": False}})
+        if operation_name == "srcRegisterDNSDomainMutation":
+            return graphql_response({"registerDomain": {"success": False}})
+        if operation_name == "srcUpsertDNSDomainFromZoneFileMutation":
+            return graphql_response(
+                {"upsertDomainFromZoneFile": {"success": False}}
+            )
+        if operation_name == "srcDeleteDNSDomainMutation":
+            return graphql_response({"deleteDomain": {"success": False}})
+        if operation_name == "srcUpsertDNSRecordMutation":
+            return graphql_response({"upsertDNSRecord": {"success": False}})
+        if operation_name == "srcUpdateDNSRecordsMutation":
+            return graphql_response({"updateDNSRecords": {"success": False}})
+        if operation_name == "srcDeleteDNSRecordMutation":
+            return graphql_response({"deleteDNSRecord": {"success": False}})
+        if operation_name == "srcSendAppEmailMutation":
+            return graphql_response({"sendAppEmail": {"success": False}})
+        raise AssertionError(f"Unexpected operation {operation_name}")
+
+    with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(StackMachineAPIError):
+            client.apps.git.connect(app="app_1", installation_repo_id="repo_1")
+        with pytest.raises(StackMachineAPIError):
+            client.apps.git.update("conn_1", deployment_status_events=True)
+        with pytest.raises(StackMachineAPIError):
+            client.apps.git.delete("app_1")
+        with pytest.raises(StackMachineAPIError):
+            client.apps.databases.create(app="app_1")
+        with pytest.raises(StackMachineAPIError):
+            client.apps.databases.create(app="app_1", db_engine="MYSQL")
+        with pytest.raises(StackMachineAPIError):
+            client.apps.databases.rotate_credentials("db_1")
+        with pytest.raises(StackMachineAPIError):
+            client.apps.databases.delete("db_1")
+        with pytest.raises(StackMachineAPIError):
+            client.dns.domains.create(name="example.com")
+        with pytest.raises(StackMachineAPIError):
+            client.dns.domains.import_zone_file(zone_file="$ORIGIN example.com.")
+        with pytest.raises(StackMachineAPIError):
+            client.dns.domains.delete("domain_1")
+        with pytest.raises(StackMachineAPIError):
+            client.dns.records.create(
+                domain="domain_1",
+                kind="A",
+                name="@",
+                value="192.0.2.1",
+            )
+        with pytest.raises(StackMachineAPIError):
+            client.dns.records.delete("record_1")
+        with pytest.raises(StackMachineAPIError):
+            client.dns.records.update_many(
+                domain="domain_1",
+                records=[{"kind": "A", "name": "@", "value": "192.0.2.1"}],
+            )
+        with pytest.raises(StackMachineAPIError):
+            client.emails.send(
+                app="app_1",
+                to=["user@example.com"],
+                subject="Hello",
+                text_body="Hello",
+            )
 
 
 async def test_async_viewer_returns_model() -> None:

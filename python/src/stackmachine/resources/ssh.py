@@ -4,7 +4,7 @@ from typing import Any, List, Mapping, Optional, Sequence
 
 from typing_extensions import Unpack
 
-from .._errors import StackMachineAPIError
+from .._errors import StackMachineAPIError, StackMachineValidationError
 from .._graphql import operations as gql
 from .._models import AppSshServer, SshAuthorizedKey, SshUser
 from .._pagination import (
@@ -159,11 +159,33 @@ class AppsSshUsersAuthorizedKeysResource:
 
     def delete(
         self,
+        authorized_key_id: Optional[str] = None,
         *,
-        user: str,
-        name: str,
+        user: Optional[str] = None,
+        name: Optional[str] = None,
         request_options: Optional[RequestOptionsLike] = None,
     ) -> None:
+        if authorized_key_id:
+            response = self._client._mutation(
+                gql.DELETE_SSH_AUTHORIZED_KEY_BY_ID_MUTATION,
+                {"input": {"authorizedKeyId": authorized_key_id}},
+                request_options=request_options,
+            )
+            if not (response.get("deleteSshAuthorizedKeyById") or {}).get("success"):
+                raise StackMachineAPIError(
+                    "Failed to delete SSH authorized key.",
+                    operation_name="srcDeleteSshAuthorizedKeyByIdMutation",
+                )
+            return
+
+        if not user or not name:
+            raise StackMachineValidationError(
+                "`authorized_key_id` or both `user` and `name` are required to delete "
+                "an SSH authorized key.",
+                code="invalid_ssh_authorized_key_delete_input",
+                param="authorized_key_id",
+            )
+
         response = self._client._mutation(
             gql.DELETE_SSH_AUTHORIZED_KEY_MUTATION,
             {"input": {"sshUserId": user, "name": name}},
@@ -236,11 +258,33 @@ class AsyncAppsSshUsersAuthorizedKeysResource:
 
     async def delete(
         self,
+        authorized_key_id: Optional[str] = None,
         *,
-        user: str,
-        name: str,
+        user: Optional[str] = None,
+        name: Optional[str] = None,
         request_options: Optional[RequestOptionsLike] = None,
     ) -> None:
+        if authorized_key_id:
+            response = await self._client._mutation(
+                gql.DELETE_SSH_AUTHORIZED_KEY_BY_ID_MUTATION,
+                {"input": {"authorizedKeyId": authorized_key_id}},
+                request_options=request_options,
+            )
+            if not (response.get("deleteSshAuthorizedKeyById") or {}).get("success"):
+                raise StackMachineAPIError(
+                    "Failed to delete SSH authorized key.",
+                    operation_name="srcDeleteSshAuthorizedKeyByIdMutation",
+                )
+            return
+
+        if not user or not name:
+            raise StackMachineValidationError(
+                "`authorized_key_id` or both `user` and `name` are required to delete "
+                "an SSH authorized key.",
+                code="invalid_ssh_authorized_key_delete_input",
+                param="authorized_key_id",
+            )
+
         response = await self._client._mutation(
             gql.DELETE_SSH_AUTHORIZED_KEY_MUTATION,
             {"input": {"sshUserId": user, "name": name}},

@@ -139,6 +139,78 @@ updated = stackmachine.apps.volumes.update(
 stackmachine.apps.volumes.delete(updated.id)
 ```
 
+## Git Connections
+
+```python
+connection = stackmachine.apps.git.connect(
+    app="app_id",
+    installation_repo_id="github_installation_repo_id",
+    deploy_branch="main",
+)
+
+connection = stackmachine.apps.git.retrieve("app_id")
+updated = stackmachine.apps.git.update(
+    "app_id",
+    deploy_branch="main",
+    deployment_status_events=True,
+    pull_request_comments=True,
+)
+stackmachine.apps.git.delete("app_id")
+```
+
+## Databases
+
+```python
+result = stackmachine.apps.databases.create(
+    app="app_id",
+    db_engine="POSTGRES",
+    name="primary",
+)
+
+database = result.database
+password = result.password
+
+databases = stackmachine.apps.databases.list(app="app_id", limit=25)
+rotated = stackmachine.apps.databases.rotate_credentials(database.id)
+stackmachine.apps.databases.delete(database.id)
+```
+
+## Hosted DNS
+
+Hosted DNS is exposed at `stackmachine.dns`. App domains remain under
+`stackmachine.apps.domains`.
+
+```python
+domain = stackmachine.dns.domains.create(
+    name="example.com",
+    owner="owner_id",
+    import_records=True,
+)
+
+domains = stackmachine.dns.domains.list(owner="owner_id", limit=25)
+domain = stackmachine.dns.domains.retrieve_by_name("example.com")
+
+record = stackmachine.dns.records.create(
+    domain=domain.id,
+    kind="A",
+    name="@",
+    value="192.0.2.1",
+    ttl=300,
+)
+
+record = stackmachine.dns.records.update(
+    record.id,
+    domain=domain.id,
+    kind="A",
+    name="@",
+    value="192.0.2.2",
+    ttl=300,
+)
+
+stackmachine.dns.records.delete(record.id)
+stackmachine.dns.domains.delete(domain.id)
+```
+
 ## SSH
 
 ```python
@@ -153,6 +225,27 @@ password = stackmachine.apps.ssh.users.passwords.rotate("ssh_user_id")
 key = stackmachine.apps.ssh.users.authorized_keys.create(
     user="ssh_user_id",
     public_key="ssh-ed25519 AAAA...",
+)
+```
+
+## Emails
+
+```python
+app_sent = stackmachine.emails.sent.list(app="app_id", limit=25)
+owner_received = stackmachine.emails.received.list(owner="owner_id", limit=25)
+
+sent_from_app = (
+    stackmachine.apps.retrieve(app_sent.data[0].app_id)
+    if app_sent.data and app_sent.data[0].app_id
+    else None
+)
+
+message = stackmachine.emails.send(
+    app="app_id",
+    to=["user@example.com"],
+    subject="Hello from StackMachine",
+    text_body="Plain text body",
+    html_body="<p>HTML body</p>",
 )
 ```
 

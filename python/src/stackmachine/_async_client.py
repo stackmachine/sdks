@@ -17,6 +17,8 @@ from ._types import AsyncStackMachineInitSettings, Headers, RequestOptionsLike
 from ._uploads import AsyncUploader
 from .resources.apps import AsyncDeployAppsResource
 from .resources.deployments import AsyncDeploymentsResource
+from .resources.dns import AsyncDNSResource
+from .resources.emails import AsyncEmailsResource
 from .resources.files import AsyncFilesResource
 
 
@@ -64,6 +66,8 @@ class AsyncStackMachine:
         )
         self.deployments = AsyncDeploymentsResource(self)
         self.apps = AsyncDeployAppsResource(self, self.deployments)
+        self.dns = AsyncDNSResource(self)
+        self.emails = AsyncEmailsResource(self)
         self.files = AsyncFilesResource(self, AsyncUploader(self._transport))
 
     @classmethod

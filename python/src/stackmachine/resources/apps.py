@@ -23,6 +23,7 @@ from .._types import (
     UploadProgressCallback,
 )
 from ._shared import page_variables, resource_missing_error
+from .databases import AppsDatabasesResource, AsyncAppsDatabasesResource
 from .deployments import (
     AsyncDeployment,
     AsyncDeploymentsResource,
@@ -30,6 +31,7 @@ from .deployments import (
     DeploymentsResource,
 )
 from .domains import AppsDomainsResource, AsyncAppsDomainsResource
+from .git import AppsGitResource, AsyncAppsGitResource
 from .ssh import AppsSshResource, AsyncAppsSshResource
 from .versions import AppsVersionsResource, AsyncAppsVersionsResource
 from .volumes import AppsVolumesResource, AsyncAppsVolumesResource
@@ -39,7 +41,9 @@ class DeployAppsResource:
     def __init__(self, client: Any, deployments: DeploymentsResource) -> None:
         self._client = client
         self._deployments = deployments
+        self.databases = AppsDatabasesResource(client)
         self.domains = AppsDomainsResource(client)
+        self.git = AppsGitResource(client)
         self.volumes = AppsVolumesResource(client)
         self.versions = AppsVersionsResource(client)
         self.ssh = AppsSshResource(client)
@@ -175,7 +179,9 @@ class AsyncDeployAppsResource:
     def __init__(self, client: Any, deployments: AsyncDeploymentsResource) -> None:
         self._client = client
         self._deployments = deployments
+        self.databases = AsyncAppsDatabasesResource(client)
         self.domains = AsyncAppsDomainsResource(client)
+        self.git = AsyncAppsGitResource(client)
         self.volumes = AsyncAppsVolumesResource(client)
         self.versions = AsyncAppsVersionsResource(client)
         self.ssh = AsyncAppsSshResource(client)
