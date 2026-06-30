@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<21a9ee1825154950554531a886533ca1>>
+ * @generated SignedSource<<c765b71f9faf6c182edef747713317e2>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,6 +16,7 @@ export type srcListDeployAppsQuery$variables = {
   before?: string | null | undefined;
   first?: number | null | undefined;
   last?: number | null | undefined;
+  ownerId?: string | null | undefined;
   sortBy?: DeployAppsSortBy | null | undefined;
 };
 export type srcListDeployAppsQuery$data = {
@@ -64,9 +65,14 @@ v3 = {
 v4 = {
   "defaultValue": null,
   "kind": "LocalArgument",
+  "name": "ownerId"
+},
+v5 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
   "name": "sortBy"
 },
-v5 = [
+v6 = [
   {
     "kind": "Variable",
     "name": "after",
@@ -89,18 +95,23 @@ v5 = [
   },
   {
     "kind": "Variable",
+    "name": "ownerId",
+    "variableName": "ownerId"
+  },
+  {
+    "kind": "Variable",
     "name": "sortBy",
     "variableName": "sortBy"
   }
 ],
-v6 = {
+v7 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "cursor",
   "storageKey": null
 },
-v7 = {
+v8 = {
   "alias": null,
   "args": null,
   "concreteType": "PageInfo",
@@ -139,14 +150,14 @@ v7 = {
   ],
   "storageKey": null
 },
-v8 = {
+v9 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "totalCount",
   "storageKey": null
 },
-v9 = {
+v10 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
@@ -160,7 +171,8 @@ return {
       (v1/*: any*/),
       (v2/*: any*/),
       (v3/*: any*/),
-      (v4/*: any*/)
+      (v4/*: any*/),
+      (v5/*: any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
@@ -168,7 +180,7 @@ return {
     "selections": [
       {
         "alias": null,
-        "args": (v5/*: any*/),
+        "args": (v6/*: any*/),
         "concreteType": "DeployAppConnection",
         "kind": "LinkedField",
         "name": "getDeployApps",
@@ -182,7 +194,7 @@ return {
             "name": "edges",
             "plural": true,
             "selections": [
-              (v6/*: any*/),
+              (v7/*: any*/),
               {
                 "alias": null,
                 "args": null,
@@ -202,8 +214,8 @@ return {
             ],
             "storageKey": null
           },
-          (v7/*: any*/),
-          (v8/*: any*/)
+          (v8/*: any*/),
+          (v9/*: any*/)
         ],
         "storageKey": null
       }
@@ -218,14 +230,15 @@ return {
       (v0/*: any*/),
       (v3/*: any*/),
       (v1/*: any*/),
-      (v4/*: any*/)
+      (v4/*: any*/),
+      (v5/*: any*/)
     ],
     "kind": "Operation",
     "name": "srcListDeployAppsQuery",
     "selections": [
       {
         "alias": null,
-        "args": (v5/*: any*/),
+        "args": (v6/*: any*/),
         "concreteType": "DeployAppConnection",
         "kind": "LinkedField",
         "name": "getDeployApps",
@@ -239,7 +252,7 @@ return {
             "name": "edges",
             "plural": true,
             "selections": [
-              (v6/*: any*/),
+              (v7/*: any*/),
               {
                 "alias": null,
                 "args": null,
@@ -248,7 +261,7 @@ return {
                 "name": "node",
                 "plural": false,
                 "selections": [
-                  (v9/*: any*/),
+                  (v10/*: any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -292,7 +305,7 @@ return {
                     "name": "activeVersion",
                     "plural": false,
                     "selections": [
-                      (v9/*: any*/)
+                      (v10/*: any*/)
                     ],
                     "storageKey": null
                   },
@@ -316,24 +329,24 @@ return {
             ],
             "storageKey": null
           },
-          (v7/*: any*/),
-          (v8/*: any*/)
+          (v8/*: any*/),
+          (v9/*: any*/)
         ],
         "storageKey": null
       }
     ]
   },
   "params": {
-    "cacheID": "f067d90e715afdeaa97ae57989965485",
+    "cacheID": "22f54f8131e19caedf7ebd0935559444",
     "id": null,
     "metadata": {},
     "name": "srcListDeployAppsQuery",
     "operationKind": "query",
-    "text": "query srcListDeployAppsQuery(\n  $first: Int\n  $after: String\n  $last: Int\n  $before: String\n  $sortBy: DeployAppsSortBy\n) {\n  getDeployApps(first: $first, after: $after, last: $last, before: $before, sortBy: $sortBy) {\n    edges {\n      cursor\n      node {\n        ...srcDeployAppData\n        id\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      endCursor\n      startCursor\n    }\n    totalCount\n  }\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  createdAt\n  name\n  url\n  adminUrl\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n"
+    "text": "query srcListDeployAppsQuery(\n  $first: Int\n  $after: String\n  $last: Int\n  $before: String\n  $ownerId: ID\n  $sortBy: DeployAppsSortBy\n) {\n  getDeployApps(first: $first, after: $after, last: $last, before: $before, ownerId: $ownerId, sortBy: $sortBy) {\n    edges {\n      cursor\n      node {\n        ...srcDeployAppData\n        id\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      endCursor\n      startCursor\n    }\n    totalCount\n  }\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  createdAt\n  name\n  url\n  adminUrl\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n"
   }
 };
 })();
 
-(node as any).hash = "2eb09d2b8ddaf40b46f3bc9d6fc30289";
+(node as any).hash = "cbd15a8f6d0ad872d83931a2ad512319";
 
 export default node;

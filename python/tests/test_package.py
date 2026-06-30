@@ -1594,6 +1594,7 @@ async def test_async_list_request_can_be_awaited_and_iterated() -> None:
         body = json.loads(request.content)
         assert body["operationName"] == "srcListDeployAppsQuery"
         assert "getDeployApps" in body["query"]
+        assert "ownerId: $ownerId" in body["query"]
         assert body["variables"]["ownerId"] == "owner_1"
         return graphql_response(
             {
