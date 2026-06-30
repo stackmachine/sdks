@@ -45,6 +45,7 @@ import RelayRuntime, {
   ReaderFragment,
   type Environment,
   type GraphQLTaggedNode,
+  type UploadableMap,
 } from "relay-runtime";
 import {
   createEnvironment,
@@ -165,6 +166,7 @@ type SdkContext = {
     mutation: GraphQLTaggedNode,
     variables: TMutation["variables"],
     options?: StackMachineRequestOptions,
+    uploadables?: UploadableMap | null,
   ): Promise<TMutation["response"]>;
   _requestSubscription<TSubscription extends { response: unknown }>(
     subscription: GraphQLTaggedNode,
@@ -266,11 +268,23 @@ export type AppsDatabasesListInput = StackMachinePaginationParams & {
   app: string;
 };
 export type DatabaseEngine = "MYSQL" | "POSTGRES" | "SQLITE";
-export type AppsDatabasesCreateInput = {
+export type AppsDatabasesCreateWithEngineInput = {
   app: string;
-  dbEngine?: DatabaseEngine | null;
+  dbEngine: DatabaseEngine;
   name?: string | null;
 };
+/**
+ * @deprecated Prefer `AppsDatabasesCreateWithEngineInput` with `dbEngine`.
+ * This remains supported for compatibility with the legacy `createAppDb` mutation.
+ */
+export type AppsDatabasesCreateLegacyInput = {
+  app: string;
+  dbEngine?: null;
+  name?: string | null;
+};
+export type AppsDatabasesCreateInput =
+  | AppsDatabasesCreateWithEngineInput
+  | AppsDatabasesCreateLegacyInput;
 export type AppDatabaseWithPassword = {
   database: AppDatabase;
   password: string;
@@ -386,6 +400,7 @@ export type EmailsSendInput = {
   fromAddress?: string | null;
   fromEmailId?: string | null;
   htmlBody?: string | null;
+  rawMessage?: Blob | File | null;
   replyTo?: string | null;
   textBody?: string | null;
 };
@@ -480,6 +495,13 @@ function resourceMissingError(
     code: "resource_missing",
     param,
   });
+}
+
+function shouldRetryGitUpdateWithConnectionId(error: unknown): boolean {
+  return (
+    error instanceof StackMachineGraphQLError ||
+    error instanceof StackMachineInvalidRequestError
+  );
 }
 
 function operationNameFromNode(node: GraphQLTaggedNode): string | undefined {
@@ -2302,6 +2324,7 @@ export class AppsDatabasesResource {
     input: AppsDatabasesCreateInput,
     options?: StackMachineRequestOptions,
   ): Promise<AppDatabaseWithPassword> {
+    // Prefer the engine-aware mutation. The no-engine branch remains for legacy callers.
     if (input.dbEngine) {
       const response = await this.client._mutation<any>(
         graphql`
@@ -2568,22 +2591,32 @@ export class AppsGitResource {
     input: AppsGitUpdateInput,
     options?: StackMachineRequestOptions,
   ): Promise<GithubRepoConnection> {
-    const target = await this.client._query<any>(
-      graphql`
-        query srcGetGithubRepoUpdateTargetQuery($id: ID!) {
-          node(id: $id) {
-            __typename
-          }
-        }
-      `,
-      { id: appOrConnectionId },
-      options,
-    );
-    const targetInput =
-      target?.node?.__typename === "GithubRepoConnection"
-        ? { connectionId: appOrConnectionId }
-        : { appId: appOrConnectionId };
+    try {
+      return await this.updateWithId(
+        "appId",
+        appOrConnectionId,
+        input,
+        options,
+      );
+    } catch (error) {
+      if (!shouldRetryGitUpdateWithConnectionId(error)) {
+        throw error;
+      }
+      return this.updateWithId(
+        "connectionId",
+        appOrConnectionId,
+        input,
+        options,
+      );
+    }
+  }
 
+  private async updateWithId(
+    idKey: "appId" | "connectionId",
+    id: string,
+    input: AppsGitUpdateInput,
+    options?: StackMachineRequestOptions,
+  ): Promise<GithubRepoConnection> {
     const response = await this.client._mutation<any>(
       graphql`
         mutation srcUpdateGithubRepoConnectionMutation(
@@ -2599,7 +2632,7 @@ export class AppsGitResource {
       `,
       {
         input: {
-          ...targetInput,
+          [idKey]: id,
           deployBranch: input.deployBranch,
           deploymentStatusEvents: input.deploymentStatusEvents,
           pullRequestComments: input.pullRequestComments,
@@ -4435,6 +4468,9 @@ export class EmailsResource {
     input: EmailsSendInput,
     options?: StackMachineRequestOptions,
   ): Promise<EmailMessage> {
+    const uploadables = input.rawMessage
+      ? { "variables.input.rawMessage": input.rawMessage }
+      : undefined;
     const response = await this.client._mutation<any>(
       graphql`
         mutation srcSendAppEmailMutation($input: SendAppEmailInput!) {
@@ -4456,11 +4492,13 @@ export class EmailsResource {
           fromAddress: input.fromAddress,
           fromEmailId: input.fromEmailId,
           htmlBody: input.htmlBody,
+          rawMessage: input.rawMessage ? null : undefined,
           replyTo: input.replyTo,
           textBody: input.textBody,
         },
       },
       options,
+      uploadables,
     );
     const payload = requiredPayload(
       response.sendAppEmail,
@@ -4596,6 +4634,7 @@ export class StackMachine implements SdkContext {
     mutation: GraphQLTaggedNode,
     variables: TMutation["variables"],
     options?: StackMachineRequestOptions,
+    uploadables?: UploadableMap | null,
   ): Promise<TMutation["response"]> {
     const operationName = operationNameFromNode(mutation);
     const variablesWithClientMutationId = withClientMutationId(
@@ -4609,6 +4648,7 @@ export class StackMachine implements SdkContext {
           mutation,
           variables: variablesWithClientMutationId,
           cacheConfig: this._cacheConfig(options),
+          uploadables,
           onCompleted: (response, errors) => {
             if (errors && errors.length > 0) {
               reject(

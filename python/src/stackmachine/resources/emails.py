@@ -15,7 +15,7 @@ from .._pagination import (
     create_async_list,
     create_list,
 )
-from .._types import PaginationOptions, RequestOptionsLike
+from .._types import FileInput, PaginationOptions, RequestOptionsLike
 from ._shared import page_variables, required_payload, resource_missing_error
 
 
@@ -98,27 +98,36 @@ class EmailsResource:
         from_address: Optional[str] = None,
         from_email_id: Optional[str] = None,
         html_body: Optional[str] = None,
+        raw_message: Optional[FileInput] = None,
+        rawMessage: Optional[FileInput] = None,
         reply_to: Optional[str] = None,
         text_body: Optional[str] = None,
         request_options: Optional[RequestOptionsLike] = None,
     ) -> EmailMessage:
+        raw_upload = raw_message if raw_message is not None else rawMessage
+        input_payload = {
+            "appId": app,
+            "to": list(to),
+            "subject": subject,
+            "bcc": list(bcc) if bcc is not None else None,
+            "cc": list(cc) if cc is not None else None,
+            "fromAddress": from_address,
+            "fromEmailId": from_email_id,
+            "htmlBody": html_body,
+            "replyTo": reply_to,
+            "textBody": text_body,
+        }
+        if raw_upload is not None:
+            input_payload["rawMessage"] = None
         response = self._client._mutation(
             gql.SEND_APP_EMAIL_MUTATION,
-            {
-                "input": {
-                    "appId": app,
-                    "to": list(to),
-                    "subject": subject,
-                    "bcc": list(bcc) if bcc is not None else None,
-                    "cc": list(cc) if cc is not None else None,
-                    "fromAddress": from_address,
-                    "fromEmailId": from_email_id,
-                    "htmlBody": html_body,
-                    "replyTo": reply_to,
-                    "textBody": text_body,
-                }
-            },
+            {"input": input_payload},
             request_options=request_options,
+            uploadables=(
+                {"variables.input.rawMessage": raw_upload}
+                if raw_upload is not None
+                else None
+            ),
         )
         payload = required_payload(
             response.get("sendAppEmail") if response else None,
@@ -201,27 +210,36 @@ class AsyncEmailsResource:
         from_address: Optional[str] = None,
         from_email_id: Optional[str] = None,
         html_body: Optional[str] = None,
+        raw_message: Optional[FileInput] = None,
+        rawMessage: Optional[FileInput] = None,
         reply_to: Optional[str] = None,
         text_body: Optional[str] = None,
         request_options: Optional[RequestOptionsLike] = None,
     ) -> EmailMessage:
+        raw_upload = raw_message if raw_message is not None else rawMessage
+        input_payload = {
+            "appId": app,
+            "to": list(to),
+            "subject": subject,
+            "bcc": list(bcc) if bcc is not None else None,
+            "cc": list(cc) if cc is not None else None,
+            "fromAddress": from_address,
+            "fromEmailId": from_email_id,
+            "htmlBody": html_body,
+            "replyTo": reply_to,
+            "textBody": text_body,
+        }
+        if raw_upload is not None:
+            input_payload["rawMessage"] = None
         response = await self._client._mutation(
             gql.SEND_APP_EMAIL_MUTATION,
-            {
-                "input": {
-                    "appId": app,
-                    "to": list(to),
-                    "subject": subject,
-                    "bcc": list(bcc) if bcc is not None else None,
-                    "cc": list(cc) if cc is not None else None,
-                    "fromAddress": from_address,
-                    "fromEmailId": from_email_id,
-                    "htmlBody": html_body,
-                    "replyTo": reply_to,
-                    "textBody": text_body,
-                }
-            },
+            {"input": input_payload},
             request_options=request_options,
+            uploadables=(
+                {"variables.input.rawMessage": raw_upload}
+                if raw_upload is not None
+                else None
+            ),
         )
         payload = required_payload(
             response.get("sendAppEmail") if response else None,

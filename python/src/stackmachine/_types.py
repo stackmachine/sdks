@@ -396,6 +396,8 @@ class EmailsSendInput(TypedDict, total=False):
     fromEmailId: Optional[str]
     html_body: Optional[str]
     htmlBody: Optional[str]
+    raw_message: Optional[FileInput]
+    rawMessage: Optional[FileInput]
     reply_to: Optional[str]
     replyTo: Optional[str]
     text_body: Optional[str]

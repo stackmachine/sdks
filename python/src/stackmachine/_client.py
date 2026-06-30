@@ -13,7 +13,7 @@ from ._config import (
 from ._graphql import operations as gql
 from ._models import Viewer
 from ._transport import SyncTransport
-from ._types import Headers, RequestOptionsLike, StackMachineInitSettings
+from ._types import FileInput, Headers, RequestOptionsLike, StackMachineInitSettings
 from ._uploads import SyncUploader
 from .resources.apps import DeployAppsResource
 from .resources.deployments import DeploymentsResource
@@ -175,12 +175,14 @@ class StackMachine:
         variables: Optional[Mapping[str, Any]] = None,
         *,
         request_options: Optional[RequestOptionsLike] = None,
+        uploadables: Optional[Mapping[str, FileInput]] = None,
     ) -> Any:
         return self._transport.execute(
             query,
             variables,
             request_options=request_options,
             mutation=True,
+            uploadables=uploadables,
         )
 
     def _subscribe_deployment(

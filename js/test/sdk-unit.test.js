@@ -1816,14 +1816,6 @@ test("app git connections retrieve, connect, update, and delete map to GraphQL o
             },
           },
         });
-      case "srcGetGithubRepoUpdateTargetQuery":
-        return jsonResponse({
-          data: {
-            node: {
-              __typename: "DeployApp",
-            },
-          },
-        });
       case "srcUpdateGithubRepoConnectionMutation":
         return jsonResponse({
           data: {
@@ -1892,15 +1884,14 @@ test("app git connections retrieve, connect, update, and delete map to GraphQL o
     deployBranch: "production",
     clientMutationId: "cmid-connect-git",
   });
-  assert.deepEqual(fetch.calls[2].body.variables, { id: "app_1" });
-  assert.deepEqual(fetch.calls[3].body.variables.input, {
+  assert.deepEqual(fetch.calls[2].body.variables.input, {
     appId: "app_1",
     deployBranch: "release",
     deploymentStatusEvents: false,
     pullRequestComments: true,
     clientMutationId: "idem-update-git",
   });
-  assert.deepEqual(fetch.calls[4].body.variables.input, {
+  assert.deepEqual(fetch.calls[3].body.variables.input, {
     appId: "app_1",
     clientMutationId: "cmid-delete-git",
   });
@@ -1909,15 +1900,17 @@ test("app git connections retrieve, connect, update, and delete map to GraphQL o
 test("app git update accepts legacy connection ids without breaking old callers", async () => {
   const fetch = mockFetch((call) => {
     switch (call.body.operationName) {
-      case "srcGetGithubRepoUpdateTargetQuery":
-        return jsonResponse({
-          data: {
-            node: {
-              __typename: "GithubRepoConnection",
-            },
-          },
-        });
       case "srcUpdateGithubRepoConnectionMutation":
+        if (call.body.variables.input.appId) {
+          return jsonResponse({
+            errors: [
+              {
+                message:
+                  "Expected a DeployApp id for appId, got GithubRepoConnection.",
+              },
+            ],
+          });
+        }
         return jsonResponse({
           data: {
             updateGithubRepoConnection: {
@@ -1942,7 +1935,7 @@ test("app git update accepts legacy connection ids without breaking old callers"
   });
 
   assert.equal(updated.id, "git_connected");
-  assert.deepEqual(fetch.calls[0].body.variables, { id: "git_connected" });
+  assert.equal(fetch.calls[0].body.variables.input.appId, "git_connected");
   assert.equal(
     fetch.calls[1].body.variables.input.connectionId,
     "git_connected",
@@ -1961,14 +1954,6 @@ test("app git mutations throw when backend success is false", async () => {
             connectGithubRepoToApp: {
               success: false,
               githubRepoConnection: githubRepoConnectionNode("git_failed"),
-            },
-          },
-        });
-      case "srcGetGithubRepoUpdateTargetQuery":
-        return jsonResponse({
-          data: {
-            node: {
-              __typename: "DeployApp",
             },
           },
         });
@@ -2642,6 +2627,58 @@ test("emails list by app or owner and send from app map to GraphQL operations", 
     textBody: "Plain text body",
     clientMutationId: "cmid-send-email",
   });
+});
+
+test("emails send supports raw MIME upload", async () => {
+  const rawMessage = new Blob(
+    [
+      "From: app@example.com\r\n",
+      "To: user@example.com\r\n",
+      "Subject: Raw hello\r\n",
+      "\r\n",
+      "Hello from raw MIME.",
+    ],
+    { type: "message/rfc822" },
+  );
+  const fetch = mockFetch(async (call) => {
+    assert.ok(call.body instanceof FormData);
+    assert.equal(call.headers.get("content-type"), null);
+    const operations = JSON.parse(call.body.get("operations"));
+    const uploadMap = JSON.parse(call.body.get("map"));
+    const uploaded = call.body.get("0");
+    assert.deepEqual(uploadMap, {
+      0: ["variables.input.rawMessage"],
+    });
+    assert.equal(operations.operationName, "srcSendAppEmailMutation");
+    assert.equal(operations.variables.input.rawMessage, null);
+    assert.equal(operations.variables.input.appId, "app_1");
+    assert.ok(uploaded instanceof Blob);
+    assert.equal(await uploaded.text(), await rawMessage.text());
+    return jsonResponse({
+      data: {
+        sendAppEmail: {
+          success: true,
+          message: emailMessageNode("email_raw", {
+            subject: "Raw hello",
+            to: ["user@example.com"],
+          }),
+        },
+      },
+    });
+  });
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  const message = await client.emails.send({
+    app: "app_1",
+    to: ["user@example.com"],
+    subject: "Raw hello",
+    rawMessage,
+  });
+
+  assert.equal(message.id, "email_raw");
 });
 
 test("emails validate list targets and throw when send fails", async () => {
