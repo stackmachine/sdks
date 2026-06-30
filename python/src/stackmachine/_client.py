@@ -20,6 +20,7 @@ from .resources.deployments import DeploymentsResource
 from .resources.dns import DNSResource
 from .resources.emails import EmailsResource
 from .resources.files import FilesResource
+from .resources.packages import PackagesResource
 
 
 class StackMachine:
@@ -69,6 +70,7 @@ class StackMachine:
         self.dns = DNSResource(self)
         self.emails = EmailsResource(self)
         self.files = FilesResource(self, SyncUploader(self._transport))
+        self.packages = PackagesResource(self)
 
     @classmethod
     def init(

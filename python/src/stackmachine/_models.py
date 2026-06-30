@@ -657,3 +657,85 @@ def app_aliases_from_nodes(
             else None
         )
     return values
+
+
+@dataclass
+class PackageDistribution:
+    pirita_sha256_hash: Optional[str]
+    pirita_download_url: Optional[str]
+    download_url: Optional[str]
+    size: Optional[int]
+    pirita_size: Optional[int]
+    webc_version: Optional[str]
+    # The webc manifest, as a JSON string.
+    webc_manifest: Optional[str]
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "PackageDistribution":
+        return cls(
+            pirita_sha256_hash=data.get("piritaSha256Hash"),
+            pirita_download_url=data.get("piritaDownloadUrl"),
+            download_url=data.get("downloadUrl"),
+            size=data.get("size"),
+            pirita_size=data.get("piritaSize"),
+            webc_version=data.get("webcVersion"),
+            webc_manifest=data.get("webcManifest"),
+        )
+
+
+@dataclass
+class PackageVersion:
+    id: str
+    version: str
+    created_at: Optional[datetime]
+    distribution: PackageDistribution
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "PackageVersion":
+        return cls(
+            id=str(data["id"]),
+            version=str(data["version"]),
+            created_at=parse_datetime(data.get("createdAt")),
+            distribution=PackageDistribution.from_graphql(
+                data.get("distribution") or {}
+            ),
+        )
+
+
+@dataclass
+class Package:
+    id: str
+    package_name: str
+    namespace: Optional[str]
+    last_version: Optional[PackageVersion]
+    private: bool
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "Package":
+        last_version = data.get("lastVersion")
+        return cls(
+            id=str(data["id"]),
+            package_name=str(data["packageName"]),
+            namespace=data.get("namespace"),
+            last_version=(
+                PackageVersion.from_graphql(last_version) if last_version else None
+            ),
+            private=bool(data["private"]),
+        )
+
+
+@dataclass
+class SearchPackageVersion:
+    id: str
+    version: str
+    created_at: Optional[datetime]
+    package: Package
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "SearchPackageVersion":
+        return cls(
+            id=str(data["id"]),
+            version=str(data["version"]),
+            created_at=parse_datetime(data.get("createdAt")),
+            package=Package.from_graphql(data["package"]),
+        )

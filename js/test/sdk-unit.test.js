@@ -3164,3 +3164,190 @@ test("HTTP and GraphQL failures normalize to typed SDK errors", async () => {
   });
   assert.equal(graphQLFetch.calls.length, 1);
 });
+
+const packageVersionNode = (id, overrides = {}) => ({
+  __typename: "PackageVersion",
+  id,
+  version: "0.1.0",
+  createdAt: "2026-01-01T00:00:00Z",
+  package: {
+    id: `pkg-${id}`,
+    packageName: `pkg-${id}`,
+    namespace: "tester",
+    private: false,
+    lastVersion: {
+      id: `${id}-last`,
+      version: "0.1.0",
+      createdAt: "2026-01-01T00:00:00Z",
+      distribution: {
+        piritaSha256Hash: "sha256:abc",
+        piritaDownloadUrl: `https://cdn.example.test/${id}.webc`,
+        downloadUrl: `https://cdn.example.test/${id}.tar.gz`,
+        size: 1024,
+        piritaSize: 2048,
+        webcVersion: "V3",
+        webcManifest: "{}",
+      },
+    },
+    ...overrides,
+  },
+});
+
+const searchResponse = (
+  nodes,
+  pageInfo = {
+    hasNextPage: false,
+    hasPreviousPage: false,
+    endCursor: null,
+    startCursor: null,
+  },
+  totalCount = nodes.length,
+) =>
+  jsonResponse({
+    data: {
+      search: {
+        edges: nodes.map((node, index) => ({
+          cursor: `cursor_${index + 1}`,
+          node,
+        })),
+        pageInfo,
+        totalCount,
+      },
+    },
+  });
+
+test("packages.search returns a list and maps package versions from the search query", async () => {
+  const fetch = mockFetch(() =>
+    searchResponse(
+      [
+        packageVersionNode("version_1", {
+          packageName: "alpha",
+          namespace: "tester",
+        }),
+      ],
+      {
+        hasNextPage: true,
+        hasPreviousPage: false,
+        endCursor: "cursor_1",
+        startCursor: "cursor_1",
+      },
+      3,
+    ),
+  );
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  const page = await client.packages.search(
+    { query: "alpha", filter: { owner: "tester" }, limit: 1 },
+    { apiKey: "request-key" },
+  );
+
+  assert.equal(page.object, "list");
+  assert.equal(page.url, "/v1/packages");
+  assert.equal(page.hasMore, true);
+  assert.equal(page.totalCount, 3);
+  assert.equal(page.data.length, 1);
+  assert.equal(page.data[0].id, "version_1");
+  assert.equal(page.data[0].version, "0.1.0");
+  assert.equal(page.data[0].package.packageName, "alpha");
+  assert.equal(page.data[0].package.namespace, "tester");
+  // The full authoritative shape includes the package's last version + its
+  // distribution.
+  assert.equal(page.data[0].package.lastVersion.version, "0.1.0");
+  assert.equal(page.data[0].package.lastVersion.distribution.webcVersion, "V3");
+  assert.equal(
+    page.data[0].package.lastVersion.distribution.downloadUrl,
+    "https://cdn.example.test/version_1.tar.gz",
+  );
+  assert.ok(page.data[0].createdAt instanceof Date);
+  assert.ok(page.data[0].package.lastVersion.createdAt instanceof Date);
+
+  assert.equal(fetch.calls[0].body.operationName, "srcSearchPackagesQuery");
+  assert.equal(fetch.calls[0].body.variables.searchQuery, "alpha");
+  assert.deepEqual(fetch.calls[0].body.variables.packages, { owner: "tester" });
+  assert.equal(fetch.calls[0].body.variables.first, 1);
+  assert.equal(
+    fetch.calls[0].headers.get("authorization"),
+    "Bearer request-key",
+  );
+});
+
+test("packages.search defaults to an empty query and always sends a packages filter", async () => {
+  const fetch = mockFetch(() => searchResponse([]));
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  const page = await client.packages.search();
+
+  assert.equal(page.data.length, 0);
+  // `query` is required by the schema; a non-null `packages` filter is what
+  // scopes `search` to packages, so an empty filter is still sent.
+  assert.equal(fetch.calls[0].body.variables.searchQuery, "");
+  assert.deepEqual(fetch.calls[0].body.variables.packages, {});
+});
+
+test("packages.search forwards the full package filter unchanged", async () => {
+  const fetch = mockFetch(() => searchResponse([]));
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  const filter = {
+    owner: "tester",
+    curated: true,
+    downloads: { count: 100, comparison: "GREATER_THAN_OR_EQUAL" },
+    orderBy: "TOTAL_DOWNLOADS",
+    sortBy: "DESC",
+  };
+  await client.packages.search({ filter });
+
+  assert.deepEqual(fetch.calls[0].body.variables.packages, filter);
+});
+
+test("packages.search serializes Date filters to ISO strings", async () => {
+  const fetch = mockFetch(() => searchResponse([]));
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  await client.packages.search({
+    filter: {
+      owner: "tester",
+      createdAfter: new Date("2026-01-02T03:04:05.000Z"),
+      lastPublishedBefore: new Date("2026-02-03T04:05:06.000Z"),
+    },
+  });
+
+  // DateTime filters are sent as ISO strings, like the SDK's other date inputs.
+  assert.deepEqual(fetch.calls[0].body.variables.packages, {
+    owner: "tester",
+    createdAfter: "2026-01-02T03:04:05.000Z",
+    lastPublishedBefore: "2026-02-03T04:05:06.000Z",
+  });
+});
+
+test("packages.search maps every package version in the page", async () => {
+  const fetch = mockFetch(() =>
+    searchResponse([
+      packageVersionNode("version_1", { packageName: "alpha" }),
+      packageVersionNode("version_2", { packageName: "beta" }),
+    ]),
+  );
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  const page = await client.packages.search({ query: "*" });
+
+  assert.deepEqual(
+    page.data.map((result) => result.package.packageName),
+    ["alpha", "beta"],
+  );
+});

@@ -1732,3 +1732,166 @@ def test_create_zip_supports_bytes_strings_and_file_paths(tmp_path) -> None:
         assert archive.read("bytes.txt") == b"raw"
         assert archive.read("string.txt") == b"inline"
         assert archive.read("file.txt") == b"from disk"
+
+
+def package_version_payload(id: str = "version_1", **overrides: Any) -> dict[str, Any]:
+    return {
+        "__typename": "PackageVersion",
+        "id": id,
+        "version": overrides.get("version", "0.1.0"),
+        "createdAt": overrides.get("created_at", "2026-01-01T00:00:00Z"),
+        "package": {
+            "id": overrides.get("package_id", f"pkg-{id}"),
+            "packageName": overrides.get("package_name", f"pkg-{id}"),
+            "namespace": overrides.get("namespace", "tester"),
+            "private": overrides.get("private", False),
+            "lastVersion": {
+                "id": f"{id}-last",
+                "version": overrides.get("version", "0.1.0"),
+                "createdAt": overrides.get("created_at", "2026-01-01T00:00:00Z"),
+                "distribution": {
+                    "piritaSha256Hash": "sha256:abc",
+                    "piritaDownloadUrl": f"https://cdn.example.test/{id}.webc",
+                    "downloadUrl": f"https://cdn.example.test/{id}.tar.gz",
+                    "size": 1024,
+                    "piritaSize": 2048,
+                    "webcVersion": "V3",
+                    "webcManifest": "{}",
+                },
+            },
+        },
+    }
+
+
+def search_response(
+    nodes: list[dict[str, Any]],
+    *,
+    has_next: bool = False,
+    total: Optional[int] = None,
+) -> httpx.Response:
+    return graphql_response(
+        {
+            "search": {
+                "edges": [
+                    {"cursor": f"cursor-{index}", "node": node}
+                    for index, node in enumerate(nodes)
+                ],
+                "pageInfo": {
+                    "hasNextPage": has_next,
+                    "hasPreviousPage": False,
+                    "endCursor": None,
+                    "startCursor": None,
+                },
+                "totalCount": total if total is not None else len(nodes),
+            }
+        }
+    )
+
+
+def test_packages_search_maps_results_and_sends_filter() -> None:
+    calls: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        calls.append(body["variables"])
+        return search_response(
+            [package_version_payload("version_1", package_name="alpha")],
+            total=3,
+        )
+
+    with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
+        page = client.packages.search(
+            query="alpha", filter={"owner": "tester"}, limit=1
+        )
+
+    assert [result.package.package_name for result in page.data] == ["alpha"]
+    assert page.data[0].version == "0.1.0"
+    assert page.data[0].package.namespace == "tester"
+    assert page.total_count == 3
+
+    last_version = page.data[0].package.last_version
+    assert last_version is not None
+    assert last_version.distribution.webc_version == "V3"
+    assert (
+        last_version.distribution.download_url
+        == "https://cdn.example.test/version_1.tar.gz"
+    )
+    assert calls[0]["query"] == "alpha"
+    assert calls[0]["packages"] == {"owner": "tester"}
+    assert calls[0]["first"] == 1
+
+
+def test_packages_search_defaults_query_and_sends_empty_filter() -> None:
+    calls: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(json.loads(request.content)["variables"])
+        return search_response([])
+
+    with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
+        client.packages.search()
+
+    assert calls[0]["query"] == ""
+    assert calls[0]["packages"] == {}
+
+
+def test_packages_search_camelizes_snake_case_filter() -> None:
+    calls: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(json.loads(request.content)["variables"])
+        return search_response([])
+
+    with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
+        client.packages.search(
+            filter={
+                "owner": "tester",
+                "published_by": "tester",
+                "has_bindings": True,
+                "downloads": {"count": 100, "comparison": "GREATER_THAN_OR_EQUAL"},
+                "order_by": "TOTAL_DOWNLOADS",
+                "sort_by": "DESC",
+            }
+        )
+
+    assert calls[0]["packages"] == {
+        "owner": "tester",
+        "publishedBy": "tester",
+        "hasBindings": True,
+        "downloads": {"count": 100, "comparison": "GREATER_THAN_OR_EQUAL"},
+        "orderBy": "TOTAL_DOWNLOADS",
+        "sortBy": "DESC",
+    }
+
+
+def test_packages_search_maps_every_package_version() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return search_response(
+            [
+                package_version_payload("version_1", package_name="alpha"),
+                package_version_payload("version_2", package_name="beta"),
+            ]
+        )
+
+    with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
+        page = client.packages.search(query="*")
+
+    assert [result.package.package_name for result in page.data] == [
+        "alpha",
+        "beta",
+    ]
+
+
+async def test_async_packages_search() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return search_response(
+            [package_version_payload("version_1", package_name="alpha")]
+        )
+
+    client = AsyncStackMachine("secret", http_transport=httpx.MockTransport(handler))
+    try:
+        page = await client.packages.search(filter={"owner": "tester"})
+    finally:
+        await client.close()
+
+    assert [result.package.package_name for result in page.data] == ["alpha"]
