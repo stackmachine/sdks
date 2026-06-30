@@ -22,8 +22,8 @@ from ._errors import (
     StackMachineValidationError,
     stackmachine_error_from_graphql_errors,
 )
-from ._types import RequestOptionsLike
-from ._utils import operation_name
+from ._types import FileInput, RequestOptionsLike
+from ._utils import operation_name, read_file_bytes
 
 RETRYABLE_STATUS_CODES = {408, 409, 425, 429, 500, 502, 503, 504}
 
@@ -253,6 +253,23 @@ def _clean_json(value: Any) -> Any:
     return value
 
 
+def _multipart_files(
+    payload: Mapping[str, Any],
+    uploadables: Mapping[str, FileInput],
+) -> Dict[str, Any]:
+    upload_map = {
+        str(index): [path] for index, path in enumerate(uploadables.keys())
+    }
+    files: Dict[str, Any] = {
+        "operations": (None, json.dumps(payload), "application/json"),
+        "map": (None, json.dumps(upload_map), "application/json"),
+    }
+    for index, file in enumerate(uploadables.values()):
+        key = str(index)
+        files[key] = ("upload", read_file_bytes(file), "application/octet-stream")
+    return files
+
+
 def _subscription_url(api_url: str) -> str:
     parsed = urlparse(api_url)
     scheme = "wss" if parsed.scheme == "https" else "ws"
@@ -284,6 +301,7 @@ class SyncTransport:
         *,
         request_options: Optional[RequestOptionsLike] = None,
         mutation: bool = False,
+        uploadables: Optional[Mapping[str, FileInput]] = None,
     ) -> Any:
         op_name = operation_name(query)
         resolved_variables = dict(variables or {})
@@ -293,22 +311,33 @@ class SyncTransport:
             )
         payload = {
             "query": query,
-            "variables": _clean_json(resolved_variables),
+            "variables": resolved_variables
+            if uploadables
+            else _clean_json(resolved_variables),
             "operationName": op_name,
         }
         attempt = 0
         max_retries = _max_retries(self.config, request_options)
         while True:
             try:
-                response = self.client.post(
-                    self.config.api_url,
-                    json=payload,
-                    headers={
-                        **_headers(self.api_key, self.config, request_options),
-                        "Content-Type": "application/json",
-                    },
-                    timeout=_timeout(self.config, request_options),
-                )
+                headers = _headers(self.api_key, self.config, request_options)
+                if uploadables:
+                    response = self.client.post(
+                        self.config.api_url,
+                        files=_multipart_files(payload, uploadables),
+                        headers=headers,
+                        timeout=_timeout(self.config, request_options),
+                    )
+                else:
+                    response = self.client.post(
+                        self.config.api_url,
+                        json=payload,
+                        headers={
+                            **headers,
+                            "Content-Type": "application/json",
+                        },
+                        timeout=_timeout(self.config, request_options),
+                    )
                 body = _json_body(response)
                 if response.status_code >= 400:
                     raise _api_error(response, body, op_name)
@@ -434,6 +463,7 @@ class AsyncTransport:
         *,
         request_options: Optional[RequestOptionsLike] = None,
         mutation: bool = False,
+        uploadables: Optional[Mapping[str, FileInput]] = None,
     ) -> Any:
         op_name = operation_name(query)
         resolved_variables = dict(variables or {})
@@ -443,22 +473,33 @@ class AsyncTransport:
             )
         payload = {
             "query": query,
-            "variables": _clean_json(resolved_variables),
+            "variables": resolved_variables
+            if uploadables
+            else _clean_json(resolved_variables),
             "operationName": op_name,
         }
         attempt = 0
         max_retries = _max_retries(self.config, request_options)
         while True:
             try:
-                response = await self.client.post(
-                    self.config.api_url,
-                    json=payload,
-                    headers={
-                        **_headers(self.api_key, self.config, request_options),
-                        "Content-Type": "application/json",
-                    },
-                    timeout=_timeout(self.config, request_options),
-                )
+                headers = _headers(self.api_key, self.config, request_options)
+                if uploadables:
+                    response = await self.client.post(
+                        self.config.api_url,
+                        files=_multipart_files(payload, uploadables),
+                        headers=headers,
+                        timeout=_timeout(self.config, request_options),
+                    )
+                else:
+                    response = await self.client.post(
+                        self.config.api_url,
+                        json=payload,
+                        headers={
+                            **headers,
+                            "Content-Type": "application/json",
+                        },
+                        timeout=_timeout(self.config, request_options),
+                    )
                 body = _json_body(response)
                 if response.status_code >= 400:
                     raise _api_error(response, body, op_name)

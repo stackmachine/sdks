@@ -2,11 +2,37 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from .._errors import StackMachineAPIError
+from .._errors import (
+    StackMachineAPIError,
+    StackMachineGraphQLError,
+    StackMachineInvalidRequestError,
+)
 from .._graphql import operations as gql
 from .._models import GithubRepoConnection
 from .._types import RequestOptionsLike
 from ._shared import required_payload, resource_missing_error
+
+
+def _should_retry_update_with_connection_id(error: BaseException) -> bool:
+    return isinstance(
+        error, (StackMachineGraphQLError, StackMachineInvalidRequestError)
+    )
+
+
+def _update_input(
+    id_key: str,
+    id_value: str,
+    *,
+    deploy_branch: Optional[str],
+    deployment_status_events: Optional[bool],
+    pull_request_comments: Optional[bool],
+) -> dict[str, Any]:
+    return {
+        id_key: id_value,
+        "deployBranch": deploy_branch,
+        "deploymentStatusEvents": deployment_status_events,
+        "pullRequestComments": pull_request_comments,
+    }
 
 
 class AppsGitResource:
@@ -55,9 +81,7 @@ class AppsGitResource:
                 else None
             )
             result.append(
-                GithubRepoConnection.from_graphql(connection)
-                if connection
-                else None
+                GithubRepoConnection.from_graphql(connection) if connection else None
             )
         return result
 
@@ -106,26 +130,47 @@ class AppsGitResource:
         pull_request_comments: Optional[bool] = None,
         request_options: Optional[RequestOptionsLike] = None,
     ) -> GithubRepoConnection:
-        target = self._client._query(
-            gql.GET_GITHUB_REPO_UPDATE_TARGET_QUERY,
-            {"id": app_or_connection_id},
-            request_options=request_options,
-        )
-        target_type = ((target or {}).get("node") or {}).get("__typename")
-        target_input = (
-            {"connectionId": app_or_connection_id}
-            if target_type == "GithubRepoConnection"
-            else {"appId": app_or_connection_id}
-        )
+        try:
+            return self._update_with_id(
+                "appId",
+                app_or_connection_id,
+                deploy_branch=deploy_branch,
+                deployment_status_events=deployment_status_events,
+                pull_request_comments=pull_request_comments,
+                request_options=request_options,
+            )
+        except (StackMachineGraphQLError, StackMachineInvalidRequestError) as exc:
+            if not _should_retry_update_with_connection_id(exc):
+                raise
+            return self._update_with_id(
+                "connectionId",
+                app_or_connection_id,
+                deploy_branch=deploy_branch,
+                deployment_status_events=deployment_status_events,
+                pull_request_comments=pull_request_comments,
+                request_options=request_options,
+            )
+
+    def _update_with_id(
+        self,
+        id_key: str,
+        id_value: str,
+        *,
+        deploy_branch: Optional[str],
+        deployment_status_events: Optional[bool],
+        pull_request_comments: Optional[bool],
+        request_options: Optional[RequestOptionsLike],
+    ) -> GithubRepoConnection:
         response = self._client._mutation(
             gql.UPDATE_GITHUB_REPO_CONNECTION_MUTATION,
             {
-                "input": {
-                    **target_input,
-                    "deployBranch": deploy_branch,
-                    "deploymentStatusEvents": deployment_status_events,
-                    "pullRequestComments": pull_request_comments,
-                }
+                "input": _update_input(
+                    id_key,
+                    id_value,
+                    deploy_branch=deploy_branch,
+                    deployment_status_events=deployment_status_events,
+                    pull_request_comments=pull_request_comments,
+                )
             },
             request_options=request_options,
         )
@@ -211,9 +256,7 @@ class AsyncAppsGitResource:
                 else None
             )
             result.append(
-                GithubRepoConnection.from_graphql(connection)
-                if connection
-                else None
+                GithubRepoConnection.from_graphql(connection) if connection else None
             )
         return result
 
@@ -262,26 +305,47 @@ class AsyncAppsGitResource:
         pull_request_comments: Optional[bool] = None,
         request_options: Optional[RequestOptionsLike] = None,
     ) -> GithubRepoConnection:
-        target = await self._client._query(
-            gql.GET_GITHUB_REPO_UPDATE_TARGET_QUERY,
-            {"id": app_or_connection_id},
-            request_options=request_options,
-        )
-        target_type = ((target or {}).get("node") or {}).get("__typename")
-        target_input = (
-            {"connectionId": app_or_connection_id}
-            if target_type == "GithubRepoConnection"
-            else {"appId": app_or_connection_id}
-        )
+        try:
+            return await self._update_with_id(
+                "appId",
+                app_or_connection_id,
+                deploy_branch=deploy_branch,
+                deployment_status_events=deployment_status_events,
+                pull_request_comments=pull_request_comments,
+                request_options=request_options,
+            )
+        except (StackMachineGraphQLError, StackMachineInvalidRequestError) as exc:
+            if not _should_retry_update_with_connection_id(exc):
+                raise
+            return await self._update_with_id(
+                "connectionId",
+                app_or_connection_id,
+                deploy_branch=deploy_branch,
+                deployment_status_events=deployment_status_events,
+                pull_request_comments=pull_request_comments,
+                request_options=request_options,
+            )
+
+    async def _update_with_id(
+        self,
+        id_key: str,
+        id_value: str,
+        *,
+        deploy_branch: Optional[str],
+        deployment_status_events: Optional[bool],
+        pull_request_comments: Optional[bool],
+        request_options: Optional[RequestOptionsLike],
+    ) -> GithubRepoConnection:
         response = await self._client._mutation(
             gql.UPDATE_GITHUB_REPO_CONNECTION_MUTATION,
             {
-                "input": {
-                    **target_input,
-                    "deployBranch": deploy_branch,
-                    "deploymentStatusEvents": deployment_status_events,
-                    "pullRequestComments": pull_request_comments,
-                }
+                "input": _update_input(
+                    id_key,
+                    id_value,
+                    deploy_branch=deploy_branch,
+                    deployment_status_events=deployment_status_events,
+                    pull_request_comments=pull_request_comments,
+                )
             },
             request_options=request_options,
         )

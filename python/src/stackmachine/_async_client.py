@@ -13,7 +13,12 @@ from ._config import (
 from ._graphql import operations as gql
 from ._models import Viewer
 from ._transport import AsyncTransport
-from ._types import AsyncStackMachineInitSettings, Headers, RequestOptionsLike
+from ._types import (
+    AsyncStackMachineInitSettings,
+    FileInput,
+    Headers,
+    RequestOptionsLike,
+)
 from ._uploads import AsyncUploader
 from .resources.apps import AsyncDeployAppsResource
 from .resources.deployments import AsyncDeploymentsResource
@@ -175,12 +180,14 @@ class AsyncStackMachine:
         variables: Optional[Mapping[str, Any]] = None,
         *,
         request_options: Optional[RequestOptionsLike] = None,
+        uploadables: Optional[Mapping[str, FileInput]] = None,
     ) -> Any:
         return await self._transport.execute(
             query,
             variables,
             request_options=request_options,
             mutation=True,
+            uploadables=uploadables,
         )
 
     def _subscribe_deployment(

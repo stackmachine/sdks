@@ -564,49 +564,50 @@ def test_sync_list_auto_paginates() -> None:
 
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
+        assert body["operationName"] == "srcListDeployAppsQuery"
+        assert "getDeployApps" in body["query"]
+        assert "ownerId: $ownerId" in body["query"]
         variables = body["variables"]
         calls.append(variables)
         if variables.get("after") is None:
             return graphql_response(
                 {
-                    "viewer": {
-                        "apps": {
-                            "edges": [{"node": app_payload("app_1")}],
-                            "pageInfo": {
-                                "hasNextPage": True,
-                                "hasPreviousPage": False,
-                                "endCursor": "cursor-1",
-                                "startCursor": "cursor-0",
-                            },
-                            "totalCount": 2,
-                        }
+                    "getDeployApps": {
+                        "edges": [{"node": app_payload("app_1")}],
+                        "pageInfo": {
+                            "hasNextPage": True,
+                            "hasPreviousPage": False,
+                            "endCursor": "cursor-1",
+                            "startCursor": "cursor-0",
+                        },
+                        "totalCount": 2,
                     }
                 }
             )
         return graphql_response(
             {
-                "viewer": {
-                    "apps": {
-                        "edges": [{"node": app_payload("app_2")}],
-                        "pageInfo": {
-                            "hasNextPage": False,
-                            "hasPreviousPage": True,
-                            "endCursor": "cursor-2",
-                            "startCursor": "cursor-1",
-                        },
-                        "totalCount": 2,
-                    }
+                "getDeployApps": {
+                    "edges": [{"node": app_payload("app_2")}],
+                    "pageInfo": {
+                        "hasNextPage": False,
+                        "hasPreviousPage": True,
+                        "endCursor": "cursor-2",
+                        "startCursor": "cursor-1",
+                    },
+                    "totalCount": 2,
                 }
             }
         )
 
     with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
-        apps = client.apps.list(limit=1)
+        apps = client.apps.list(owner_id="owner_1", limit=1)
         data = apps.auto_paging_to_array(limit=2)
 
     assert [app.id for app in data] == ["app_1", "app_2"]
     assert calls[0]["first"] == 1
+    assert calls[0]["ownerId"] == "owner_1"
     assert calls[1]["after"] == "cursor-1"
+    assert calls[1]["ownerId"] == "owner_1"
 
 
 def test_sync_app_volumes_lifecycle() -> None:
@@ -798,8 +799,6 @@ def test_sync_app_git_lifecycle() -> None:
                     }
                 }
             )
-        if body["operationName"] == "srcGetGithubRepoUpdateTargetQuery":
-            return graphql_response({"node": {"__typename": "DeployApp"}})
         if body["operationName"] == "srcUpdateGithubRepoConnectionMutation":
             return graphql_response(
                 {
@@ -815,9 +814,7 @@ def test_sync_app_git_lifecycle() -> None:
                 }
             )
         if body["operationName"] == "srcDisconnectGithubRepoFromAppMutation":
-            return graphql_response(
-                {"disconnectGithubRepoFromApp": {"success": True}}
-            )
+            return graphql_response({"disconnectGithubRepoFromApp": {"success": True}})
         raise AssertionError(f"Unexpected operation {body['operationName']}")
 
     with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
@@ -852,14 +849,13 @@ def test_sync_app_git_lifecycle() -> None:
         "deployBranch": "main",
         "clientMutationId": "cmid-connect-git",
     }
-    assert calls[3]["variables"] == {"id": "app_1"}
-    assert calls[4]["variables"]["input"] == {
+    assert calls[3]["variables"]["input"] == {
         "appId": "app_1",
         "deployBranch": "release",
         "deploymentStatusEvents": False,
         "pullRequestComments": True,
     }
-    assert calls[5]["variables"]["input"] == {"appId": "app_1"}
+    assert calls[4]["variables"]["input"] == {"appId": "app_1"}
 
 
 def test_sync_app_git_update_accepts_legacy_connection_id() -> None:
@@ -868,9 +864,19 @@ def test_sync_app_git_update_accepts_legacy_connection_id() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
         calls.append(body)
-        if body["operationName"] == "srcGetGithubRepoUpdateTargetQuery":
-            return graphql_response({"node": {"__typename": "GithubRepoConnection"}})
         if body["operationName"] == "srcUpdateGithubRepoConnectionMutation":
+            if body["variables"]["input"].get("appId"):
+                return httpx.Response(
+                    200,
+                    json={
+                        "errors": [
+                            {
+                                "message": "Expected a DeployApp id for appId, "
+                                "got GithubRepoConnection.",
+                            }
+                        ]
+                    },
+                )
             return graphql_response(
                 {
                     "updateGithubRepoConnection": {
@@ -891,7 +897,7 @@ def test_sync_app_git_update_accepts_legacy_connection_id() -> None:
         )
 
     assert updated.id == "conn_1"
-    assert calls[0]["variables"] == {"id": "conn_1"}
+    assert calls[0]["variables"]["input"]["appId"] == "conn_1"
     assert calls[1]["variables"]["input"]["connectionId"] == "conn_1"
     assert calls[1]["variables"]["input"].get("appId") is None
     assert calls[1]["variables"]["input"]["pullRequestComments"] is True
@@ -1036,12 +1042,8 @@ def test_sync_dns_domains_lifecycle() -> None:
                         "pageInfo": {
                             "hasNextPage": is_first_page,
                             "hasPreviousPage": not is_first_page,
-                            "endCursor": "cursor-1"
-                            if is_first_page
-                            else "cursor-2",
-                            "startCursor": "cursor-1"
-                            if is_first_page
-                            else "cursor-2",
+                            "endCursor": "cursor-1" if is_first_page else "cursor-2",
+                            "startCursor": "cursor-1" if is_first_page else "cursor-2",
                         },
                         "totalCount": 2,
                     }
@@ -1144,10 +1146,7 @@ def test_sync_dns_records_lifecycle_and_union_mapping() -> None:
         "SSHFP",
         "TXT",
     ]
-    records = [
-        dns_record_payload(kind, f"record_{kind.lower()}")
-        for kind in kinds
-    ]
+    records = [dns_record_payload(kind, f"record_{kind.lower()}") for kind in kinds]
 
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
@@ -1426,6 +1425,51 @@ def test_sync_emails_list_and_send() -> None:
     }
 
 
+def test_sync_emails_send_supports_raw_mime_upload() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        content_type = request.headers.get("content-type", "")
+        assert content_type.startswith("multipart/form-data")
+        body = request.content
+        assert b'name="operations"' in body
+        assert b'name="map"' in body
+        assert b'name="0"; filename="upload"' in body
+        assert b'"operationName": "srcSendAppEmailMutation"' in body
+        assert b'"rawMessage": null' in body
+        assert b'"0": ["variables.input.rawMessage"]' in body
+        assert b"Subject: Raw hello" in body
+        return graphql_response(
+            {
+                "sendAppEmail": {
+                    "success": True,
+                    "message": email_message_payload(
+                        "email_raw",
+                        subject="Raw hello",
+                        to=["user@example.com"],
+                    ),
+                }
+            }
+        )
+
+    with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
+        message = client.emails.send(
+            app="app_1",
+            to=["user@example.com"],
+            subject="Raw hello",
+            raw_message=(
+                b"From: app@example.com\r\n"
+                b"To: user@example.com\r\n"
+                b"Subject: Raw hello\r\n\r\n"
+                b"Hello from raw MIME."
+            ),
+        )
+
+    assert message.id == "email_raw"
+    assert len(requests) == 1
+
+
 def test_sync_emails_validate_list_target_and_raise_on_send_failure() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
@@ -1459,16 +1503,10 @@ def test_sync_new_mutations_raise_on_unsuccessful_or_null_payloads() -> None:
         operation_name = json.loads(request.content)["operationName"]
         if operation_name == "srcConnectGithubRepoToAppMutation":
             return graphql_response({"connectGithubRepoToApp": {"success": False}})
-        if operation_name == "srcGetGithubRepoUpdateTargetQuery":
-            return graphql_response({"node": {"__typename": "DeployApp"}})
         if operation_name == "srcUpdateGithubRepoConnectionMutation":
-            return graphql_response(
-                {"updateGithubRepoConnection": {"success": False}}
-            )
+            return graphql_response({"updateGithubRepoConnection": {"success": False}})
         if operation_name == "srcDisconnectGithubRepoFromAppMutation":
-            return graphql_response(
-                {"disconnectGithubRepoFromApp": {"success": False}}
-            )
+            return graphql_response({"disconnectGithubRepoFromApp": {"success": False}})
         if operation_name == "srcCreateAppDatabaseMutation":
             return graphql_response({"createAppDb": None})
         if operation_name == "srcCreateDatabaseAndLinkToAppMutation":
@@ -1480,9 +1518,7 @@ def test_sync_new_mutations_raise_on_unsuccessful_or_null_payloads() -> None:
         if operation_name == "srcRegisterDNSDomainMutation":
             return graphql_response({"registerDomain": {"success": False}})
         if operation_name == "srcUpsertDNSDomainFromZoneFileMutation":
-            return graphql_response(
-                {"upsertDomainFromZoneFile": {"success": False}}
-            )
+            return graphql_response({"upsertDomainFromZoneFile": {"success": False}})
         if operation_name == "srcDeleteDNSDomainMutation":
             return graphql_response({"deleteDomain": {"success": False}})
         if operation_name == "srcUpsertDNSRecordMutation":
@@ -1554,27 +1590,30 @@ async def test_async_viewer_returns_model() -> None:
 
 
 async def test_async_list_request_can_be_awaited_and_iterated() -> None:
-    async def handler(_: httpx.Request) -> httpx.Response:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        assert body["operationName"] == "srcListDeployAppsQuery"
+        assert "getDeployApps" in body["query"]
+        assert "ownerId: $ownerId" in body["query"]
+        assert body["variables"]["ownerId"] == "owner_1"
         return graphql_response(
             {
-                "viewer": {
-                    "apps": {
-                        "edges": [{"node": app_payload("app_1")}],
-                        "pageInfo": {
-                            "hasNextPage": False,
-                            "hasPreviousPage": False,
-                            "endCursor": "cursor-1",
-                            "startCursor": "cursor-0",
-                        },
-                        "totalCount": 1,
-                    }
+                "getDeployApps": {
+                    "edges": [{"node": app_payload("app_1")}],
+                    "pageInfo": {
+                        "hasNextPage": False,
+                        "hasPreviousPage": False,
+                        "endCursor": "cursor-1",
+                        "startCursor": "cursor-0",
+                    },
+                    "totalCount": 1,
                 }
             }
         )
 
     client = AsyncStackMachine("secret", http_transport=httpx.MockTransport(handler))
     try:
-        apps = client.apps.list(limit=1)
+        apps = client.apps.list(owner_id="owner_1", limit=1)
         page = await apps
         iterated = [app async for app in apps]
     finally:

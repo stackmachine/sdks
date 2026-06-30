@@ -23,7 +23,7 @@ const relay_runtime_1 = require("relay-runtime");
 //   network,
 //   store,
 // });
-const environment = (0, environment_1.createEnvironment)({ endpoint: "https://registry.wasmer.wtf/graphql" });
+const environment = (0, environment_1.createEnvironment)({ endpoint: "https://api.stackmachine.com/graphql" });
 async function doQuery() {
     let query = await (0, relay_runtime_1.fetchQuery)(environment, (0, relay_runtime_1.graphql) `
     query AppQuery {

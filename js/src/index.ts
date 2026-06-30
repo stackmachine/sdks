@@ -35,6 +35,7 @@ import { srcGetAppByIdQuery } from "__generated__/srcGetAppByIdQuery.graphql";
 import { srcGetAppByNameQuery } from "__generated__/srcGetAppByNameQuery.graphql";
 import { srcGetAppLogsQuery } from "__generated__/srcGetAppLogsQuery.graphql";
 import { srcGetDeploymentStatusQuery } from "__generated__/srcGetDeploymentStatusQuery.graphql";
+import { srcListDeployAppsQuery } from "__generated__/srcListDeployAppsQuery.graphql";
 import { srcDeleteAppDomainMutation } from "__generated__/srcDeleteAppDomainMutation.graphql";
 import { srcDeleteAppVolumeMutation } from "__generated__/srcDeleteAppVolumeMutation.graphql";
 import { srcUpsertAppDomainMutation } from "__generated__/srcUpsertAppDomainMutation.graphql";
@@ -45,6 +46,7 @@ import RelayRuntime, {
   ReaderFragment,
   type Environment,
   type GraphQLTaggedNode,
+  type UploadableMap,
 } from "relay-runtime";
 import {
   createEnvironment,
@@ -165,6 +167,7 @@ type SdkContext = {
     mutation: GraphQLTaggedNode,
     variables: TMutation["variables"],
     options?: StackMachineRequestOptions,
+    uploadables?: UploadableMap | null,
   ): Promise<TMutation["response"]>;
   _requestSubscription<TSubscription extends { response: unknown }>(
     subscription: GraphQLTaggedNode,
@@ -266,11 +269,23 @@ export type AppsDatabasesListInput = StackMachinePaginationParams & {
   app: string;
 };
 export type DatabaseEngine = "MYSQL" | "POSTGRES" | "SQLITE";
-export type AppsDatabasesCreateInput = {
+export type AppsDatabasesCreateWithEngineInput = {
   app: string;
-  dbEngine?: DatabaseEngine | null;
+  dbEngine: DatabaseEngine;
   name?: string | null;
 };
+/**
+ * @deprecated Prefer `AppsDatabasesCreateWithEngineInput` with `dbEngine`.
+ * This remains supported for compatibility with the legacy `createAppDb` mutation.
+ */
+export type AppsDatabasesCreateLegacyInput = {
+  app: string;
+  dbEngine?: null;
+  name?: string | null;
+};
+export type AppsDatabasesCreateInput =
+  | AppsDatabasesCreateWithEngineInput
+  | AppsDatabasesCreateLegacyInput;
 export type AppDatabaseWithPassword = {
   database: AppDatabase;
   password: string;
@@ -386,6 +401,7 @@ export type EmailsSendInput = {
   fromAddress?: string | null;
   fromEmailId?: string | null;
   htmlBody?: string | null;
+  rawMessage?: Blob | File | null;
   replyTo?: string | null;
   textBody?: string | null;
 };
@@ -393,7 +409,7 @@ export type AppAliasSortBy = "NEWEST" | "OLDEST";
 export type DeployAppsSortBy = "MOST_ACTIVE" | "NEWEST" | "OLDEST";
 export type DeployAppVersionsSortBy = "NEWEST" | "OLDEST";
 export type DeployAppsListInput = StackMachinePaginationParams & {
-  collaborating?: boolean;
+  ownerId?: string | null;
   sortBy?: DeployAppsSortBy;
 };
 export type AppsDomainsListInput = StackMachinePaginationParams & {
@@ -480,6 +496,13 @@ function resourceMissingError(
     code: "resource_missing",
     param,
   });
+}
+
+function shouldRetryGitUpdateWithConnectionId(error: unknown): boolean {
+  return (
+    error instanceof StackMachineGraphQLError ||
+    error instanceof StackMachineInvalidRequestError
+  );
 }
 
 function operationNameFromNode(node: GraphQLTaggedNode): string | undefined {
@@ -698,6 +721,7 @@ export class DeployApp {
     fragment srcDeployAppData on DeployApp {
       id
       willPerishAt
+      createdAt
       name
       url
       adminUrl
@@ -715,6 +739,7 @@ export class DeployApp {
   `;
   id: string;
   willPerishAt: Date | null;
+  createdAt: Date;
   name: string;
   url: string;
   adminUrl: string;
@@ -729,6 +754,7 @@ export class DeployApp {
     const typedData = data as srcDeployAppData$data;
     this.id = typedData.id;
     this.willPerishAt = parseDate(typedData.willPerishAt);
+    this.createdAt = parseDate(typedData.createdAt)!;
     this.name = typedData.name;
     this.url = typedData.url;
     this.adminUrl = typedData.adminUrl;
@@ -2302,6 +2328,7 @@ export class AppsDatabasesResource {
     input: AppsDatabasesCreateInput,
     options?: StackMachineRequestOptions,
   ): Promise<AppDatabaseWithPassword> {
+    // Prefer the engine-aware mutation. The no-engine branch remains for legacy callers.
     if (input.dbEngine) {
       const response = await this.client._mutation<any>(
         graphql`
@@ -2568,22 +2595,32 @@ export class AppsGitResource {
     input: AppsGitUpdateInput,
     options?: StackMachineRequestOptions,
   ): Promise<GithubRepoConnection> {
-    const target = await this.client._query<any>(
-      graphql`
-        query srcGetGithubRepoUpdateTargetQuery($id: ID!) {
-          node(id: $id) {
-            __typename
-          }
-        }
-      `,
-      { id: appOrConnectionId },
-      options,
-    );
-    const targetInput =
-      target?.node?.__typename === "GithubRepoConnection"
-        ? { connectionId: appOrConnectionId }
-        : { appId: appOrConnectionId };
+    try {
+      return await this.updateWithId(
+        "appId",
+        appOrConnectionId,
+        input,
+        options,
+      );
+    } catch (error) {
+      if (!shouldRetryGitUpdateWithConnectionId(error)) {
+        throw error;
+      }
+      return this.updateWithId(
+        "connectionId",
+        appOrConnectionId,
+        input,
+        options,
+      );
+    }
+  }
 
+  private async updateWithId(
+    idKey: "appId" | "connectionId",
+    id: string,
+    input: AppsGitUpdateInput,
+    options?: StackMachineRequestOptions,
+  ): Promise<GithubRepoConnection> {
     const response = await this.client._mutation<any>(
       graphql`
         mutation srcUpdateGithubRepoConnectionMutation(
@@ -2599,7 +2636,7 @@ export class AppsGitResource {
       `,
       {
         input: {
-          ...targetInput,
+          [idKey]: id,
           deployBranch: input.deployBranch,
           deploymentStatusEvents: input.deploymentStatusEvents,
           pullRequestComments: input.pullRequestComments,
@@ -3441,39 +3478,37 @@ export class DeployAppsResource {
       options,
       url: "/v1/apps",
       fetchPage: async (pagination, params, requestOptions) => {
-        const query = await this.client._query<any>(
+        const query = await this.client._query<srcListDeployAppsQuery>(
           graphql`
             query srcListDeployAppsQuery(
               $first: Int
               $after: String
               $last: Int
               $before: String
+              $ownerId: ID
               $sortBy: DeployAppsSortBy
-              $collaborating: Boolean
             ) {
-              viewer {
-                apps(
-                  first: $first
-                  after: $after
-                  last: $last
-                  before: $before
-                  sortBy: $sortBy
-                  collaborating: $collaborating
-                ) {
-                  edges {
-                    cursor
-                    node {
-                      ...srcDeployAppData
-                    }
+              getDeployApps(
+                first: $first
+                after: $after
+                last: $last
+                before: $before
+                ownerId: $ownerId
+                sortBy: $sortBy
+              ) {
+                edges {
+                  cursor
+                  node {
+                    ...srcDeployAppData
                   }
-                  pageInfo {
-                    hasNextPage
-                    hasPreviousPage
-                    endCursor
-                    startCursor
-                  }
-                  totalCount
                 }
+                pageInfo {
+                  hasNextPage
+                  hasPreviousPage
+                  endCursor
+                  startCursor
+                }
+                totalCount
               }
             }
           `,
@@ -3482,13 +3517,13 @@ export class DeployAppsResource {
             after: pagination.after,
             last: pagination.last,
             before: pagination.before,
+            ownerId: params.ownerId,
             sortBy: params.sortBy ?? "NEWEST",
-            collaborating: params.collaborating,
           },
           requestOptions,
         );
 
-        return connectionToListPageData(query?.viewer?.apps, (node: any) => {
+        return connectionToListPageData(query?.getDeployApps, (node: any) => {
           const appData = this.client._getFragmentData<srcDeployAppData$data>(
             nodeApp,
             node,
@@ -4435,6 +4470,9 @@ export class EmailsResource {
     input: EmailsSendInput,
     options?: StackMachineRequestOptions,
   ): Promise<EmailMessage> {
+    const uploadables = input.rawMessage
+      ? { "variables.input.rawMessage": input.rawMessage }
+      : undefined;
     const response = await this.client._mutation<any>(
       graphql`
         mutation srcSendAppEmailMutation($input: SendAppEmailInput!) {
@@ -4456,11 +4494,13 @@ export class EmailsResource {
           fromAddress: input.fromAddress,
           fromEmailId: input.fromEmailId,
           htmlBody: input.htmlBody,
+          rawMessage: input.rawMessage ? null : undefined,
           replyTo: input.replyTo,
           textBody: input.textBody,
         },
       },
       options,
+      uploadables,
     );
     const payload = requiredPayload(
       response.sendAppEmail,
@@ -4596,6 +4636,7 @@ export class StackMachine implements SdkContext {
     mutation: GraphQLTaggedNode,
     variables: TMutation["variables"],
     options?: StackMachineRequestOptions,
+    uploadables?: UploadableMap | null,
   ): Promise<TMutation["response"]> {
     const operationName = operationNameFromNode(mutation);
     const variablesWithClientMutationId = withClientMutationId(
@@ -4609,6 +4650,7 @@ export class StackMachine implements SdkContext {
           mutation,
           variables: variablesWithClientMutationId,
           cacheConfig: this._cacheConfig(options),
+          uploadables,
           onCompleted: (response, errors) => {
             if (errors && errors.length > 0) {
               reject(

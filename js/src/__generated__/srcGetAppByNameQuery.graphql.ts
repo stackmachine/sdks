@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<953a66da41655499e62dd7d9268a1beb>>
+ * @generated SignedSource<<be19a4c52d475f9cffb3ad225583b96b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -109,6 +109,13 @@ return {
             "alias": null,
             "args": null,
             "kind": "ScalarField",
+            "name": "createdAt",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
             "name": "name",
             "storageKey": null
           },
@@ -158,12 +165,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "f195602c15a15de4d3a1eed319892bc6",
+    "cacheID": "c75c5951738de865fc240311699e8a65",
     "id": null,
     "metadata": {},
     "name": "srcGetAppByNameQuery",
     "operationKind": "query",
-    "text": "query srcGetAppByNameQuery(\n  $name: String!\n  $owner: String\n) {\n  app: getDeployApp(name: $name, owner: $owner) {\n    ...srcDeployAppData\n    id\n  }\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  name\n  url\n  adminUrl\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n"
+    "text": "query srcGetAppByNameQuery(\n  $name: String!\n  $owner: String\n) {\n  app: getDeployApp(name: $name, owner: $owner) {\n    ...srcDeployAppData\n    id\n  }\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  createdAt\n  name\n  url\n  adminUrl\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n"
   }
 };
 })();

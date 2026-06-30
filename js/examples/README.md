@@ -16,6 +16,12 @@ Run an example with Node:
 node manageAppDatabases.js
 ```
 
+Export your first 1,000 apps to CSV:
+
+```bash
+node exportAppsCsv.js apps.csv
+```
+
 Examples that create or update resources:
 
 - `manageAppGitConnection.js`

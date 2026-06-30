@@ -247,6 +247,21 @@ const message = await client.emails.send({
   textBody: "Plain text body",
   htmlBody: "<p>HTML body</p>",
 });
+
+const rawMessage = await client.emails.send({
+  app: app.id,
+  to: ["user@example.com"],
+  subject: "Raw MIME from StackMachine",
+  rawMessage: new Blob(
+    [
+      "From: app@example.com\r\n",
+      "To: user@example.com\r\n",
+      "Subject: Raw MIME from StackMachine\r\n\r\n",
+      "Plain text body",
+    ],
+    { type: "message/rfc822" },
+  ),
+});
 ```
 
 Check out the examples below for more client usage.

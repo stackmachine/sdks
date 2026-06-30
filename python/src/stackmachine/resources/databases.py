@@ -81,6 +81,10 @@ class AppsDatabasesResource:
         name: Optional[str] = None,
         request_options: Optional[RequestOptionsLike] = None,
     ) -> AppDatabaseCredentialsResult:
+        """Create a database, preferably with `db_engine`.
+
+        Omitting `db_engine` keeps compatibility with the legacy create mutation.
+        """
         if db_engine:
             response = self._client._mutation(
                 gql.CREATE_DATABASE_AND_LINK_TO_APP_MUTATION,
@@ -186,6 +190,10 @@ class AsyncAppsDatabasesResource:
         name: Optional[str] = None,
         request_options: Optional[RequestOptionsLike] = None,
     ) -> AppDatabaseCredentialsResult:
+        """Create a database, preferably with `db_engine`.
+
+        Omitting `db_engine` keeps compatibility with the legacy create mutation.
+        """
         if db_engine:
             response = await self._client._mutation(
                 gql.CREATE_DATABASE_AND_LINK_TO_APP_MUTATION,

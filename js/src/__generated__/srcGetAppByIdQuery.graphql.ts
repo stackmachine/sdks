@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<65ab971e8d92a110087c5a3838dbd221>>
+ * @generated SignedSource<<e9aa46e61c81f94c8f038b702f136a04>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -111,6 +111,13 @@ return {
                 "alias": null,
                 "args": null,
                 "kind": "ScalarField",
+                "name": "createdAt",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
                 "name": "name",
                 "storageKey": null
               },
@@ -164,12 +171,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "f7f6fc7007588569dc3d42d7185d5eba",
+    "cacheID": "5b1c92cdbbef3608597ed90792663f04",
     "id": null,
     "metadata": {},
     "name": "srcGetAppByIdQuery",
     "operationKind": "query",
-    "text": "query srcGetAppByIdQuery(\n  $id: ID!\n) {\n  app: node(id: $id) {\n    __typename\n    ...srcDeployAppData\n    id\n  }\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  name\n  url\n  adminUrl\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n"
+    "text": "query srcGetAppByIdQuery(\n  $id: ID!\n) {\n  app: node(id: $id) {\n    __typename\n    ...srcDeployAppData\n    id\n  }\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  createdAt\n  name\n  url\n  adminUrl\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n"
   }
 };
 })();

@@ -363,18 +363,28 @@ async function performNetworkFetch(
     }
 
     const formData = new FormData();
-    if (request.text) {
-      formData.append("query", request.text);
-    }
-    if (request.id) {
-      formData.append("id", request.id);
-    }
-    formData.append("variables", JSON.stringify(cleanedVariables));
-    formData.append("operationName", operationName);
+    formData.append(
+      "operations",
+      JSON.stringify({
+        query: request.text,
+        variables: cleanedVariables,
+        operationName,
+        id: request.id,
+      }),
+    );
 
-    Object.keys(uploadables).forEach((key) => {
-      if (Object.prototype.hasOwnProperty.call(uploadables, key)) {
-        formData.append(key, uploadables[key]);
+    const uploadEntries = Object.keys(uploadables)
+      .filter((path) => Object.prototype.hasOwnProperty.call(uploadables, path))
+      .map((path, index) => [path, String(index)] as const);
+    const uploadMap = uploadEntries.reduce<Record<string, string[]>>(
+      (map, [path, key]) => ({ ...map, [key]: [path] }),
+      {},
+    );
+    formData.append("map", JSON.stringify(uploadMap));
+
+    uploadEntries.forEach(([path, key]) => {
+      if (Object.prototype.hasOwnProperty.call(uploadables, path)) {
+        formData.append(key, uploadables[path]);
       }
     });
 

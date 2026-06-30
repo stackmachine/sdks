@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c4ff383b56b0209cc389d9092ecc0fbc>>
+ * @generated SignedSource<<c765b71f9faf6c182edef747713317e2>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,29 +14,27 @@ export type DeployAppsSortBy = "MOST_ACTIVE" | "NEWEST" | "OLDEST" | "%future ad
 export type srcListDeployAppsQuery$variables = {
   after?: string | null | undefined;
   before?: string | null | undefined;
-  collaborating?: boolean | null | undefined;
   first?: number | null | undefined;
   last?: number | null | undefined;
+  ownerId?: string | null | undefined;
   sortBy?: DeployAppsSortBy | null | undefined;
 };
 export type srcListDeployAppsQuery$data = {
-  readonly viewer: {
-    readonly apps: {
-      readonly edges: ReadonlyArray<{
-        readonly cursor: string;
-        readonly node: {
-          readonly " $fragmentSpreads": FragmentRefs<"srcDeployAppData">;
-        };
-      }>;
-      readonly pageInfo: {
-        readonly endCursor: string | null | undefined;
-        readonly hasNextPage: boolean;
-        readonly hasPreviousPage: boolean;
-        readonly startCursor: string | null | undefined;
+  readonly getDeployApps: {
+    readonly edges: ReadonlyArray<{
+      readonly cursor: string;
+      readonly node: {
+        readonly " $fragmentSpreads": FragmentRefs<"srcDeployAppData">;
       };
-      readonly totalCount: number | null | undefined;
+    }>;
+    readonly pageInfo: {
+      readonly endCursor: string | null | undefined;
+      readonly hasNextPage: boolean;
+      readonly hasPreviousPage: boolean;
+      readonly startCursor: string | null | undefined;
     };
-  } | null | undefined;
+    readonly totalCount: number | null | undefined;
+  };
 };
 export type srcListDeployAppsQuery = {
   response: srcListDeployAppsQuery$data;
@@ -57,17 +55,17 @@ v1 = {
 v2 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "collaborating"
+  "name": "first"
 },
 v3 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "first"
+  "name": "last"
 },
 v4 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "last"
+  "name": "ownerId"
 },
 v5 = {
   "defaultValue": null,
@@ -87,11 +85,6 @@ v6 = [
   },
   {
     "kind": "Variable",
-    "name": "collaborating",
-    "variableName": "collaborating"
-  },
-  {
-    "kind": "Variable",
     "name": "first",
     "variableName": "first"
   },
@@ -99,6 +92,11 @@ v6 = [
     "kind": "Variable",
     "name": "last",
     "variableName": "last"
+  },
+  {
+    "kind": "Variable",
+    "name": "ownerId",
+    "variableName": "ownerId"
   },
   {
     "kind": "Variable",
@@ -182,53 +180,42 @@ return {
     "selections": [
       {
         "alias": null,
-        "args": null,
-        "concreteType": "User",
+        "args": (v6/*: any*/),
+        "concreteType": "DeployAppConnection",
         "kind": "LinkedField",
-        "name": "viewer",
+        "name": "getDeployApps",
         "plural": false,
         "selections": [
           {
             "alias": null,
-            "args": (v6/*: any*/),
-            "concreteType": "DeployAppConnection",
+            "args": null,
+            "concreteType": "DeployAppEdge",
             "kind": "LinkedField",
-            "name": "apps",
-            "plural": false,
+            "name": "edges",
+            "plural": true,
             "selections": [
+              (v7/*: any*/),
               {
                 "alias": null,
                 "args": null,
-                "concreteType": "DeployAppEdge",
+                "concreteType": "DeployApp",
                 "kind": "LinkedField",
-                "name": "edges",
-                "plural": true,
+                "name": "node",
+                "plural": false,
                 "selections": [
-                  (v7/*: any*/),
                   {
-                    "alias": null,
                     "args": null,
-                    "concreteType": "DeployApp",
-                    "kind": "LinkedField",
-                    "name": "node",
-                    "plural": false,
-                    "selections": [
-                      {
-                        "args": null,
-                        "kind": "FragmentSpread",
-                        "name": "srcDeployAppData"
-                      }
-                    ],
-                    "storageKey": null
+                    "kind": "FragmentSpread",
+                    "name": "srcDeployAppData"
                   }
                 ],
                 "storageKey": null
-              },
-              (v8/*: any*/),
-              (v9/*: any*/)
+              }
             ],
             "storageKey": null
-          }
+          },
+          (v8/*: any*/),
+          (v9/*: any*/)
         ],
         "storageKey": null
       }
@@ -239,132 +226,127 @@ return {
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v3/*: any*/),
+      (v2/*: any*/),
       (v0/*: any*/),
-      (v4/*: any*/),
+      (v3/*: any*/),
       (v1/*: any*/),
-      (v5/*: any*/),
-      (v2/*: any*/)
+      (v4/*: any*/),
+      (v5/*: any*/)
     ],
     "kind": "Operation",
     "name": "srcListDeployAppsQuery",
     "selections": [
       {
         "alias": null,
-        "args": null,
-        "concreteType": "User",
+        "args": (v6/*: any*/),
+        "concreteType": "DeployAppConnection",
         "kind": "LinkedField",
-        "name": "viewer",
+        "name": "getDeployApps",
         "plural": false,
         "selections": [
           {
             "alias": null,
-            "args": (v6/*: any*/),
-            "concreteType": "DeployAppConnection",
+            "args": null,
+            "concreteType": "DeployAppEdge",
             "kind": "LinkedField",
-            "name": "apps",
-            "plural": false,
+            "name": "edges",
+            "plural": true,
             "selections": [
+              (v7/*: any*/),
               {
                 "alias": null,
                 "args": null,
-                "concreteType": "DeployAppEdge",
+                "concreteType": "DeployApp",
                 "kind": "LinkedField",
-                "name": "edges",
-                "plural": true,
+                "name": "node",
+                "plural": false,
                 "selections": [
-                  (v7/*: any*/),
+                  (v10/*: any*/),
                   {
                     "alias": null,
                     "args": null,
-                    "concreteType": "DeployApp",
+                    "kind": "ScalarField",
+                    "name": "willPerishAt",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "createdAt",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "name",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "url",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "adminUrl",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "concreteType": "DeployAppVersion",
                     "kind": "LinkedField",
-                    "name": "node",
+                    "name": "activeVersion",
                     "plural": false,
                     "selections": [
-                      (v10/*: any*/),
-                      {
-                        "alias": null,
-                        "args": null,
-                        "kind": "ScalarField",
-                        "name": "willPerishAt",
-                        "storageKey": null
-                      },
-                      {
-                        "alias": null,
-                        "args": null,
-                        "kind": "ScalarField",
-                        "name": "name",
-                        "storageKey": null
-                      },
-                      {
-                        "alias": null,
-                        "args": null,
-                        "kind": "ScalarField",
-                        "name": "url",
-                        "storageKey": null
-                      },
-                      {
-                        "alias": null,
-                        "args": null,
-                        "kind": "ScalarField",
-                        "name": "adminUrl",
-                        "storageKey": null
-                      },
-                      {
-                        "alias": null,
-                        "args": null,
-                        "concreteType": "DeployAppVersion",
-                        "kind": "LinkedField",
-                        "name": "activeVersion",
-                        "plural": false,
-                        "selections": [
-                          (v10/*: any*/)
-                        ],
-                        "storageKey": null
-                      },
-                      {
-                        "alias": null,
-                        "args": null,
-                        "kind": "ScalarField",
-                        "name": "favicon",
-                        "storageKey": null
-                      },
-                      {
-                        "alias": null,
-                        "args": null,
-                        "kind": "ScalarField",
-                        "name": "screenshot",
-                        "storageKey": null
-                      }
+                      (v10/*: any*/)
                     ],
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "favicon",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "screenshot",
                     "storageKey": null
                   }
                 ],
                 "storageKey": null
-              },
-              (v8/*: any*/),
-              (v9/*: any*/)
+              }
             ],
             "storageKey": null
           },
-          (v10/*: any*/)
+          (v8/*: any*/),
+          (v9/*: any*/)
         ],
         "storageKey": null
       }
     ]
   },
   "params": {
-    "cacheID": "c0740dd311f0e310a01a5b4688414786",
+    "cacheID": "22f54f8131e19caedf7ebd0935559444",
     "id": null,
     "metadata": {},
     "name": "srcListDeployAppsQuery",
     "operationKind": "query",
-    "text": "query srcListDeployAppsQuery(\n  $first: Int\n  $after: String\n  $last: Int\n  $before: String\n  $sortBy: DeployAppsSortBy\n  $collaborating: Boolean\n) {\n  viewer {\n    apps(first: $first, after: $after, last: $last, before: $before, sortBy: $sortBy, collaborating: $collaborating) {\n      edges {\n        cursor\n        node {\n          ...srcDeployAppData\n          id\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        endCursor\n        startCursor\n      }\n      totalCount\n    }\n    id\n  }\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  name\n  url\n  adminUrl\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n"
+    "text": "query srcListDeployAppsQuery(\n  $first: Int\n  $after: String\n  $last: Int\n  $before: String\n  $ownerId: ID\n  $sortBy: DeployAppsSortBy\n) {\n  getDeployApps(first: $first, after: $after, last: $last, before: $before, ownerId: $ownerId, sortBy: $sortBy) {\n    edges {\n      cursor\n      node {\n        ...srcDeployAppData\n        id\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      endCursor\n      startCursor\n    }\n    totalCount\n  }\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  createdAt\n  name\n  url\n  adminUrl\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n"
   }
 };
 })();
 
-(node as any).hash = "cf671118df2cef3c419faa992ee143c7";
+(node as any).hash = "cbd15a8f6d0ad872d83931a2ad512319";
 
 export default node;

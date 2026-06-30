@@ -40,3 +40,19 @@ const sentMessage = await client.emails.send({
   replyTo: "support@example.com",
 });
 console.log("Sent email:", sentMessage.id);
+
+const rawMessage = await client.emails.send({
+  app: appId,
+  to: ["user@example.com"],
+  subject: "Raw MIME from StackMachine",
+  rawMessage: new Blob(
+    [
+      "From: app@example.com\r\n",
+      "To: user@example.com\r\n",
+      "Subject: Raw MIME from StackMachine\r\n\r\n",
+      "This raw MIME email was sent from a StackMachine app.",
+    ],
+    { type: "message/rfc822" },
+  ),
+});
+console.log("Sent raw email:", rawMessage.id);

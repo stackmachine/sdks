@@ -110,7 +110,8 @@ EmailMessageStatus = Literal[
 
 
 class DeployAppsListInput(PaginationOptions, total=False):
-    collaborating: Optional[bool]
+    owner_id: Optional[str]
+    ownerId: Optional[str]
     sort_by: DeployAppsSortBy
     sortBy: DeployAppsSortBy
 
@@ -396,6 +397,8 @@ class EmailsSendInput(TypedDict, total=False):
     fromEmailId: Optional[str]
     html_body: Optional[str]
     htmlBody: Optional[str]
+    raw_message: Optional[FileInput]
+    rawMessage: Optional[FileInput]
     reply_to: Optional[str]
     replyTo: Optional[str]
     text_body: Optional[str]

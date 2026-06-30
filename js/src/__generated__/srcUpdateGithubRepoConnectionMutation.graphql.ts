@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<77d807686f7ff063cbd3f05402bf4869>>
+ * @generated SignedSource<<18dcb062248eecc52b5e165fa5f03e41>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -210,6 +210,13 @@ return {
                     "name": "willPerishAt",
                     "storageKey": null
                   },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "createdAt",
+                    "storageKey": null
+                  },
                   (v4/*: any*/),
                   (v5/*: any*/),
                   {
@@ -311,12 +318,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "1083d6bf52e2cd383f6645697c922048",
+    "cacheID": "fb2ee0cf850bce5125fed1009dff74d4",
     "id": null,
     "metadata": {},
     "name": "srcUpdateGithubRepoConnectionMutation",
     "operationKind": "mutation",
-    "text": "mutation srcUpdateGithubRepoConnectionMutation(\n  $input: UpdateGithubRepoAppConnectionInput!\n) {\n  updateGithubRepoConnection(input: $input) {\n    success\n    githubRepoConnection {\n      ...srcGithubRepoConnectionData\n      id\n    }\n  }\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  name\n  url\n  adminUrl\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n\nfragment srcGithubRepoConnectionData on GithubRepoConnection {\n  id\n  connectedAt\n  deployBranch\n  deploymentStatusEvents\n  pullRequestComments\n  connectedBy {\n    id\n    username\n    globalName\n  }\n  app {\n    ...srcDeployAppData\n    id\n  }\n  githubRepoInstallation {\n    id\n    name\n    namespace\n    repoUrl\n    url\n    installation {\n      id\n      slug\n      githubConfigureUrl\n    }\n  }\n}\n"
+    "text": "mutation srcUpdateGithubRepoConnectionMutation(\n  $input: UpdateGithubRepoAppConnectionInput!\n) {\n  updateGithubRepoConnection(input: $input) {\n    success\n    githubRepoConnection {\n      ...srcGithubRepoConnectionData\n      id\n    }\n  }\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  createdAt\n  name\n  url\n  adminUrl\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n\nfragment srcGithubRepoConnectionData on GithubRepoConnection {\n  id\n  connectedAt\n  deployBranch\n  deploymentStatusEvents\n  pullRequestComments\n  connectedBy {\n    id\n    username\n    globalName\n  }\n  app {\n    ...srcDeployAppData\n    id\n  }\n  githubRepoInstallation {\n    id\n    name\n    namespace\n    repoUrl\n    url\n    installation {\n      id\n      slug\n      githubConfigureUrl\n    }\n  }\n}\n"
   }
 };
 })();

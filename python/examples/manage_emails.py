@@ -30,3 +30,16 @@ with StackMachine(os.environ["STACKMACHINE_API_KEY"]) as client:
         reply_to="support@example.com",
     )
     print("Sent email:", sent_message.id)
+
+    raw_message = client.emails.send(
+        app=app_id,
+        to=["user@example.com"],
+        subject="Raw MIME from StackMachine",
+        raw_message=(
+            b"From: app@example.com\r\n"
+            b"To: user@example.com\r\n"
+            b"Subject: Raw MIME from StackMachine\r\n\r\n"
+            b"This raw MIME email was sent from a StackMachine app."
+        ),
+    )
+    print("Sent raw email:", raw_message.id)

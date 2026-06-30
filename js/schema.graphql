@@ -1409,6 +1409,88 @@ type CreateRepoForAppTemplatePayload {
   success: Boolean!
 }
 
+type CronJob implements Node {
+  createdAt: DateTime!
+  enabled: Boolean!
+  id: ID!
+  invocations(after: String, end: DateTime, first: Int, start: DateTime): CronJobInvocationConnection!
+  isManaged: Boolean!
+  kind: CronJobKind!
+  maxRetries: Int
+  maxScheduleDrift: String
+  name: String!
+  owner: Owner
+  schedule: String!
+  source: CronJobSource!
+  target: CronJobTarget!
+  timeout: String
+  updatedAt: DateTime!
+}
+
+type CronJobConnection {
+  edges: [CronJobEdge!]!
+  nodes: [CronJob!]!
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+type CronJobEdge {
+  cursor: String!
+  node: CronJob!
+}
+
+type CronJobInvocation {
+  durationMs: Int
+  edgeJobId: String!
+  errorSummary: String
+  finishedAt: DateTime
+  id: ID!
+  logs(after: String, before: String, first: Int, last: Int): LogConnection!
+  result: CronJobInvocationResult
+  retryAttempts: Int
+  scheduledAt: DateTime
+  startedAt: DateTime
+  status: CronJobInvocationStatus
+}
+
+type CronJobInvocationConnection {
+  edges: [CronJobInvocationEdge!]!
+  nodes: [CronJobInvocation!]!
+  pageInfo: PageInfo!
+}
+
+type CronJobInvocationEdge {
+  cursor: String!
+  node: CronJobInvocation!
+}
+
+union CronJobInvocationResult = ExecuteCronJobInvocationResult | FetchCronJobInvocationResult
+
+enum CronJobInvocationStatus {
+  FAILURE
+  PENDING
+  RUNNING
+  SUCCESS
+}
+
+enum CronJobKind {
+  EXECUTE
+  FETCH
+}
+
+enum CronJobSource {
+  API
+  CONFIG
+  PROVISIONED
+}
+
+union CronJobTarget = ExecuteCronJobTarget | FetchCronJobTarget
+
+enum CronJobsSortBy {
+  NEWEST
+  OLDEST
+}
+
 type DNAMERecord implements DNSRecordInterface & Node {
   createdAt: DateTime!
 
@@ -1747,6 +1829,7 @@ type DeployApp implements Node {
   buildConfiguration: BuildConfiguration
   createdAt: DateTime!
   createdBy: User!
+  cronJobs(after: String, before: String, first: Int, kind: CronJobKind, last: Int, offset: Int, sortBy: CronJobsSortBy): CronJobConnection!
   databases(after: String, before: String, first: Int, last: Int, offset: Int): AppDatabaseConnection!
   deleted: Boolean!
   deployments(after: String, before: String, first: Int, last: Int): DeploymentConnection @deprecated(reason: "Use rollouts instead")
@@ -1756,6 +1839,7 @@ type DeployApp implements Node {
   envVars(after: String, before: String, first: Int, last: Int, nameRegex: String, names: [String], offset: Int): EnvVarConnection!
   favicon: URL
   forceHttps: Boolean!
+  githubPrPreviews(prNumber: Int): [GithubPrPreviewDeployment!]!
   githubRepoConnection: GithubRepoConnection
   globalId: ID!
   globalName: String!
@@ -2362,8 +2446,36 @@ type ExecutableCronJob implements Node {
   id: ID!
 }
 
+type ExecuteCronJobInvocationResult {
+  exitCode: Int
+  instanceId: String
+}
+
+type ExecuteCronJobTarget {
+  cliArgs: GenericScalar!
+  command: String
+  env: GenericScalar!
+  packageName: String
+}
+
 type FetchCronJob implements Node {
   id: ID!
+}
+
+type FetchCronJobInvocationResult {
+  requestId: String
+  responseBody: String
+  statusCode: Int
+}
+
+type FetchCronJobTarget {
+  body: String
+  expectBodyIncludes: String
+  expectBodyRegex: String
+  expectStatusCodes: GenericScalar
+  headers: GenericScalar!
+  method: String!
+  path: String!
 }
 
 input GenerateAPITokenInput {
@@ -2518,6 +2630,21 @@ type GithubInstallationRepository implements Node {
   namespace: String!
   repoUrl: String!
   url: String!
+}
+
+type GithubPrPreviewDeployment {
+  baseRef: String!
+  buildId: String!
+  createdAt: DateTime!
+  databaseId: Int!
+  githubCommentId: Int
+  headRef: String!
+  headSha: String!
+  prNumber: Int!
+  previewUrl: String!
+  rolloutId: ID
+  status: String!
+  updatedAt: DateTime!
 }
 
 type GithubRepoConnection implements Node {
@@ -3207,6 +3334,9 @@ type Mutation {
   """Sync all blog posts from Notion to the database."""
   syncNotionBlogPosts(input: SyncNotionBlogPostsInput!): SyncNotionBlogPostsPayload
   tagPackageRelease(input: TagPackageReleaseInput!): TagPackageReleasePayload
+
+  """Enable or disable a cronjob on an app."""
+  toggleCronJob(input: ToggleCronJobInput!): ToggleCronJobPayload
 
   """Toggle HTTP redirect for the active version of app"""
   toggleForceHttps(input: ToggleForceHTTPSInput!): ToggleForceHTTPSPayload
@@ -4607,7 +4737,7 @@ type Query {
     owner: String
   ): DeployApp
   getDeployAppVersion(name: String!, owner: String, version: String): DeployAppVersion
-  getDeployApps(after: String, before: String, first: Int, last: Int, offset: Int, sortBy: DeployAppsSortBy, updatedAfter: DateTime): DeployAppConnection!
+  getDeployApps(after: String, before: String, first: Int, last: Int, offset: Int, ownerId: ID, sortBy: DeployAppsSortBy, updatedAfter: DateTime): DeployAppConnection!
   getDomain(name: String!): DNSDomain
   getGlobalObject(slug: String!): GlobalObject
   getInterface(name: String!): Interface
@@ -5802,6 +5932,20 @@ input TimeRangeInput {
 
   """End of the time range."""
   toDt: DateTime
+}
+
+input ToggleCronJobInput {
+  clientMutationId: String
+
+  """CronJob ID"""
+  cronJobId: ID!
+  enabled: Boolean!
+}
+
+type ToggleCronJobPayload {
+  app: DeployApp!
+  clientMutationId: String
+  cronJob: CronJob!
 }
 
 input ToggleForceHTTPSInput {

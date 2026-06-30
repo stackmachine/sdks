@@ -247,6 +247,18 @@ message = stackmachine.emails.send(
     text_body="Plain text body",
     html_body="<p>HTML body</p>",
 )
+
+raw_message = stackmachine.emails.send(
+    app="app_id",
+    to=["user@example.com"],
+    subject="Raw MIME from StackMachine",
+    raw_message=(
+        b"From: app@example.com\r\n"
+        b"To: user@example.com\r\n"
+        b"Subject: Raw MIME from StackMachine\r\n\r\n"
+        b"Plain text body"
+    ),
+)
 ```
 
 ## Request Options

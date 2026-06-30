@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3b934719eaa8a1120978ed08520ce6a6>>
+ * @generated SignedSource<<1153a7c793e980b25b2f194e3f5df992>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -149,6 +149,13 @@ return {
                     "alias": null,
                     "args": null,
                     "kind": "ScalarField",
+                    "name": "createdAt",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
                     "name": "name",
                     "storageKey": null
                   },
@@ -204,12 +211,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "8ccf06d882fce536c542b19ff6e278f5",
+    "cacheID": "c397876192221bca13302e30d90eddbf",
     "id": null,
     "metadata": {},
     "name": "srcGetDeploymentStatusQuery",
     "operationKind": "query",
-    "text": "query srcGetDeploymentStatusQuery(\n  $buildId: UUID!\n) {\n  autobuildDeploymentStatus(buildId: $buildId) {\n    buildId\n    status\n    appVersion {\n      ...srcDeployAppVersionData\n      id\n    }\n  }\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  name\n  url\n  adminUrl\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n\nfragment srcDeployAppVersionData on DeployAppVersion {\n  id\n  app {\n    ...srcDeployAppData\n    id\n  }\n}\n"
+    "text": "query srcGetDeploymentStatusQuery(\n  $buildId: UUID!\n) {\n  autobuildDeploymentStatus(buildId: $buildId) {\n    buildId\n    status\n    appVersion {\n      ...srcDeployAppVersionData\n      id\n    }\n  }\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  createdAt\n  name\n  url\n  adminUrl\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n\nfragment srcDeployAppVersionData on DeployAppVersion {\n  id\n  app {\n    ...srcDeployAppData\n    id\n  }\n}\n"
   }
 };
 })();
