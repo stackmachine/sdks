@@ -26,6 +26,7 @@ from .resources.dns import AsyncDNSResource
 from .resources.emails import AsyncEmailsResource
 from .resources.files import AsyncFilesResource
 from .resources.packages import AsyncPackagesResource
+from .resources.usage import AsyncUsageResource
 
 
 class AsyncStackMachine:
@@ -42,9 +43,7 @@ class AsyncStackMachine:
         http_client: Optional[httpx.AsyncClient] = None,
         http_transport: Optional[httpx.AsyncBaseTransport] = None,
     ) -> None:
-        resolved_api_url = (
-            api_url if api_url is not None else apiUrl or DEFAULT_API_URL
-        )
+        resolved_api_url = api_url if api_url is not None else apiUrl or DEFAULT_API_URL
         resolved_max_retries = (
             max_network_retries
             if max_network_retries is not None
@@ -76,6 +75,7 @@ class AsyncStackMachine:
         self.emails = AsyncEmailsResource(self)
         self.files = AsyncFilesResource(self, AsyncUploader(self._transport))
         self.packages = AsyncPackagesResource(self)
+        self.usage = AsyncUsageResource(self)
 
     @classmethod
     def init(
@@ -120,9 +120,7 @@ class AsyncStackMachine:
             if api_url is not None
             else apiUrl
             if apiUrl is not None
-            else values.get("api_url")
-            or values.get("apiUrl")
-            or DEFAULT_API_URL
+            else values.get("api_url") or values.get("apiUrl") or DEFAULT_API_URL
         )
         settings_max_retries = (
             values.get("max_network_retries")

@@ -82,6 +82,14 @@ DeployAppVersionsSortBy = Literal["NEWEST", "OLDEST"]
 DNSRecordsSortBy = Literal["NEWEST", "OLDEST"]
 LogStream = Literal["RUNTIME", "STDERR", "STDOUT", "%future added value"]
 SshAuthenticationMethod = Literal["PASSWORD", "PUBLIC_KEY", "%future added value"]
+MetricGrouping = Literal[
+    "BY_5_MINUTES",
+    "BY_15_MINUTES",
+    "BY_DAY",
+    "BY_HOUR",
+    "BY_WEEK",
+    "%future added value",
+]
 DNSRecordKind = Literal[
     "A",
     "AAAA",
@@ -173,6 +181,15 @@ class PackagesFilter(TypedDict, total=False):
 class PackagesSearchInput(PaginationOptions, total=False):
     query: str
     filter: PackagesFilter
+
+
+class UsageMetricsInput(TypedDict, total=False):
+    app: Optional[str]
+    owner: Optional[str]
+    start: Union[str, datetime]
+    end: Union[str, datetime]
+    grouped_by: Optional[MetricGrouping]
+    groupedBy: Optional[MetricGrouping]
 
 
 class DeployAppsListInput(PaginationOptions, total=False):
@@ -498,8 +515,7 @@ class AppsSshServerUpdateInput(TypedDict):
 
 
 class Readable(Protocol):
-    def read(self) -> Union[str, bytes]:
-        ...
+    def read(self) -> Union[str, bytes]: ...
 
 
 FileInput = Union[str, bytes, bytearray, memoryview, Path, Readable]
@@ -508,13 +524,11 @@ DeploymentFilesInput = CreateZipFiles
 
 
 class UploadProgressCallback(Protocol):
-    def __call__(self, progress: "UploadProgress", /) -> None:
-        ...
+    def __call__(self, progress: "UploadProgress", /) -> None: ...
 
 
 class DeploymentProgressCallback(Protocol):
-    def __call__(self, progress: "DeploymentProgress", /) -> None:
-        ...
+    def __call__(self, progress: "DeploymentProgress", /) -> None: ...
 
 
 class SshUserPasswordRevealResult(TypedDict):

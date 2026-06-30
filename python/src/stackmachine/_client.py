@@ -21,6 +21,7 @@ from .resources.dns import DNSResource
 from .resources.emails import EmailsResource
 from .resources.files import FilesResource
 from .resources.packages import PackagesResource
+from .resources.usage import UsageResource
 
 
 class StackMachine:
@@ -37,9 +38,7 @@ class StackMachine:
         http_client: Optional[httpx.Client] = None,
         http_transport: Optional[httpx.BaseTransport] = None,
     ) -> None:
-        resolved_api_url = (
-            api_url if api_url is not None else apiUrl or DEFAULT_API_URL
-        )
+        resolved_api_url = api_url if api_url is not None else apiUrl or DEFAULT_API_URL
         resolved_max_retries = (
             max_network_retries
             if max_network_retries is not None
@@ -71,6 +70,7 @@ class StackMachine:
         self.emails = EmailsResource(self)
         self.files = FilesResource(self, SyncUploader(self._transport))
         self.packages = PackagesResource(self)
+        self.usage = UsageResource(self)
 
     @classmethod
     def init(
@@ -115,9 +115,7 @@ class StackMachine:
             if api_url is not None
             else apiUrl
             if apiUrl is not None
-            else values.get("api_url")
-            or values.get("apiUrl")
-            or DEFAULT_API_URL
+            else values.get("api_url") or values.get("apiUrl") or DEFAULT_API_URL
         )
         settings_max_retries = (
             values.get("max_network_retries")
