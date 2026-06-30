@@ -35,6 +35,7 @@ import { srcGetAppByIdQuery } from "__generated__/srcGetAppByIdQuery.graphql";
 import { srcGetAppByNameQuery } from "__generated__/srcGetAppByNameQuery.graphql";
 import { srcGetAppLogsQuery } from "__generated__/srcGetAppLogsQuery.graphql";
 import { srcGetDeploymentStatusQuery } from "__generated__/srcGetDeploymentStatusQuery.graphql";
+import { srcListDeployAppsQuery } from "__generated__/srcListDeployAppsQuery.graphql";
 import { srcDeleteAppDomainMutation } from "__generated__/srcDeleteAppDomainMutation.graphql";
 import { srcDeleteAppVolumeMutation } from "__generated__/srcDeleteAppVolumeMutation.graphql";
 import { srcUpsertAppDomainMutation } from "__generated__/srcUpsertAppDomainMutation.graphql";
@@ -408,7 +409,6 @@ export type AppAliasSortBy = "NEWEST" | "OLDEST";
 export type DeployAppsSortBy = "MOST_ACTIVE" | "NEWEST" | "OLDEST";
 export type DeployAppVersionsSortBy = "NEWEST" | "OLDEST";
 export type DeployAppsListInput = StackMachinePaginationParams & {
-  collaborating?: boolean;
   sortBy?: DeployAppsSortBy;
 };
 export type AppsDomainsListInput = StackMachinePaginationParams & {
@@ -3474,7 +3474,7 @@ export class DeployAppsResource {
       options,
       url: "/v1/apps",
       fetchPage: async (pagination, params, requestOptions) => {
-        const query = await this.client._query<any>(
+        const query = await this.client._query<srcListDeployAppsQuery>(
           graphql`
             query srcListDeployAppsQuery(
               $first: Int
@@ -3482,31 +3482,27 @@ export class DeployAppsResource {
               $last: Int
               $before: String
               $sortBy: DeployAppsSortBy
-              $collaborating: Boolean
             ) {
-              viewer {
-                apps(
-                  first: $first
-                  after: $after
-                  last: $last
-                  before: $before
-                  sortBy: $sortBy
-                  collaborating: $collaborating
-                ) {
-                  edges {
-                    cursor
-                    node {
-                      ...srcDeployAppData
-                    }
+              getDeployApps(
+                first: $first
+                after: $after
+                last: $last
+                before: $before
+                sortBy: $sortBy
+              ) {
+                edges {
+                  cursor
+                  node {
+                    ...srcDeployAppData
                   }
-                  pageInfo {
-                    hasNextPage
-                    hasPreviousPage
-                    endCursor
-                    startCursor
-                  }
-                  totalCount
                 }
+                pageInfo {
+                  hasNextPage
+                  hasPreviousPage
+                  endCursor
+                  startCursor
+                }
+                totalCount
               }
             }
           `,
@@ -3516,12 +3512,11 @@ export class DeployAppsResource {
             last: pagination.last,
             before: pagination.before,
             sortBy: params.sortBy ?? "NEWEST",
-            collaborating: params.collaborating,
           },
           requestOptions,
         );
 
-        return connectionToListPageData(query?.viewer?.apps, (node: any) => {
+        return connectionToListPageData(query?.getDeployApps, (node: any) => {
           const appData = this.client._getFragmentData<srcDeployAppData$data>(
             nodeApp,
             node,

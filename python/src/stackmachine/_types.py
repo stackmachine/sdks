@@ -110,7 +110,6 @@ EmailMessageStatus = Literal[
 
 
 class DeployAppsListInput(PaginationOptions, total=False):
-    collaborating: Optional[bool]
     sort_by: DeployAppsSortBy
     sortBy: DeployAppsSortBy
 

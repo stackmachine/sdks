@@ -342,31 +342,27 @@ query srcListDeployAppsQuery(
   $last: Int
   $before: String
   $sortBy: DeployAppsSortBy
-  $collaborating: Boolean
 ) {{
-  viewer {{
-    apps(
-      first: $first
-      after: $after
-      last: $last
-      before: $before
-      sortBy: $sortBy
-      collaborating: $collaborating
-    ) {{
-      edges {{
-        cursor
-        node {{
-          {APP_FIELDS}
-        }}
+  getDeployApps(
+    first: $first
+    after: $after
+    last: $last
+    before: $before
+    sortBy: $sortBy
+  ) {{
+    edges {{
+      cursor
+      node {{
+        {APP_FIELDS}
       }}
-      pageInfo {{
-        hasNextPage
-        hasPreviousPage
-        endCursor
-        startCursor
-      }}
-      totalCount
     }}
+    pageInfo {{
+      hasNextPage
+      hasPreviousPage
+      endCursor
+      startCursor
+    }}
+    totalCount
   }}
 }}
 """

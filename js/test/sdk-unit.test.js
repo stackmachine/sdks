@@ -316,6 +316,24 @@ const uploadRangeResponse = (endByte) =>
 
 const uploadCompleteResponse = () => new Response(null, { status: 200 });
 
+const appsListConnection = (
+  items,
+  pageInfo = {
+    hasNextPage: false,
+    hasPreviousPage: false,
+    endCursor: items.at(-1)?.cursor ?? null,
+    startCursor: items[0]?.cursor ?? null,
+  },
+  totalCount = items.length,
+) => ({
+  edges: items.map((item) => ({
+    cursor: item.cursor,
+    node: appNode(item.id),
+  })),
+  pageInfo,
+  totalCount,
+});
+
 const appsListResponse = (
   items,
   pageInfo = {
@@ -328,17 +346,7 @@ const appsListResponse = (
 ) =>
   jsonResponse({
     data: {
-      viewer: {
-        id: "viewer-1",
-        apps: {
-          edges: items.map((item) => ({
-            cursor: item.cursor,
-            node: appNode(item.id),
-          })),
-          pageInfo,
-          totalCount,
-        },
-      },
+      getDeployApps: appsListConnection(items, pageInfo, totalCount),
     },
   });
 
@@ -1427,6 +1435,8 @@ test("list methods return Stripe-like list objects", async () => {
   assert.equal(page.totalCount, 3);
   assert.equal(page.data.length, 1);
   assert.equal(page.data[0].id, "app_1");
+  assert.equal(fetch.calls[0].body.operationName, "srcListDeployAppsQuery");
+  assert.match(fetch.calls[0].body.query, /getDeployApps/);
   assert.equal(fetch.calls[0].body.variables.first, 1);
   assert.equal(fetch.calls[0].body.variables.sortBy, "NEWEST");
 });

@@ -51,13 +51,11 @@ class DeployAppsResource:
     def list(
         self,
         *,
-        collaborating: Optional[bool] = None,
         sort_by: DeployAppsSortBy = "NEWEST",
         request_options: Optional[RequestOptionsLike] = None,
         **pagination: Unpack[PaginationOptions],
     ) -> StackMachineList[DeployApp]:
         params = {
-            "collaborating": collaborating,
             "sort_by": sort_by,
             **pagination,
         }
@@ -69,13 +67,12 @@ class DeployAppsResource:
                 gql.LIST_APPS_QUERY,
                 {
                     "sortBy": page_params.get("sort_by") or "NEWEST",
-                    "collaborating": page_params.get("collaborating"),
                     **page_variables(normalized),
                 },
                 request_options=request_options,
             )
             return connection_to_page_data(
-                ((response.get("viewer") or {}).get("apps") if response else None),
+                response.get("getDeployApps") if response else None,
                 DeployApp.from_graphql,
             )
 
@@ -189,13 +186,11 @@ class AsyncDeployAppsResource:
     def list(
         self,
         *,
-        collaborating: Optional[bool] = None,
         sort_by: DeployAppsSortBy = "NEWEST",
         request_options: Optional[RequestOptionsLike] = None,
         **pagination: Unpack[PaginationOptions],
     ) -> AsyncStackMachineListRequest[DeployApp]:
         params = {
-            "collaborating": collaborating,
             "sort_by": sort_by,
             **pagination,
         }
@@ -207,13 +202,12 @@ class AsyncDeployAppsResource:
                 gql.LIST_APPS_QUERY,
                 {
                     "sortBy": page_params.get("sort_by") or "NEWEST",
-                    "collaborating": page_params.get("collaborating"),
                     **page_variables(normalized),
                 },
                 request_options=request_options,
             )
             return connection_to_page_data(
-                ((response.get("viewer") or {}).get("apps") if response else None),
+                response.get("getDeployApps") if response else None,
                 DeployApp.from_graphql,
             )
 

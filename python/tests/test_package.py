@@ -564,38 +564,36 @@ def test_sync_list_auto_paginates() -> None:
 
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
+        assert body["operationName"] == "srcListDeployAppsQuery"
+        assert "getDeployApps" in body["query"]
         variables = body["variables"]
         calls.append(variables)
         if variables.get("after") is None:
             return graphql_response(
                 {
-                    "viewer": {
-                        "apps": {
-                            "edges": [{"node": app_payload("app_1")}],
-                            "pageInfo": {
-                                "hasNextPage": True,
-                                "hasPreviousPage": False,
-                                "endCursor": "cursor-1",
-                                "startCursor": "cursor-0",
-                            },
-                            "totalCount": 2,
-                        }
+                    "getDeployApps": {
+                        "edges": [{"node": app_payload("app_1")}],
+                        "pageInfo": {
+                            "hasNextPage": True,
+                            "hasPreviousPage": False,
+                            "endCursor": "cursor-1",
+                            "startCursor": "cursor-0",
+                        },
+                        "totalCount": 2,
                     }
                 }
             )
         return graphql_response(
             {
-                "viewer": {
-                    "apps": {
-                        "edges": [{"node": app_payload("app_2")}],
-                        "pageInfo": {
-                            "hasNextPage": False,
-                            "hasPreviousPage": True,
-                            "endCursor": "cursor-2",
-                            "startCursor": "cursor-1",
-                        },
-                        "totalCount": 2,
-                    }
+                "getDeployApps": {
+                    "edges": [{"node": app_payload("app_2")}],
+                    "pageInfo": {
+                        "hasNextPage": False,
+                        "hasPreviousPage": True,
+                        "endCursor": "cursor-2",
+                        "startCursor": "cursor-1",
+                    },
+                    "totalCount": 2,
                 }
             }
         )
@@ -1589,20 +1587,21 @@ async def test_async_viewer_returns_model() -> None:
 
 
 async def test_async_list_request_can_be_awaited_and_iterated() -> None:
-    async def handler(_: httpx.Request) -> httpx.Response:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        assert body["operationName"] == "srcListDeployAppsQuery"
+        assert "getDeployApps" in body["query"]
         return graphql_response(
             {
-                "viewer": {
-                    "apps": {
-                        "edges": [{"node": app_payload("app_1")}],
-                        "pageInfo": {
-                            "hasNextPage": False,
-                            "hasPreviousPage": False,
-                            "endCursor": "cursor-1",
-                            "startCursor": "cursor-0",
-                        },
-                        "totalCount": 1,
-                    }
+                "getDeployApps": {
+                    "edges": [{"node": app_payload("app_1")}],
+                    "pageInfo": {
+                        "hasNextPage": False,
+                        "hasPreviousPage": False,
+                        "endCursor": "cursor-1",
+                        "startCursor": "cursor-0",
+                    },
+                    "totalCount": 1,
                 }
             }
         )
