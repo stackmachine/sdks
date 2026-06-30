@@ -1446,6 +1446,22 @@ test("list methods return Stripe-like list objects", async () => {
   assert.equal(fetch.calls[0].body.variables.sortBy, "NEWEST");
 });
 
+test("apps list can filter by owner id", async () => {
+  const fetch = mockFetch(() =>
+    appsListResponse([{ id: "app_owner_1", cursor: "cursor_owner_1" }]),
+  );
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  const page = await client.apps.list({ ownerId: "owner_1", limit: 1 });
+
+  assert.equal(page.data[0].id, "app_owner_1");
+  assert.match(fetch.calls[0].body.query, /ownerId: \$ownerId/);
+  assert.equal(fetch.calls[0].body.variables.ownerId, "owner_1");
+});
+
 test("app volumes list, create, update, and delete map to GraphQL operations", async () => {
   const fetch = mockFetch((call, index) => {
     switch (call.body.operationName) {

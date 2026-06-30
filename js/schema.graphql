@@ -4737,7 +4737,7 @@ type Query {
     owner: String
   ): DeployApp
   getDeployAppVersion(name: String!, owner: String, version: String): DeployAppVersion
-  getDeployApps(after: String, before: String, first: Int, last: Int, offset: Int, sortBy: DeployAppsSortBy, updatedAfter: DateTime): DeployAppConnection!
+  getDeployApps(after: String, before: String, first: Int, last: Int, offset: Int, ownerId: ID, sortBy: DeployAppsSortBy, updatedAfter: DateTime): DeployAppConnection!
   getDomain(name: String!): DNSDomain
   getGlobalObject(slug: String!): GlobalObject
   getInterface(name: String!): Interface

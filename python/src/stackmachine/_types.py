@@ -110,6 +110,8 @@ EmailMessageStatus = Literal[
 
 
 class DeployAppsListInput(PaginationOptions, total=False):
+    owner_id: Optional[str]
+    ownerId: Optional[str]
     sort_by: DeployAppsSortBy
     sortBy: DeployAppsSortBy
 

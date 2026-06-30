@@ -566,6 +566,7 @@ def test_sync_list_auto_paginates() -> None:
         body = json.loads(request.content)
         assert body["operationName"] == "srcListDeployAppsQuery"
         assert "getDeployApps" in body["query"]
+        assert "ownerId: $ownerId" in body["query"]
         variables = body["variables"]
         calls.append(variables)
         if variables.get("after") is None:
@@ -599,12 +600,14 @@ def test_sync_list_auto_paginates() -> None:
         )
 
     with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
-        apps = client.apps.list(limit=1)
+        apps = client.apps.list(owner_id="owner_1", limit=1)
         data = apps.auto_paging_to_array(limit=2)
 
     assert [app.id for app in data] == ["app_1", "app_2"]
     assert calls[0]["first"] == 1
+    assert calls[0]["ownerId"] == "owner_1"
     assert calls[1]["after"] == "cursor-1"
+    assert calls[1]["ownerId"] == "owner_1"
 
 
 def test_sync_app_volumes_lifecycle() -> None:
@@ -1591,6 +1594,7 @@ async def test_async_list_request_can_be_awaited_and_iterated() -> None:
         body = json.loads(request.content)
         assert body["operationName"] == "srcListDeployAppsQuery"
         assert "getDeployApps" in body["query"]
+        assert body["variables"]["ownerId"] == "owner_1"
         return graphql_response(
             {
                 "getDeployApps": {
@@ -1608,7 +1612,7 @@ async def test_async_list_request_can_be_awaited_and_iterated() -> None:
 
     client = AsyncStackMachine("secret", http_transport=httpx.MockTransport(handler))
     try:
-        apps = client.apps.list(limit=1)
+        apps = client.apps.list(owner_id="owner_1", limit=1)
         page = await apps
         iterated = [app async for app in apps]
     finally:

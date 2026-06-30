@@ -409,6 +409,7 @@ export type AppAliasSortBy = "NEWEST" | "OLDEST";
 export type DeployAppsSortBy = "MOST_ACTIVE" | "NEWEST" | "OLDEST";
 export type DeployAppVersionsSortBy = "NEWEST" | "OLDEST";
 export type DeployAppsListInput = StackMachinePaginationParams & {
+  ownerId?: string | null;
   sortBy?: DeployAppsSortBy;
 };
 export type AppsDomainsListInput = StackMachinePaginationParams & {
@@ -3484,6 +3485,7 @@ export class DeployAppsResource {
               $after: String
               $last: Int
               $before: String
+              $ownerId: ID
               $sortBy: DeployAppsSortBy
             ) {
               getDeployApps(
@@ -3491,6 +3493,7 @@ export class DeployAppsResource {
                 after: $after
                 last: $last
                 before: $before
+                ownerId: $ownerId
                 sortBy: $sortBy
               ) {
                 edges {
@@ -3514,6 +3517,7 @@ export class DeployAppsResource {
             after: pagination.after,
             last: pagination.last,
             before: pagination.before,
+            ownerId: params.ownerId,
             sortBy: params.sortBy ?? "NEWEST",
           },
           requestOptions,

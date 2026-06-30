@@ -341,6 +341,7 @@ query srcListDeployAppsQuery(
   $after: String
   $last: Int
   $before: String
+  $ownerId: ID
   $sortBy: DeployAppsSortBy
 ) {{
   getDeployApps(
@@ -348,6 +349,7 @@ query srcListDeployAppsQuery(
     after: $after
     last: $last
     before: $before
+    ownerId: $ownerId
     sortBy: $sortBy
   ) {{
     edges {{

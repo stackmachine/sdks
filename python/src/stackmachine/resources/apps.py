@@ -51,11 +51,13 @@ class DeployAppsResource:
     def list(
         self,
         *,
+        owner_id: Optional[str] = None,
         sort_by: DeployAppsSortBy = "NEWEST",
         request_options: Optional[RequestOptionsLike] = None,
         **pagination: Unpack[PaginationOptions],
     ) -> StackMachineList[DeployApp]:
         params = {
+            "owner_id": owner_id,
             "sort_by": sort_by,
             **pagination,
         }
@@ -66,6 +68,8 @@ class DeployAppsResource:
             response = self._client._query(
                 gql.LIST_APPS_QUERY,
                 {
+                    "ownerId": page_params.get("owner_id")
+                    or page_params.get("ownerId"),
                     "sortBy": page_params.get("sort_by") or "NEWEST",
                     **page_variables(normalized),
                 },
@@ -186,11 +190,13 @@ class AsyncDeployAppsResource:
     def list(
         self,
         *,
+        owner_id: Optional[str] = None,
         sort_by: DeployAppsSortBy = "NEWEST",
         request_options: Optional[RequestOptionsLike] = None,
         **pagination: Unpack[PaginationOptions],
     ) -> AsyncStackMachineListRequest[DeployApp]:
         params = {
+            "owner_id": owner_id,
             "sort_by": sort_by,
             **pagination,
         }
@@ -201,6 +207,8 @@ class AsyncDeployAppsResource:
             response = await self._client._query(
                 gql.LIST_APPS_QUERY,
                 {
+                    "ownerId": page_params.get("owner_id")
+                    or page_params.get("ownerId"),
                     "sortBy": page_params.get("sort_by") or "NEWEST",
                     **page_variables(normalized),
                 },
