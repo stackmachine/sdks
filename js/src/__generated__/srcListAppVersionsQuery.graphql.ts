@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e608936e6c28f44d02ba98ea89f44068>>
+ * @generated SignedSource<<24aa344375fe859cb7738d8ba3873303>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -335,6 +335,13 @@ return {
                                 "alias": null,
                                 "args": null,
                                 "kind": "ScalarField",
+                                "name": "createdAt",
+                                "storageKey": null
+                              },
+                              {
+                                "alias": null,
+                                "args": null,
+                                "kind": "ScalarField",
                                 "name": "name",
                                 "storageKey": null
                               },
@@ -403,12 +410,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "ded98a16b0b95237a1511224f2ea394e",
+    "cacheID": "219c8f5d99f0baa2b5445254622530bf",
     "id": null,
     "metadata": {},
     "name": "srcListAppVersionsQuery",
     "operationKind": "query",
-    "text": "query srcListAppVersionsQuery(\n  $appId: ID!\n  $createdAfter: DateTime\n  $sortBy: DeployAppVersionsSortBy\n  $first: Int\n  $after: String\n  $last: Int\n  $before: String\n) {\n  node(id: $appId) {\n    __typename\n    ... on DeployApp {\n      versions(createdAfter: $createdAfter, sortBy: $sortBy, first: $first, after: $after, last: $last, before: $before) {\n        edges {\n          cursor\n          node {\n            ...srcDeployAppVersionData\n            id\n          }\n        }\n        pageInfo {\n          hasNextPage\n          hasPreviousPage\n          endCursor\n          startCursor\n        }\n        totalCount\n      }\n    }\n    id\n  }\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  name\n  url\n  adminUrl\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n\nfragment srcDeployAppVersionData on DeployAppVersion {\n  id\n  app {\n    ...srcDeployAppData\n    id\n  }\n}\n"
+    "text": "query srcListAppVersionsQuery(\n  $appId: ID!\n  $createdAfter: DateTime\n  $sortBy: DeployAppVersionsSortBy\n  $first: Int\n  $after: String\n  $last: Int\n  $before: String\n) {\n  node(id: $appId) {\n    __typename\n    ... on DeployApp {\n      versions(createdAfter: $createdAfter, sortBy: $sortBy, first: $first, after: $after, last: $last, before: $before) {\n        edges {\n          cursor\n          node {\n            ...srcDeployAppVersionData\n            id\n          }\n        }\n        pageInfo {\n          hasNextPage\n          hasPreviousPage\n          endCursor\n          startCursor\n        }\n        totalCount\n      }\n    }\n    id\n  }\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  createdAt\n  name\n  url\n  adminUrl\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n\nfragment srcDeployAppVersionData on DeployAppVersion {\n  id\n  app {\n    ...srcDeployAppData\n    id\n  }\n}\n"
   }
 };
 })();

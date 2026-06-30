@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0d4ca8d1582a0de449881e2e0de9596a>>
+ * @generated SignedSource<<29d5ba74e5593c3e2ffbdaf3d7c69d18>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -64,6 +64,13 @@ v4 = {
   "args": null,
   "kind": "ScalarField",
   "name": "name",
+  "storageKey": null
+},
+v5 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "createdAt",
   "storageKey": null
 };
 return {
@@ -172,13 +179,7 @@ return {
                 "name": "deletedAt",
                 "storageKey": null
               },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "createdAt",
-                "storageKey": null
-              },
+              (v5/*: any*/),
               {
                 "alias": null,
                 "args": null,
@@ -202,6 +203,7 @@ return {
                     "name": "willPerishAt",
                     "storageKey": null
                   },
+                  (v5/*: any*/),
                   (v4/*: any*/),
                   {
                     "alias": null,
@@ -256,12 +258,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "66856ac39a445f8a392d3855da5c6dab",
+    "cacheID": "3b072706a55de5f09f88a4fb905e3795",
     "id": null,
     "metadata": {},
     "name": "srcRotateAppDatabaseCredentialsMutation",
     "operationKind": "mutation",
-    "text": "mutation srcRotateAppDatabaseCredentialsMutation(\n  $input: RotateCredentialsForAppDBInput!\n) {\n  rotateCredentialsForAppDb(input: $input) {\n    database {\n      ...srcAppDatabaseData\n      id\n    }\n    password\n  }\n}\n\nfragment srcAppDatabaseData on AppDatabase {\n  id\n  name\n  host\n  port\n  username\n  password\n  phpmyadminUrl\n  dbExplorerUrl\n  deletedAt\n  createdAt\n  updatedAt\n  app {\n    ...srcDeployAppData\n    id\n  }\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  name\n  url\n  adminUrl\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n"
+    "text": "mutation srcRotateAppDatabaseCredentialsMutation(\n  $input: RotateCredentialsForAppDBInput!\n) {\n  rotateCredentialsForAppDb(input: $input) {\n    database {\n      ...srcAppDatabaseData\n      id\n    }\n    password\n  }\n}\n\nfragment srcAppDatabaseData on AppDatabase {\n  id\n  name\n  host\n  port\n  username\n  password\n  phpmyadminUrl\n  dbExplorerUrl\n  deletedAt\n  createdAt\n  updatedAt\n  app {\n    ...srcDeployAppData\n    id\n  }\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  createdAt\n  name\n  url\n  adminUrl\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n"
   }
 };
 })();

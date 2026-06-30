@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<378d3bd89e808e9233ee590cb05bcf77>>
+ * @generated SignedSource<<21a9ee1825154950554531a886533ca1>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -260,6 +260,13 @@ return {
                     "alias": null,
                     "args": null,
                     "kind": "ScalarField",
+                    "name": "createdAt",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
                     "name": "name",
                     "storageKey": null
                   },
@@ -317,12 +324,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "0eea6af70ec8db8cd7cf26f590ae6315",
+    "cacheID": "f067d90e715afdeaa97ae57989965485",
     "id": null,
     "metadata": {},
     "name": "srcListDeployAppsQuery",
     "operationKind": "query",
-    "text": "query srcListDeployAppsQuery(\n  $first: Int\n  $after: String\n  $last: Int\n  $before: String\n  $sortBy: DeployAppsSortBy\n) {\n  getDeployApps(first: $first, after: $after, last: $last, before: $before, sortBy: $sortBy) {\n    edges {\n      cursor\n      node {\n        ...srcDeployAppData\n        id\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      endCursor\n      startCursor\n    }\n    totalCount\n  }\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  name\n  url\n  adminUrl\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n"
+    "text": "query srcListDeployAppsQuery(\n  $first: Int\n  $after: String\n  $last: Int\n  $before: String\n  $sortBy: DeployAppsSortBy\n) {\n  getDeployApps(first: $first, after: $after, last: $last, before: $before, sortBy: $sortBy) {\n    edges {\n      cursor\n      node {\n        ...srcDeployAppData\n        id\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      endCursor\n      startCursor\n    }\n    totalCount\n  }\n}\n\nfragment srcDeployAppData on DeployApp {\n  id\n  willPerishAt\n  createdAt\n  name\n  url\n  adminUrl\n  activeVersion {\n    id\n  }\n  favicon\n  screenshot\n}\n"
   }
 };
 })();

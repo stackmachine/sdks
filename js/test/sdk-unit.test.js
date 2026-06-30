@@ -54,6 +54,7 @@ const appNode = (id) => ({
   __typename: "DeployApp",
   id,
   willPerishAt: null,
+  createdAt: "2026-01-01T00:00:00Z",
   name: `app-${id}`,
   url: `https://${id}.example.test`,
   adminUrl: `https://${id}.example.test/admin`,
@@ -1435,6 +1436,10 @@ test("list methods return Stripe-like list objects", async () => {
   assert.equal(page.totalCount, 3);
   assert.equal(page.data.length, 1);
   assert.equal(page.data[0].id, "app_1");
+  assert.equal(
+    page.data[0].createdAt.toISOString(),
+    "2026-01-01T00:00:00.000Z",
+  );
   assert.equal(fetch.calls[0].body.operationName, "srcListDeployAppsQuery");
   assert.match(fetch.calls[0].body.query, /getDeployApps/);
   assert.equal(fetch.calls[0].body.variables.first, 1);

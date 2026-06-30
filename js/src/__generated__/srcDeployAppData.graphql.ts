@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3721a47db5aba0526b7ad88880b1ad52>>
+ * @generated SignedSource<<60ab2012e274d54a9ca5c240c98c596e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,6 +15,7 @@ export type srcDeployAppData$data = {
     readonly id: string;
   } | null | undefined;
   readonly adminUrl: string;
+  readonly createdAt: any;
   readonly favicon: any | null | undefined;
   readonly id: string;
   readonly name: string;
@@ -48,6 +49,13 @@ return {
       "args": null,
       "kind": "ScalarField",
       "name": "willPerishAt",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "createdAt",
       "storageKey": null
     },
     {
@@ -103,6 +111,6 @@ return {
 };
 })();
 
-(node as any).hash = "014e2594ea6ef6434f082cb4deb8fa0d";
+(node as any).hash = "219a56f836e2785573af843e8652d7ed";
 
 export default node;

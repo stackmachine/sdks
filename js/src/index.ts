@@ -720,6 +720,7 @@ export class DeployApp {
     fragment srcDeployAppData on DeployApp {
       id
       willPerishAt
+      createdAt
       name
       url
       adminUrl
@@ -737,6 +738,7 @@ export class DeployApp {
   `;
   id: string;
   willPerishAt: Date | null;
+  createdAt: Date;
   name: string;
   url: string;
   adminUrl: string;
@@ -751,6 +753,7 @@ export class DeployApp {
     const typedData = data as srcDeployAppData$data;
     this.id = typedData.id;
     this.willPerishAt = parseDate(typedData.willPerishAt);
+    this.createdAt = parseDate(typedData.createdAt)!;
     this.name = typedData.name;
     this.url = typedData.url;
     this.adminUrl = typedData.adminUrl;
