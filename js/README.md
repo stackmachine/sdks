@@ -170,6 +170,26 @@ console.log(rotated.password);
 await client.apps.databases.del(database.id);
 ```
 
+Fetch usage analytics:
+
+```js
+const appUsage = await client.usage.metrics({
+  app: app.id,
+  start: new Date("2026-06-01T00:00:00Z"),
+  end: new Date("2026-06-30T00:00:00Z"),
+  groupedBy: "BY_DAY",
+});
+
+const workspaceUsage = await client.usage.metrics({
+  owner: "my-workspace",
+  start: "2026-06-01T00:00:00Z",
+  end: "2026-06-30T00:00:00Z",
+});
+
+console.log(appUsage.totals.requests.totalRequests);
+console.log(workspaceUsage.totals.workloads.realCpuTimeMillis);
+```
+
 Manage Git connections for an app:
 
 ```js

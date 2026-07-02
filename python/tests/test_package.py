@@ -70,6 +70,66 @@ def database_payload(id: str = "db_1", **overrides: Any) -> dict[str, Any]:
     return payload
 
 
+def usage_metrics_payload(**overrides: Any) -> dict[str, Any]:
+    payload = {
+        "startAt": "2026-06-01T00:00:00Z",
+        "endAt": "2026-06-30T00:00:00Z",
+        "grouped": [
+            {
+                "groupedAt": "2026-06-01T00:00:00Z",
+                "requests": {
+                    "cachedRequests": "12",
+                    "dataCachedBytes": "2048",
+                    "dataServedBytes": "4096",
+                    "http2xx": "100",
+                    "http3xx": "7",
+                    "http4xx": "3",
+                    "http5xx": "1",
+                    "httpOther": "2",
+                    "percentageCached": 12.5,
+                    "requestDurationMillis": "3456",
+                    "totalRequests": "9007199254740993",
+                    "uniqueUsers": 42,
+                },
+                "workloads": {
+                    "memoryBytes": "8192",
+                    "networkEgressBytes": "16384",
+                    "networkIngressBytes": "32768",
+                    "realCpuTimeMillis": "120000",
+                    "wallCpuTimeMillis": "180000",
+                    "workloads": 5,
+                },
+            }
+        ],
+        "totals": {
+            "requests": {
+                "cachedRequests": "12",
+                "dataCachedBytes": "2048",
+                "dataServedBytes": "4096",
+                "http2xx": "100",
+                "http3xx": "7",
+                "http4xx": "3",
+                "http5xx": "1",
+                "httpOther": "2",
+                "percentageCached": 12.5,
+                "requestDurationMillis": "3456",
+                "totalRequests": "9007199254740993",
+                "uniqueUsers": 42,
+            },
+            "workloads": {
+                "memoryBytes": "8192",
+                "networkEgressBytes": "16384",
+                "networkIngressBytes": "32768",
+                "realCpuTimeMillis": "120000",
+                "wallCpuTimeMillis": "180000",
+                "workloads": 5,
+            },
+        },
+    }
+    payload.update(overrides)
+    return payload
+
+
 def git_connection_payload(id: str = "conn_1", **overrides: Any) -> dict[str, Any]:
     payload = {
         "id": id,
@@ -250,6 +310,7 @@ def test_exports_clients_and_models() -> None:
     assert stackmachine.DNSDomain.__name__ == "DNSDomain"
     assert stackmachine.DNSRecord.__name__ == "DNSRecord"
     assert stackmachine.EmailMessage.__name__ == "EmailMessage"
+    assert stackmachine.UsageMetrics.__name__ == "UsageMetrics"
     assert "StackMachine" in stackmachine.__all__
     assert "AsyncStackMachine" in stackmachine.__all__
     assert "AppVolume" in stackmachine.__all__
@@ -259,6 +320,7 @@ def test_exports_clients_and_models() -> None:
     assert "DNSDomain" in stackmachine.__all__
     assert "DNSRecord" in stackmachine.__all__
     assert "EmailMessage" in stackmachine.__all__
+    assert "UsageMetrics" in stackmachine.__all__
 
 
 def test_exports_public_input_types() -> None:
@@ -277,6 +339,8 @@ def test_exports_public_input_types() -> None:
     assert "DatabaseEngine" in stackmachine.__all__
     assert "EmailsListInput" in stackmachine.__all__
     assert "EmailsSendInput" in stackmachine.__all__
+    assert "UsageMetricsInput" in stackmachine.__all__
+    assert "MetricGrouping" in stackmachine.__all__
     assert "RequestOptionsInput" in stackmachine.__all__
     assert "FileInput" in stackmachine.__all__
     assert stackmachine.DeployAppAutobuildInput.__name__ == "DeployAppAutobuildInput"
@@ -296,6 +360,7 @@ def test_new_resource_trees_are_available() -> None:
         assert client.dns.records is not None
         assert client.emails.sent is not None
         assert client.emails.received is not None
+        assert client.usage is not None
 
 
 async def test_async_new_resource_trees_are_available() -> None:
@@ -308,6 +373,7 @@ async def test_async_new_resource_trees_are_available() -> None:
         assert client.dns.records is not None
         assert client.emails.sent is not None
         assert client.emails.received is not None
+        assert client.usage is not None
     finally:
         await client.close()
 
@@ -608,6 +674,111 @@ def test_sync_list_auto_paginates() -> None:
     assert calls[0]["ownerId"] == "owner_1"
     assert calls[1]["after"] == "cursor-1"
     assert calls[1]["ownerId"] == "owner_1"
+
+
+def test_sync_usage_metrics_support_app_owner_and_viewer_scopes() -> None:
+    calls: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        calls.append(body)
+        if body["operationName"] == "srcUsageAppMetricsQuery":
+            return graphql_response(
+                {
+                    "node": {
+                        "__typename": "DeployApp",
+                        "groupedMetrics": usage_metrics_payload(),
+                    }
+                }
+            )
+        if body["operationName"] == "srcUsageOwnerMetricsQuery":
+            owner_metrics = usage_metrics_payload()
+            owner_metrics["totals"]["requests"]["totalRequests"] = "200"
+            return graphql_response(
+                {
+                    "owner": {
+                        "__typename": "Namespace",
+                        "groupedMetrics": owner_metrics,
+                    }
+                }
+            )
+        if body["operationName"] == "srcUsageViewerMetricsQuery":
+            viewer_metrics = usage_metrics_payload()
+            viewer_metrics["totals"]["workloads"]["workloads"] = 9
+            return graphql_response({"viewer": {"groupedMetrics": viewer_metrics}})
+        raise AssertionError(f"Unexpected operation {body['operationName']}")
+
+    with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
+        app_metrics = client.usage.metrics(
+            app="app_1",
+            start="2026-06-01T00:00:00Z",
+            end="2026-06-30T00:00:00Z",
+            grouped_by="BY_HOUR",
+        )
+        owner_metrics = client.usage.metrics(
+            {
+                "owner": "stackmachine",
+                "start": "2026-06-01T00:00:00Z",
+                "end": "2026-06-30T00:00:00Z",
+            }
+        )
+        viewer_metrics = client.usage.metrics(
+            start="2026-06-01T00:00:00Z",
+            end="2026-06-30T00:00:00Z",
+        )
+        with pytest.raises(StackMachineValidationError):
+            client.usage.metrics(
+                app="app_1",
+                owner="stackmachine",
+                start="2026-06-01T00:00:00Z",
+                end="2026-06-30T00:00:00Z",
+            )
+
+    assert app_metrics.scope.type == "app"
+    assert app_metrics.scope.app_id == "app_1"
+    assert app_metrics.totals.requests.total_requests == "9007199254740993"
+    assert app_metrics.totals.workloads.wall_cpu_time_millis == "180000"
+    assert app_metrics.grouped[0].grouped_at.isoformat() == "2026-06-01T00:00:00+00:00"
+    assert owner_metrics.scope.type == "owner"
+    assert owner_metrics.scope.owner == "stackmachine"
+    assert owner_metrics.scope.owner_type == "Namespace"
+    assert owner_metrics.totals.requests.total_requests == "200"
+    assert viewer_metrics.scope.type == "viewer"
+    assert viewer_metrics.totals.workloads.workloads == 9
+    assert calls[0]["variables"] == {
+        "appId": "app_1",
+        "start": "2026-06-01T00:00:00Z",
+        "end": "2026-06-30T00:00:00Z",
+        "groupedBy": "BY_HOUR",
+    }
+    assert calls[1]["variables"]["owner"] == "stackmachine"
+    assert calls[1]["variables"]["groupedBy"] == "BY_DAY"
+    assert calls[2]["variables"]["groupedBy"] == "BY_DAY"
+    assert len(calls) == 3
+
+
+def test_sync_usage_metrics_raise_for_missing_scope_targets() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        if body["operationName"] == "srcUsageAppMetricsQuery":
+            return graphql_response({"node": None})
+        if body["operationName"] == "srcUsageOwnerMetricsQuery":
+            return graphql_response({"owner": None})
+        raise AssertionError(f"Unexpected operation {body['operationName']}")
+
+    with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(stackmachine.StackMachineInvalidRequestError):
+            client.usage.metrics(
+                app="missing_app",
+                start="2026-06-01T00:00:00Z",
+                end="2026-06-30T00:00:00Z",
+            )
+        with pytest.raises(stackmachine.StackMachineInvalidRequestError):
+            client.usage.metrics(
+                owner="missing-owner",
+                start="2026-06-01T00:00:00Z",
+                end="2026-06-30T00:00:00Z",
+            )
 
 
 def test_sync_app_volumes_lifecycle() -> None:
@@ -1621,6 +1792,38 @@ async def test_async_list_request_can_be_awaited_and_iterated() -> None:
 
     assert page.data[0].id == "app_1"
     assert [app.id for app in iterated] == ["app_1"]
+
+
+async def test_async_usage_metrics_app_scope() -> None:
+    calls: list[dict[str, Any]] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        calls.append(body)
+        assert body["operationName"] == "srcUsageAppMetricsQuery"
+        return graphql_response(
+            {
+                "node": {
+                    "__typename": "DeployApp",
+                    "groupedMetrics": usage_metrics_payload(),
+                }
+            }
+        )
+
+    client = AsyncStackMachine("secret", http_transport=httpx.MockTransport(handler))
+    try:
+        metrics = await client.usage.metrics(
+            app="app_1",
+            start="2026-06-01T00:00:00Z",
+            end="2026-06-30T00:00:00Z",
+        )
+    finally:
+        await client.close()
+
+    assert metrics.scope.type == "app"
+    assert metrics.scope.app_id == "app_1"
+    assert metrics.totals.requests.total_requests == "9007199254740993"
+    assert calls[0]["variables"]["groupedBy"] == "BY_DAY"
 
 
 async def test_async_app_volumes_lifecycle() -> None:

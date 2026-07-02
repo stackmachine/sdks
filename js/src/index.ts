@@ -39,6 +39,9 @@ import { srcGetAppByNameQuery } from "__generated__/srcGetAppByNameQuery.graphql
 import { srcGetAppLogsQuery } from "__generated__/srcGetAppLogsQuery.graphql";
 import { srcGetDeploymentStatusQuery } from "__generated__/srcGetDeploymentStatusQuery.graphql";
 import { srcListDeployAppsQuery } from "__generated__/srcListDeployAppsQuery.graphql";
+import { srcUsageAppMetricsQuery } from "__generated__/srcUsageAppMetricsQuery.graphql";
+import { srcUsageOwnerMetricsQuery } from "__generated__/srcUsageOwnerMetricsQuery.graphql";
+import { srcUsageViewerMetricsQuery } from "__generated__/srcUsageViewerMetricsQuery.graphql";
 import { srcDeleteAppDomainMutation } from "__generated__/srcDeleteAppDomainMutation.graphql";
 import { srcDeleteAppVolumeMutation } from "__generated__/srcDeleteAppVolumeMutation.graphql";
 import { srcUpsertAppDomainMutation } from "__generated__/srcUpsertAppDomainMutation.graphql";
@@ -391,6 +394,61 @@ export type EmailMessageStatus =
   | "RECEIVED"
   | "SENT"
   | "%future added value";
+export type MetricGrouping =
+  | "BY_5_MINUTES"
+  | "BY_15_MINUTES"
+  | "BY_DAY"
+  | "BY_HOUR"
+  | "BY_WEEK"
+  | "%future added value";
+export type UsageMetricValue = number | string;
+export type UsageRequestMetrics = {
+  cachedRequests: UsageMetricValue;
+  dataCachedBytes: UsageMetricValue;
+  dataServedBytes: UsageMetricValue;
+  http2xx: UsageMetricValue;
+  http3xx: UsageMetricValue;
+  http4xx: UsageMetricValue;
+  http5xx: UsageMetricValue;
+  httpOther: UsageMetricValue;
+  percentageCached: number;
+  requestDurationMillis: UsageMetricValue;
+  totalRequests: UsageMetricValue;
+  uniqueUsers: number;
+};
+export type UsageWorkloadMetrics = {
+  memoryBytes: UsageMetricValue;
+  networkEgressBytes: UsageMetricValue;
+  networkIngressBytes: UsageMetricValue;
+  realCpuTimeMillis: UsageMetricValue;
+  wallCpuTimeMillis: UsageMetricValue;
+  workloads: number;
+};
+export type UsageMetricsTotals = {
+  requests: UsageRequestMetrics;
+  workloads: UsageWorkloadMetrics;
+};
+export type GroupedUsageMetrics = UsageMetricsTotals & {
+  groupedAt: Date;
+};
+export type UsageMetricsScope =
+  | { type: "app"; appId: string }
+  | { type: "owner"; owner: string; ownerType: "Namespace" | "User" }
+  | { type: "viewer" };
+export type UsageMetrics = {
+  startAt: Date;
+  endAt: Date;
+  grouped: GroupedUsageMetrics[];
+  totals: UsageMetricsTotals;
+  scope: UsageMetricsScope;
+};
+export type UsageMetricsInput = {
+  app?: string | null;
+  owner?: string | null;
+  start: Date | string;
+  end: Date | string;
+  groupedBy?: MetricGrouping | null;
+};
 export type EmailsListInput = StackMachinePaginationParams & {
   app?: string | null;
   owner?: string | null;
@@ -4556,6 +4614,430 @@ export class FilesResource {
   }
 }
 
+function serializeUsageDate(value: Date | string): string {
+  return value instanceof Date ? value.toISOString() : value;
+}
+
+function parseUsageRequestMetrics(data: any): UsageRequestMetrics {
+  return {
+    cachedRequests: data.cachedRequests,
+    dataCachedBytes: data.dataCachedBytes,
+    dataServedBytes: data.dataServedBytes,
+    http2xx: data.http2xx,
+    http3xx: data.http3xx,
+    http4xx: data.http4xx,
+    http5xx: data.http5xx,
+    httpOther: data.httpOther,
+    percentageCached: data.percentageCached,
+    requestDurationMillis: data.requestDurationMillis,
+    totalRequests: data.totalRequests,
+    uniqueUsers: data.uniqueUsers,
+  };
+}
+
+function parseUsageWorkloadMetrics(data: any): UsageWorkloadMetrics {
+  return {
+    memoryBytes: data.memoryBytes,
+    networkEgressBytes: data.networkEgressBytes,
+    networkIngressBytes: data.networkIngressBytes,
+    realCpuTimeMillis: data.realCpuTimeMillis,
+    wallCpuTimeMillis: data.wallCpuTimeMillis,
+    workloads: data.workloads,
+  };
+}
+
+function parseUsageMetricsTotals(data: any): UsageMetricsTotals {
+  return {
+    requests: parseUsageRequestMetrics(data.requests),
+    workloads: parseUsageWorkloadMetrics(data.workloads),
+  };
+}
+
+function parseUsageMetrics(data: any, scope: UsageMetricsScope): UsageMetrics {
+  return {
+    startAt: parseDate(data.startAt)!,
+    endAt: parseDate(data.endAt)!,
+    grouped: (data.grouped ?? []).map((group: any) => ({
+      groupedAt: parseDate(group.groupedAt)!,
+      ...parseUsageMetricsTotals(group),
+    })),
+    totals: parseUsageMetricsTotals(data.totals),
+    scope,
+  };
+}
+
+export class UsageResource {
+  constructor(private client: SdkContext) {}
+
+  async metrics(
+    input: UsageMetricsInput,
+    options?: StackMachineRequestOptions,
+  ): Promise<UsageMetrics> {
+    if (input.app !== undefined && input.app !== null) {
+      if (input.owner !== undefined && input.owner !== null) {
+        throw new StackMachineValidationError({
+          message: "`app` and `owner` cannot both be provided.",
+          param: "owner",
+        });
+      }
+      return this.appMetrics(input, options);
+    }
+    if (input.owner !== undefined && input.owner !== null) {
+      return this.ownerMetrics(input, options);
+    }
+    return this.viewerMetrics(input, options);
+  }
+
+  private async appMetrics(
+    input: UsageMetricsInput,
+    options?: StackMachineRequestOptions,
+  ): Promise<UsageMetrics> {
+    const appId = input.app!;
+    const response = await this.client._query<srcUsageAppMetricsQuery>(
+      graphql`
+        query srcUsageAppMetricsQuery(
+          $appId: ID!
+          $start: DateTime!
+          $end: DateTime!
+          $groupedBy: MetricGrouping!
+        ) {
+          node(id: $appId) {
+            __typename
+            ... on DeployApp {
+              groupedMetrics(
+                startAt: $start
+                endAt: $end
+                groupedBy: $groupedBy
+              ) {
+                startAt
+                endAt
+                grouped {
+                  groupedAt
+                  requests {
+                    cachedRequests
+                    dataCachedBytes
+                    dataServedBytes
+                    http2xx
+                    http3xx
+                    http4xx
+                    http5xx
+                    httpOther
+                    percentageCached
+                    requestDurationMillis
+                    totalRequests
+                    uniqueUsers
+                  }
+                  workloads {
+                    memoryBytes
+                    networkEgressBytes
+                    networkIngressBytes
+                    realCpuTimeMillis
+                    wallCpuTimeMillis
+                    workloads
+                  }
+                }
+                totals {
+                  requests {
+                    cachedRequests
+                    dataCachedBytes
+                    dataServedBytes
+                    http2xx
+                    http3xx
+                    http4xx
+                    http5xx
+                    httpOther
+                    percentageCached
+                    requestDurationMillis
+                    totalRequests
+                    uniqueUsers
+                  }
+                  workloads {
+                    memoryBytes
+                    networkEgressBytes
+                    networkIngressBytes
+                    realCpuTimeMillis
+                    wallCpuTimeMillis
+                    workloads
+                  }
+                }
+              }
+            }
+          }
+        }
+      `,
+      {
+        appId,
+        start: serializeUsageDate(input.start),
+        end: serializeUsageDate(input.end),
+        groupedBy: input.groupedBy ?? "BY_DAY",
+      },
+      options,
+    );
+    if (!response.node || response.node.__typename !== "DeployApp") {
+      throw resourceMissingError("app", appId, "srcUsageAppMetricsQuery");
+    }
+    return parseUsageMetrics(response.node.groupedMetrics, {
+      type: "app",
+      appId,
+    });
+  }
+
+  private async ownerMetrics(
+    input: UsageMetricsInput,
+    options?: StackMachineRequestOptions,
+  ): Promise<UsageMetrics> {
+    const owner = input.owner!;
+    const response = await this.client._query<srcUsageOwnerMetricsQuery>(
+      graphql`
+        query srcUsageOwnerMetricsQuery(
+          $owner: String!
+          $start: DateTime!
+          $end: DateTime!
+          $groupedBy: MetricGrouping!
+        ) {
+          owner: getGlobalObject(slug: $owner) {
+            __typename
+            ... on Namespace {
+              groupedMetrics(
+                startAt: $start
+                endAt: $end
+                groupedBy: $groupedBy
+              ) {
+                startAt
+                endAt
+                grouped {
+                  groupedAt
+                  requests {
+                    cachedRequests
+                    dataCachedBytes
+                    dataServedBytes
+                    http2xx
+                    http3xx
+                    http4xx
+                    http5xx
+                    httpOther
+                    percentageCached
+                    requestDurationMillis
+                    totalRequests
+                    uniqueUsers
+                  }
+                  workloads {
+                    memoryBytes
+                    networkEgressBytes
+                    networkIngressBytes
+                    realCpuTimeMillis
+                    wallCpuTimeMillis
+                    workloads
+                  }
+                }
+                totals {
+                  requests {
+                    cachedRequests
+                    dataCachedBytes
+                    dataServedBytes
+                    http2xx
+                    http3xx
+                    http4xx
+                    http5xx
+                    httpOther
+                    percentageCached
+                    requestDurationMillis
+                    totalRequests
+                    uniqueUsers
+                  }
+                  workloads {
+                    memoryBytes
+                    networkEgressBytes
+                    networkIngressBytes
+                    realCpuTimeMillis
+                    wallCpuTimeMillis
+                    workloads
+                  }
+                }
+              }
+            }
+            ... on User {
+              groupedMetrics(
+                startAt: $start
+                endAt: $end
+                groupedBy: $groupedBy
+              ) {
+                startAt
+                endAt
+                grouped {
+                  groupedAt
+                  requests {
+                    cachedRequests
+                    dataCachedBytes
+                    dataServedBytes
+                    http2xx
+                    http3xx
+                    http4xx
+                    http5xx
+                    httpOther
+                    percentageCached
+                    requestDurationMillis
+                    totalRequests
+                    uniqueUsers
+                  }
+                  workloads {
+                    memoryBytes
+                    networkEgressBytes
+                    networkIngressBytes
+                    realCpuTimeMillis
+                    wallCpuTimeMillis
+                    workloads
+                  }
+                }
+                totals {
+                  requests {
+                    cachedRequests
+                    dataCachedBytes
+                    dataServedBytes
+                    http2xx
+                    http3xx
+                    http4xx
+                    http5xx
+                    httpOther
+                    percentageCached
+                    requestDurationMillis
+                    totalRequests
+                    uniqueUsers
+                  }
+                  workloads {
+                    memoryBytes
+                    networkEgressBytes
+                    networkIngressBytes
+                    realCpuTimeMillis
+                    wallCpuTimeMillis
+                    workloads
+                  }
+                }
+              }
+            }
+          }
+        }
+      `,
+      {
+        owner,
+        start: serializeUsageDate(input.start),
+        end: serializeUsageDate(input.end),
+        groupedBy: input.groupedBy ?? "BY_DAY",
+      },
+      options,
+    );
+    if (!response.owner) {
+      throw resourceMissingError(
+        "owner",
+        owner,
+        "srcUsageOwnerMetricsQuery",
+        "owner",
+      );
+    }
+    const ownerType = response.owner.__typename;
+    if (ownerType !== "Namespace" && ownerType !== "User") {
+      throw resourceMissingError(
+        "owner",
+        owner,
+        "srcUsageOwnerMetricsQuery",
+        "owner",
+      );
+    }
+    return parseUsageMetrics(response.owner.groupedMetrics, {
+      type: "owner",
+      owner,
+      ownerType,
+    });
+  }
+
+  private async viewerMetrics(
+    input: UsageMetricsInput,
+    options?: StackMachineRequestOptions,
+  ): Promise<UsageMetrics> {
+    const response = await this.client._query<srcUsageViewerMetricsQuery>(
+      graphql`
+        query srcUsageViewerMetricsQuery(
+          $start: DateTime!
+          $end: DateTime!
+          $groupedBy: MetricGrouping!
+        ) {
+          viewer {
+            groupedMetrics(
+              startAt: $start
+              endAt: $end
+              groupedBy: $groupedBy
+            ) {
+              startAt
+              endAt
+              grouped {
+                groupedAt
+                requests {
+                  cachedRequests
+                  dataCachedBytes
+                  dataServedBytes
+                  http2xx
+                  http3xx
+                  http4xx
+                  http5xx
+                  httpOther
+                  percentageCached
+                  requestDurationMillis
+                  totalRequests
+                  uniqueUsers
+                }
+                workloads {
+                  memoryBytes
+                  networkEgressBytes
+                  networkIngressBytes
+                  realCpuTimeMillis
+                  wallCpuTimeMillis
+                  workloads
+                }
+              }
+              totals {
+                requests {
+                  cachedRequests
+                  dataCachedBytes
+                  dataServedBytes
+                  http2xx
+                  http3xx
+                  http4xx
+                  http5xx
+                  httpOther
+                  percentageCached
+                  requestDurationMillis
+                  totalRequests
+                  uniqueUsers
+                }
+                workloads {
+                  memoryBytes
+                  networkEgressBytes
+                  networkIngressBytes
+                  realCpuTimeMillis
+                  wallCpuTimeMillis
+                  workloads
+                }
+              }
+            }
+          }
+        }
+      `,
+      {
+        start: serializeUsageDate(input.start),
+        end: serializeUsageDate(input.end),
+        groupedBy: input.groupedBy ?? "BY_DAY",
+      },
+      options,
+    );
+    const viewer = requiredPayload(
+      response.viewer,
+      "Failed to retrieve usage metrics, no viewer returned.",
+      "srcUsageViewerMetricsQuery",
+    );
+    return parseUsageMetrics(viewer.groupedMetrics, { type: "viewer" });
+  }
+}
+
 export type CountComparison =
   | "EQUAL"
   | "GREATER_THAN"
@@ -4834,6 +5316,7 @@ export class StackMachine implements SdkContext {
   emails: EmailsResource;
   packages: PackagesResource;
   files: FilesResource;
+  usage: UsageResource;
   readonly apiUrl: string;
   readonly timeout: number;
   readonly maxNetworkRetries: number;
@@ -4865,6 +5348,7 @@ export class StackMachine implements SdkContext {
     this.dns = new DNSResource(this);
     this.emails = new EmailsResource(this);
     this.packages = new PackagesResource(this);
+    this.usage = new UsageResource(this);
   }
 
   static async init(settings: StackMachineRegistryConfig) {

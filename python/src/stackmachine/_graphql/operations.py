@@ -6,6 +6,115 @@ query srcViewerQuery {
 }
 """
 
+USAGE_METRICS_FIELDS = """
+startAt
+endAt
+grouped {
+  groupedAt
+  requests {
+    cachedRequests
+    dataCachedBytes
+    dataServedBytes
+    http2xx
+    http3xx
+    http4xx
+    http5xx
+    httpOther
+    percentageCached
+    requestDurationMillis
+    totalRequests
+    uniqueUsers
+  }
+  workloads {
+    memoryBytes
+    networkEgressBytes
+    networkIngressBytes
+    realCpuTimeMillis
+    wallCpuTimeMillis
+    workloads
+  }
+}
+totals {
+  requests {
+    cachedRequests
+    dataCachedBytes
+    dataServedBytes
+    http2xx
+    http3xx
+    http4xx
+    http5xx
+    httpOther
+    percentageCached
+    requestDurationMillis
+    totalRequests
+    uniqueUsers
+  }
+  workloads {
+    memoryBytes
+    networkEgressBytes
+    networkIngressBytes
+    realCpuTimeMillis
+    wallCpuTimeMillis
+    workloads
+  }
+}
+"""
+
+USAGE_APP_METRICS_QUERY = f"""
+query srcUsageAppMetricsQuery(
+  $appId: ID!
+  $start: DateTime!
+  $end: DateTime!
+  $groupedBy: MetricGrouping!
+) {{
+  node(id: $appId) {{
+    __typename
+    ... on DeployApp {{
+      groupedMetrics(startAt: $start, endAt: $end, groupedBy: $groupedBy) {{
+        {USAGE_METRICS_FIELDS}
+      }}
+    }}
+  }}
+}}
+"""
+
+USAGE_OWNER_METRICS_QUERY = f"""
+query srcUsageOwnerMetricsQuery(
+  $owner: String!
+  $start: DateTime!
+  $end: DateTime!
+  $groupedBy: MetricGrouping!
+) {{
+  owner: getGlobalObject(slug: $owner) {{
+    __typename
+    ... on Namespace {{
+      groupedMetrics(startAt: $start, endAt: $end, groupedBy: $groupedBy) {{
+        {USAGE_METRICS_FIELDS}
+      }}
+    }}
+    ... on User {{
+      groupedMetrics(startAt: $start, endAt: $end, groupedBy: $groupedBy) {{
+        {USAGE_METRICS_FIELDS}
+      }}
+    }}
+  }}
+}}
+"""
+
+USAGE_VIEWER_METRICS_QUERY = f"""
+query srcUsageViewerMetricsQuery(
+  $start: DateTime!
+  $end: DateTime!
+  $groupedBy: MetricGrouping!
+) {{
+  viewer {{
+    groupedMetrics(startAt: $start, endAt: $end, groupedBy: $groupedBy) {{
+      {USAGE_METRICS_FIELDS}
+    }}
+  }}
+}}
+"""
+
 UPLOAD_QUERY = """
 query uploadQuery($filename: String!) {
   getSignedUrl(filename: $filename) {

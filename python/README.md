@@ -158,6 +158,26 @@ updated = stackmachine.apps.git.update(
 stackmachine.apps.git.delete("app_id")
 ```
 
+## Usage Analytics
+
+```python
+app_usage = stackmachine.usage.metrics(
+    app="app_id",
+    start="2026-06-01T00:00:00Z",
+    end="2026-06-30T00:00:00Z",
+    grouped_by="BY_DAY",
+)
+
+workspace_usage = stackmachine.usage.metrics(
+    owner="my-workspace",
+    start="2026-06-01T00:00:00Z",
+    end="2026-06-30T00:00:00Z",
+)
+
+print(app_usage.totals.requests.total_requests)
+print(workspace_usage.totals.workloads.real_cpu_time_millis)
+```
+
 ## Databases
 
 ```python

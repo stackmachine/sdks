@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Callable, List, Mapping, Optional, Sequence
+from typing import Any, Callable, List, Mapping, Optional, Sequence, Union
 
 from ._utils import parse_datetime
 
@@ -239,6 +239,124 @@ class AppDatabaseCredentialsResult:
     password: str
 
 
+UsageMetricValue = Union[int, str]
+
+
+@dataclass
+class UsageRequestMetrics:
+    cached_requests: UsageMetricValue
+    data_cached_bytes: UsageMetricValue
+    data_served_bytes: UsageMetricValue
+    http2xx: UsageMetricValue
+    http3xx: UsageMetricValue
+    http4xx: UsageMetricValue
+    http5xx: UsageMetricValue
+    http_other: UsageMetricValue
+    percentage_cached: float
+    request_duration_millis: UsageMetricValue
+    total_requests: UsageMetricValue
+    unique_users: int
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "UsageRequestMetrics":
+        return cls(
+            cached_requests=data["cachedRequests"],
+            data_cached_bytes=data["dataCachedBytes"],
+            data_served_bytes=data["dataServedBytes"],
+            http2xx=data["http2xx"],
+            http3xx=data["http3xx"],
+            http4xx=data["http4xx"],
+            http5xx=data["http5xx"],
+            http_other=data["httpOther"],
+            percentage_cached=float(data["percentageCached"]),
+            request_duration_millis=data["requestDurationMillis"],
+            total_requests=data["totalRequests"],
+            unique_users=int(data["uniqueUsers"]),
+        )
+
+
+@dataclass
+class UsageWorkloadMetrics:
+    memory_bytes: UsageMetricValue
+    network_egress_bytes: UsageMetricValue
+    network_ingress_bytes: UsageMetricValue
+    real_cpu_time_millis: UsageMetricValue
+    wall_cpu_time_millis: UsageMetricValue
+    workloads: int
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "UsageWorkloadMetrics":
+        return cls(
+            memory_bytes=data["memoryBytes"],
+            network_egress_bytes=data["networkEgressBytes"],
+            network_ingress_bytes=data["networkIngressBytes"],
+            real_cpu_time_millis=data["realCpuTimeMillis"],
+            wall_cpu_time_millis=data["wallCpuTimeMillis"],
+            workloads=int(data["workloads"]),
+        )
+
+
+@dataclass
+class UsageMetricsTotals:
+    requests: UsageRequestMetrics
+    workloads: UsageWorkloadMetrics
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "UsageMetricsTotals":
+        return cls(
+            requests=UsageRequestMetrics.from_graphql(data["requests"]),
+            workloads=UsageWorkloadMetrics.from_graphql(data["workloads"]),
+        )
+
+
+@dataclass
+class GroupedUsageMetrics:
+    grouped_at: datetime
+    requests: UsageRequestMetrics
+    workloads: UsageWorkloadMetrics
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "GroupedUsageMetrics":
+        return cls(
+            grouped_at=parse_datetime(data["groupedAt"]) or datetime.min,
+            requests=UsageRequestMetrics.from_graphql(data["requests"]),
+            workloads=UsageWorkloadMetrics.from_graphql(data["workloads"]),
+        )
+
+
+@dataclass
+class UsageMetricsScope:
+    type: str
+    app_id: Optional[str] = None
+    owner: Optional[str] = None
+    owner_type: Optional[str] = None
+
+
+@dataclass
+class UsageMetrics:
+    start_at: datetime
+    end_at: datetime
+    grouped: List[GroupedUsageMetrics]
+    totals: UsageMetricsTotals
+    scope: UsageMetricsScope
+
+    @classmethod
+    def from_graphql(
+        cls, data: Mapping[str, Any], *, scope: UsageMetricsScope
+    ) -> "UsageMetrics":
+        return cls(
+            start_at=parse_datetime(data["startAt"]) or datetime.min,
+            end_at=parse_datetime(data["endAt"]) or datetime.min,
+            grouped=[
+                GroupedUsageMetrics.from_graphql(group)
+                for group in data.get("grouped") or []
+                if group
+            ],
+            totals=UsageMetricsTotals.from_graphql(data["totals"]),
+            scope=scope,
+        )
+
+
 @dataclass
 class GithubAppInstallation:
     id: str
@@ -419,9 +537,7 @@ class DNSRecord:
             nsdname=str(data["nsdname"]) if data.get("nsdname") else None,
             ptrdname=str(data["ptrdname"]) if data.get("ptrdname") else None,
             expire=int(data["expire"]) if data.get("expire") is not None else None,
-            minimum=(
-                int(data["minimum"]) if data.get("minimum") is not None else None
-            ),
+            minimum=(int(data["minimum"]) if data.get("minimum") is not None else None),
             mname=str(data["mname"]) if data.get("mname") else None,
             refresh=int(data["refresh"]) if data.get("refresh") is not None else None,
             retry=int(data["retry"]) if data.get("retry") is not None else None,
@@ -438,9 +554,7 @@ class DNSRecord:
             algorithm=(
                 int(data["algorithm"]) if data.get("algorithm") is not None else None
             ),
-            fingerprint=(
-                str(data["fingerprint"]) if data.get("fingerprint") else None
-            ),
+            fingerprint=(str(data["fingerprint"]) if data.get("fingerprint") else None),
             sshfp_type=int(data["type"]) if data.get("type") is not None else None,
             data=str(data["data"]) if data.get("data") else None,
         )
@@ -470,9 +584,7 @@ class DNSDomain:
             slug=str(data["slug"]),
             zone_file=str(data["zoneFile"]),
             delegation_status=(
-                str(data["delegationStatus"])
-                if data.get("delegationStatus")
-                else None
+                str(data["delegationStatus"]) if data.get("delegationStatus") else None
             ),
             nameservers=[
                 str(nameserver)

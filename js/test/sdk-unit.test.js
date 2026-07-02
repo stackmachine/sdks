@@ -115,6 +115,63 @@ const appDatabaseNode = (id, overrides = {}) => ({
   ...overrides,
 });
 
+const usageMetricsPayload = (overrides = {}) => ({
+  startAt: "2026-06-01T00:00:00Z",
+  endAt: "2026-06-30T00:00:00Z",
+  grouped: [
+    {
+      groupedAt: "2026-06-01T00:00:00Z",
+      requests: {
+        cachedRequests: "12",
+        dataCachedBytes: "2048",
+        dataServedBytes: "4096",
+        http2xx: "100",
+        http3xx: "7",
+        http4xx: "3",
+        http5xx: "1",
+        httpOther: "2",
+        percentageCached: 12.5,
+        requestDurationMillis: "3456",
+        totalRequests: "9007199254740993",
+        uniqueUsers: 42,
+      },
+      workloads: {
+        memoryBytes: "8192",
+        networkEgressBytes: "16384",
+        networkIngressBytes: "32768",
+        realCpuTimeMillis: "120000",
+        wallCpuTimeMillis: "180000",
+        workloads: 5,
+      },
+    },
+  ],
+  totals: {
+    requests: {
+      cachedRequests: "12",
+      dataCachedBytes: "2048",
+      dataServedBytes: "4096",
+      http2xx: "100",
+      http3xx: "7",
+      http4xx: "3",
+      http5xx: "1",
+      httpOther: "2",
+      percentageCached: 12.5,
+      requestDurationMillis: "3456",
+      totalRequests: "9007199254740993",
+      uniqueUsers: 42,
+    },
+    workloads: {
+      memoryBytes: "8192",
+      networkEgressBytes: "16384",
+      networkIngressBytes: "32768",
+      realCpuTimeMillis: "120000",
+      wallCpuTimeMillis: "180000",
+      workloads: 5,
+    },
+  },
+  ...overrides,
+});
+
 const githubRepoConnectionNode = (id, overrides = {}) => ({
   __typename: "GithubRepoConnection",
   id,
@@ -505,6 +562,7 @@ test("clients keep independent keys, endpoints, caches, and resources", async ()
   assert.notEqual(clientA.emails.received, clientB.emails.received);
   assert.notEqual(clientA.deployments, clientB.deployments);
   assert.notEqual(clientA.files, clientB.files);
+  assert.notEqual(clientA.usage, clientB.usage);
 
   assert.deepEqual(await clientA.viewer({ force: false }), {
     username: "client-a",
@@ -616,6 +674,7 @@ test("package supports default import and CommonJS callable construction", async
   assert.equal(callableClient.apiUrl, "https://api.example.test/graphql");
   assert.ok(callableClient.apps);
   assert.ok(callableClient.deployments);
+  assert.ok(callableClient.usage);
 
   const constructedClient = new StackMachineCjs("key", {
     apiUrl: "https://api.example.test/graphql",
@@ -1460,6 +1519,147 @@ test("apps list can filter by owner id", async () => {
   assert.equal(page.data[0].id, "app_owner_1");
   assert.match(fetch.calls[0].body.query, /ownerId: \$ownerId/);
   assert.equal(fetch.calls[0].body.variables.ownerId, "owner_1");
+});
+
+test("usage metrics support app, owner, and viewer scopes", async () => {
+  const fetch = mockFetch((call) => {
+    switch (call.body.operationName) {
+      case "srcUsageAppMetricsQuery":
+        return jsonResponse({
+          data: {
+            node: {
+              __typename: "DeployApp",
+              groupedMetrics: usageMetricsPayload(),
+            },
+          },
+        });
+      case "srcUsageOwnerMetricsQuery":
+        return jsonResponse({
+          data: {
+            owner: {
+              __typename: "Namespace",
+              groupedMetrics: usageMetricsPayload({
+                totals: {
+                  ...usageMetricsPayload().totals,
+                  requests: {
+                    ...usageMetricsPayload().totals.requests,
+                    totalRequests: "200",
+                  },
+                },
+              }),
+            },
+          },
+        });
+      case "srcUsageViewerMetricsQuery":
+        return jsonResponse({
+          data: {
+            viewer: {
+              groupedMetrics: usageMetricsPayload({
+                totals: {
+                  ...usageMetricsPayload().totals,
+                  workloads: {
+                    ...usageMetricsPayload().totals.workloads,
+                    workloads: 9,
+                  },
+                },
+              }),
+            },
+          },
+        });
+      default:
+        throw new Error(`Unexpected operation ${call.body.operationName}`);
+    }
+  });
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+  const start = new Date("2026-06-01T00:00:00Z");
+  const end = "2026-06-30T00:00:00Z";
+
+  const appMetrics = await client.usage.metrics({
+    app: "app_1",
+    start,
+    end,
+    groupedBy: "BY_HOUR",
+  });
+  const ownerMetrics = await client.usage.metrics({
+    owner: "stackmachine",
+    start,
+    end,
+  });
+  const viewerMetrics = await client.usage.metrics({ start, end });
+
+  assert.deepEqual(appMetrics.scope, { type: "app", appId: "app_1" });
+  assert.equal(appMetrics.totals.requests.totalRequests, "9007199254740993");
+  assert.equal(
+    appMetrics.grouped[0].groupedAt.toISOString(),
+    "2026-06-01T00:00:00.000Z",
+  );
+  assert.equal(appMetrics.totals.workloads.wallCpuTimeMillis, "180000");
+  assert.deepEqual(ownerMetrics.scope, {
+    type: "owner",
+    owner: "stackmachine",
+    ownerType: "Namespace",
+  });
+  assert.equal(ownerMetrics.totals.requests.totalRequests, "200");
+  assert.deepEqual(viewerMetrics.scope, { type: "viewer" });
+  assert.equal(viewerMetrics.totals.workloads.workloads, 9);
+  assert.equal(fetch.calls[0].body.variables.appId, "app_1");
+  assert.equal(fetch.calls[0].body.variables.start, "2026-06-01T00:00:00.000Z");
+  assert.equal(fetch.calls[0].body.variables.groupedBy, "BY_HOUR");
+  assert.equal(fetch.calls[1].body.variables.owner, "stackmachine");
+  assert.equal(fetch.calls[1].body.variables.groupedBy, "BY_DAY");
+  assert.equal(fetch.calls[2].body.variables.groupedBy, "BY_DAY");
+
+  await assert.rejects(
+    client.usage.metrics({
+      app: "app_1",
+      owner: "stackmachine",
+      start,
+      end,
+    }),
+    StackMachineValidationError,
+  );
+  assert.equal(fetch.calls.length, 3);
+});
+
+test("usage metrics throw resource missing errors for invalid app or owner", async () => {
+  const fetch = mockFetch((call) => {
+    switch (call.body.operationName) {
+      case "srcUsageAppMetricsQuery":
+        return jsonResponse({
+          data: {
+            node: null,
+          },
+        });
+      case "srcUsageOwnerMetricsQuery":
+        return jsonResponse({
+          data: {
+            owner: null,
+          },
+        });
+      default:
+        throw new Error(`Unexpected operation ${call.body.operationName}`);
+    }
+  });
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+  const input = {
+    start: "2026-06-01T00:00:00Z",
+    end: "2026-06-30T00:00:00Z",
+  };
+
+  await assert.rejects(
+    client.usage.metrics({ ...input, app: "missing_app" }),
+    StackMachineInvalidRequestError,
+  );
+  await assert.rejects(
+    client.usage.metrics({ ...input, owner: "missing-owner" }),
+    StackMachineInvalidRequestError,
+  );
 });
 
 test("app volumes list, create, update, and delete map to GraphQL operations", async () => {
