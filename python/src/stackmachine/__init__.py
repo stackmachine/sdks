@@ -133,7 +133,7 @@ from ._uploads import create_zip
 try:
     __version__ = version("stackmachine")
 except PackageNotFoundError:
-    __version__ = "0.4.0"
+    __version__ = "0.5.0"
 
 __all__ = [
     "AppAlias",
