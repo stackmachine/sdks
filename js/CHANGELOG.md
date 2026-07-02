@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.0](https://github.com/stackmachine/sdks/compare/stackmachine-v0.3.0...stackmachine-v0.4.0) (2026-07-02)
+
+
+### Features
+
+* **js,py:** add package search api ([74bf931](https://github.com/stackmachine/sdks/commit/74bf931ce4d30cbd39a6480a9b803692166a4d86))
+* **js:** add package search ([6b298e7](https://github.com/stackmachine/sdks/commit/6b298e796358ac0dd81cea786df14b4aff0191ef))
+* merge pull request [#21](https://github.com/stackmachine/sdks/issues/21) from stackmachine/usage ([75f2d0f](https://github.com/stackmachine/sdks/commit/75f2d0f597a322f9126b2b72bc028969b64ee42d))
+
 ## [0.3.0](https://github.com/stackmachine/sdks/compare/stackmachine-v0.2.2...stackmachine-v0.3.0) (2026-06-08)
 
 
