@@ -445,7 +445,7 @@ type AppSshServer implements Node {
 type AppTemplate implements Node {
   branch: String
   canDeployWithoutRepo: Boolean!
-  category: AppTemplateCategory!
+  category: String!
   completionTimeInSeconds: Int!
   createdAt: DateTime!
   defaultImage: String
@@ -458,7 +458,7 @@ type AppTemplate implements Node {
   """The ID of the object"""
   id: ID!
   isPublic: Boolean!
-  language: String!
+  language: String
   name: String!
   readme: String!
   repoLicense: String!
@@ -1319,6 +1319,33 @@ input CreateAppDatabaseInput {
   name: String
 }
 
+input CreateAppTemplateInput {
+  branch: String
+  canDeployWithoutRepo: Boolean!
+  category: String!
+  clientMutationId: String
+  completionTimeInSeconds: String!
+  defaultImageUpload: Upload
+  demoUrl: String!
+  description: String
+  framework: String!
+  highlighted: Boolean!
+  isPublic: Boolean!
+  language: String
+  name: String!
+  readme: String!
+  repoLicense: String!
+  repoUrl: String!
+  rootDir: String
+  slug: String!
+  useCases: [String!]
+}
+
+type CreateAppTemplatePayload {
+  appTemplate: AppTemplate!
+  clientMutationId: String
+}
+
 input CreateAppVolumeInput {
   """App ID"""
   appId: ID!
@@ -1723,6 +1750,16 @@ type DeleteAppSecretPayload {
 
   """ID of the deleted secret."""
   id: ID!
+  success: Boolean!
+}
+
+input DeleteAppTemplateInput {
+  clientMutationId: String
+  templateId: ID!
+}
+
+type DeleteAppTemplatePayload {
+  clientMutationId: String
   success: Boolean!
 }
 
@@ -3165,6 +3202,7 @@ type Mutation {
 
   """Create a new database for an app."""
   createAppDb(input: CreateAppDBInput!): CreateAppDBPayload
+  createAppTemplate(input: CreateAppTemplateInput!): CreateAppTemplatePayload
 
   """Create a UI-managed volume for an app."""
   createAppVolume(input: CreateAppVolumeInput!): CreateAppVolumePayload!
@@ -3185,6 +3223,7 @@ type Mutation {
 
   """Deprecated: use UpdateEnvVars."""
   deleteAppSecret(input: DeleteAppSecretInput!): DeleteAppSecretPayload @deprecated(reason: "Use `updateEnvVars` instead.")
+  deleteAppTemplate(input: DeleteAppTemplateInput!): DeleteAppTemplatePayload
 
   """Soft-delete an app volume."""
   deleteAppVolume(input: DeleteAppVolumeInput!): DeleteAppVolumePayload!
@@ -3350,6 +3389,7 @@ type Mutation {
   unlikePackage(input: UnlikePackageInput!): UnlikePackagePayload
   unwatchPackage(input: UnwatchPackageInput!): UnwatchPackagePayload
   updateApiKey(input: UpdateAPIKeyInput!): UpdateAPIKeyPayload
+  updateAppTemplate(input: UpdateAppTemplateInput!): UpdateAppTemplatePayload
 
   """Update autobuild config for an app."""
   updateAutobuildConfigForApp(input: UpdateAutobuildConfigForAppInput!): UpdateAutobuildConfigForAppPayload!
@@ -6028,6 +6068,34 @@ input UpdateAPIKeyInput {
 
 type UpdateAPIKeyPayload {
   apiKey: APIKey!
+  clientMutationId: String
+}
+
+input UpdateAppTemplateInput {
+  branch: String
+  canDeployWithoutRepo: Boolean!
+  category: String!
+  clientMutationId: String
+  completionTimeInSeconds: String!
+  defaultImageUpload: Upload
+  demoUrl: String!
+  description: String
+  framework: String!
+  highlighted: Boolean!
+  isPublic: Boolean!
+  language: String
+  name: String!
+  readme: String!
+  repoLicense: String!
+  repoUrl: String!
+  rootDir: String
+  slug: String!
+  templateId: ID!
+  useCases: [String!]
+}
+
+type UpdateAppTemplatePayload {
+  appTemplate: AppTemplate!
   clientMutationId: String
 }
 
