@@ -11,6 +11,9 @@ import nodeAppVolume, {
   srcAppVolume$data,
 } from "__generated__/srcAppVolume.graphql";
 import { srcCreateAppVolumeMutation } from "__generated__/srcCreateAppVolumeMutation.graphql";
+import nodeCronJob, {
+  srcCronJobData$data,
+} from "__generated__/srcCronJobData.graphql";
 import nodeApp, {
   srcDeployAppData$data,
 } from "__generated__/srcDeployAppData.graphql";
@@ -514,6 +517,86 @@ export type AppsSshUsersUpdateInput = {
 };
 export type AppsSshServerUpdateInput = { enabled: boolean };
 
+export type AppCache = {
+  appId: string;
+  enabled: boolean;
+  purgedAt: Date | null;
+};
+export type AppsCacheUpdateInput = {
+  enabled: boolean;
+};
+
+export type CronJobKind = "EXECUTE" | "FETCH" | "%future added value";
+export type CronJobSource =
+  | "API"
+  | "CONFIG"
+  | "PROVISIONED"
+  | "%future added value";
+export type CronJobsSortBy = "NEWEST" | "OLDEST";
+export type CronJobExecuteTarget = {
+  kind: "EXECUTE";
+  command: string | null;
+  env: Record<string, string>;
+  packageName: string | null;
+};
+export type CronJobFetchTarget = {
+  kind: "FETCH";
+  path: string;
+  method: string;
+  headers: Record<string, string>;
+  body: string | null;
+  expectBodyIncludes: string | null;
+  expectBodyRegex: string | null;
+  expectStatusCodes: number[] | null;
+};
+export type CronJobTarget = CronJobExecuteTarget | CronJobFetchTarget;
+export type CronJobExecuteTargetInput = {
+  command?: string | null;
+  env?: Readonly<Record<string, string>> | null;
+  packageName?: string | null;
+};
+export type CronJobFetchTargetInput = {
+  path: string;
+  method?: string | null;
+  headers?: Readonly<Record<string, string>> | null;
+  body?: string | null;
+  expectBodyIncludes?: string | null;
+  expectBodyRegex?: string | null;
+  expectStatusCodes?: ReadonlyArray<number> | null;
+};
+export type AppsCronJobsListInput = StackMachinePaginationParams & {
+  app: string;
+  kind?: Exclude<CronJobKind, "%future added value"> | null;
+  sortBy?: CronJobsSortBy | null;
+};
+type AppsCronJobsCreateCommonInput = {
+  app: string;
+  name: string;
+  schedule: string;
+  enabled?: boolean | null;
+  maxRetries?: number | null;
+  maxScheduleDrift?: string | null;
+  timeout?: string | null;
+};
+export type AppsCronJobsCreateInput = AppsCronJobsCreateCommonInput &
+  (
+    | { execute: CronJobExecuteTargetInput; fetch?: never }
+    | { execute?: never; fetch: CronJobFetchTargetInput }
+  );
+type AppsCronJobsUpdateCommonInput = {
+  name?: string | null;
+  schedule?: string | null;
+  enabled?: boolean | null;
+  maxRetries?: number | null;
+  maxScheduleDrift?: string | null;
+  timeout?: string | null;
+};
+export type AppsCronJobsUpdateInput = AppsCronJobsUpdateCommonInput &
+  (
+    | { execute?: CronJobExecuteTargetInput; fetch?: never }
+    | { execute?: never; fetch?: CronJobFetchTargetInput }
+  );
+
 export type AppAliasVerificationState =
   | "APEX_WITHOUT_REDIRECTION"
   | "UNVERIFIED"
@@ -557,6 +640,131 @@ function resourceMissingError(
     code: "resource_missing",
     param,
   });
+}
+
+function invalidCronCommand(message: string): StackMachineValidationError {
+  return new StackMachineValidationError({
+    message,
+    code: "invalid_cron_command",
+    param: "command",
+  });
+}
+
+function parseCronCommand(value: string): {
+  command: string;
+  cliArgs: string[];
+} {
+  const tokens: string[] = [];
+  let token = "";
+  let tokenStarted = false;
+  let quote: "single" | "double" | null = null;
+
+  const finishToken = () => {
+    if (tokenStarted) {
+      tokens.push(token);
+      token = "";
+      tokenStarted = false;
+    }
+  };
+
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index];
+    if (quote === "single") {
+      if (character === "'") {
+        quote = null;
+      } else {
+        token += character;
+      }
+      continue;
+    }
+    if (quote === "double") {
+      if (character === '"') {
+        quote = null;
+      } else if (character === "\\") {
+        index += 1;
+        if (index >= value.length) {
+          throw invalidCronCommand(
+            "`command` cannot end with an incomplete escape sequence.",
+          );
+        }
+        token += value[index];
+      } else {
+        token += character;
+      }
+      continue;
+    }
+    if (/\s/.test(character)) {
+      finishToken();
+    } else if (character === "'") {
+      quote = "single";
+      tokenStarted = true;
+    } else if (character === '"') {
+      quote = "double";
+      tokenStarted = true;
+    } else if (character === "\\") {
+      tokenStarted = true;
+      index += 1;
+      if (index >= value.length) {
+        throw invalidCronCommand(
+          "`command` cannot end with an incomplete escape sequence.",
+        );
+      }
+      token += value[index];
+    } else {
+      tokenStarted = true;
+      token += character;
+    }
+  }
+
+  if (quote) {
+    throw invalidCronCommand("`command` contains an unterminated quote.");
+  }
+  finishToken();
+  if (!tokens[0]) {
+    throw invalidCronCommand("`command` must contain a non-empty command.");
+  }
+  return { command: tokens[0], cliArgs: tokens.slice(1) };
+}
+
+function quoteCronCommandToken(value: string): string {
+  if (/^[A-Za-z0-9_@%+=:,./-]+$/.test(value)) {
+    return value;
+  }
+  return `'${value.replaceAll("'", `'\\''`)}'`;
+}
+
+function formatCronCommand(
+  command: string | null | undefined,
+  cliArgs: unknown,
+): string | null {
+  const args = Array.isArray(cliArgs)
+    ? cliArgs.filter((arg): arg is string => typeof arg === "string")
+    : [];
+  const tokens =
+    command === null || command === undefined ? args : [command, ...args];
+  return tokens.length > 0 ? tokens.map(quoteCronCommandToken).join(" ") : null;
+}
+
+function serializeCronExecuteTarget(input: CronJobExecuteTargetInput) {
+  if (input.command === undefined) {
+    return {
+      env: input.env,
+      packageName: input.packageName,
+    };
+  }
+  if (input.command === null) {
+    return {
+      command: null,
+      cliArgs: [],
+      env: input.env,
+      packageName: input.packageName,
+    };
+  }
+  return {
+    ...parseCronCommand(input.command),
+    env: input.env,
+    packageName: input.packageName,
+  };
 }
 
 function shouldRetryGitUpdateWithConnectionId(error: unknown): boolean {
@@ -824,6 +1032,114 @@ export class DeployApp {
     this.activeVersion = typedData.activeVersion
       ? new DeployAppVersion(typedData.activeVersion as any, this.client, this)
       : null;
+  }
+}
+
+function stringDictionary(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      (entry): entry is [string, string] => typeof entry[1] === "string",
+    ),
+  );
+}
+
+export class CronJob {
+  static fragment = graphql`
+    fragment srcCronJobData on CronJob {
+      id
+      name
+      schedule
+      enabled
+      kind
+      source
+      isManaged
+      maxRetries
+      maxScheduleDrift
+      timeout
+      createdAt
+      updatedAt
+      target {
+        __typename
+        ... on ExecuteCronJobTarget {
+          command
+          cliArgs
+          env
+          packageName
+        }
+        ... on FetchCronJobTarget {
+          path
+          method
+          headers
+          body
+          expectBodyIncludes
+          expectBodyRegex
+          expectStatusCodes
+        }
+      }
+    }
+  `;
+  id: string;
+  name: string;
+  schedule: string;
+  enabled: boolean;
+  kind: CronJobKind;
+  source: CronJobSource;
+  isManaged: boolean;
+  maxRetries: number | null;
+  maxScheduleDrift: string | null;
+  timeout: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  target: CronJobTarget;
+
+  constructor(data: any) {
+    const typedData = data as srcCronJobData$data;
+    this.id = typedData.id;
+    this.name = typedData.name;
+    this.schedule = typedData.schedule;
+    this.enabled = typedData.enabled;
+    this.kind = typedData.kind;
+    this.source = typedData.source;
+    this.isManaged = typedData.isManaged;
+    this.maxRetries = typedData.maxRetries ?? null;
+    this.maxScheduleDrift = typedData.maxScheduleDrift ?? null;
+    this.timeout = typedData.timeout ?? null;
+    this.createdAt = parseDate(typedData.createdAt)!;
+    this.updatedAt = parseDate(typedData.updatedAt)!;
+
+    if (typedData.target.__typename === "ExecuteCronJobTarget") {
+      this.target = {
+        kind: "EXECUTE",
+        command: formatCronCommand(
+          typedData.target.command,
+          typedData.target.cliArgs,
+        ),
+        env: stringDictionary(typedData.target.env),
+        packageName: typedData.target.packageName ?? null,
+      };
+    } else if (typedData.target.__typename === "FetchCronJobTarget") {
+      this.target = {
+        kind: "FETCH",
+        path: typedData.target.path,
+        method: typedData.target.method,
+        headers: stringDictionary(typedData.target.headers),
+        body: typedData.target.body ?? null,
+        expectBodyIncludes: typedData.target.expectBodyIncludes ?? null,
+        expectBodyRegex: typedData.target.expectBodyRegex ?? null,
+        expectStatusCodes: Array.isArray(typedData.target.expectStatusCodes)
+          ? typedData.target.expectStatusCodes.filter(
+              (status): status is number => typeof status === "number",
+            )
+          : null,
+      };
+    } else {
+      throw new StackMachineAPIError({
+        message: "Unsupported cron job target returned by the API.",
+      });
+    }
   }
 }
 
@@ -3510,7 +3826,297 @@ export class AppsSshResource {
   }
 }
 
+export class AppsCacheResource {
+  constructor(private client: SdkContext) {}
+
+  async retrieve(
+    appId: string,
+    options?: StackMachineRequestOptions,
+  ): Promise<AppCache> {
+    const query = await this.client._query<any>(
+      graphql`
+        query srcGetAppCacheQuery($id: ID!) {
+          node(id: $id) {
+            __typename
+            ... on DeployApp {
+              id
+              cdnCacheEnabled
+              cdnCachePurgedAt
+            }
+          }
+        }
+      `,
+      { id: appId },
+      options,
+    );
+    if (query?.node?.__typename !== "DeployApp") {
+      throw resourceMissingError("app", appId, "srcGetAppCacheQuery", "app");
+    }
+    return {
+      appId: query.node.id,
+      enabled: query.node.cdnCacheEnabled,
+      purgedAt: parseDate(query.node.cdnCachePurgedAt),
+    };
+  }
+
+  async update(
+    appId: string,
+    input: AppsCacheUpdateInput,
+    options?: StackMachineRequestOptions,
+  ): Promise<void> {
+    const response = await this.client._mutation<any>(
+      graphql`
+        mutation srcConfigureAppCdnCacheMutation(
+          $app: ID!
+          $config: AppCdnCacheConfigUpdate!
+        ) {
+          configureAppCdnCache(app: $app, config: $config) {
+            success
+          }
+        }
+      `,
+      { app: appId, config: { enabled: input.enabled } },
+      options,
+    );
+    if (!response.configureAppCdnCache?.success) {
+      throw new StackMachineAPIError({
+        message: "Failed to configure app CDN cache.",
+        operationName: "srcConfigureAppCdnCacheMutation",
+      });
+    }
+  }
+
+  async purge(
+    appId: string,
+    options?: StackMachineRequestOptions,
+  ): Promise<void> {
+    const response = await this.client._mutation<any>(
+      graphql`
+        mutation srcPurgeAppCdnCacheMutation($app: ID!) {
+          purgeAppCdnCache(app: $app) {
+            success
+          }
+        }
+      `,
+      { app: appId },
+      options,
+    );
+    if (!response.purgeAppCdnCache?.success) {
+      throw new StackMachineAPIError({
+        message: "Failed to purge app CDN cache.",
+        operationName: "srcPurgeAppCdnCacheMutation",
+      });
+    }
+  }
+}
+
+export class AppsCronJobsResource {
+  constructor(private client: SdkContext) {}
+
+  private cronJobFromNode(node: any): CronJob {
+    return new CronJob(
+      this.client._getFragmentData<srcCronJobData$data>(nodeCronJob, node),
+    );
+  }
+
+  list(
+    input: AppsCronJobsListInput,
+    options?: StackMachineRequestOptions,
+  ): StackMachineListPromise<CronJob> {
+    return createStackMachineListPromise<CronJob, AppsCronJobsListInput>({
+      params: input,
+      options,
+      url: "/v1/apps/cronjobs",
+      fetchPage: async (pagination, params, requestOptions) => {
+        const query = await this.client._query<any>(
+          graphql`
+            query srcListAppCronJobsQuery(
+              $appId: ID!
+              $first: Int
+              $after: String
+              $last: Int
+              $before: String
+              $kind: CronJobKind
+              $sortBy: CronJobsSortBy
+            ) {
+              node(id: $appId) {
+                ... on DeployApp {
+                  cronJobs(
+                    first: $first
+                    after: $after
+                    last: $last
+                    before: $before
+                    kind: $kind
+                    sortBy: $sortBy
+                  ) {
+                    edges {
+                      cursor
+                      node {
+                        ...srcCronJobData
+                      }
+                    }
+                    pageInfo {
+                      hasNextPage
+                      hasPreviousPage
+                      endCursor
+                      startCursor
+                    }
+                    totalCount
+                  }
+                }
+              }
+            }
+          `,
+          {
+            appId: params.app,
+            first: pagination.first,
+            after: pagination.after,
+            last: pagination.last,
+            before: pagination.before,
+            kind: params.kind,
+            sortBy: params.sortBy ?? "NEWEST",
+          },
+          requestOptions,
+        );
+        return connectionToListPageData(query?.node?.cronJobs, (node: any) =>
+          this.cronJobFromNode(node),
+        );
+      },
+    });
+  }
+
+  async retrieve(
+    id: string,
+    options?: StackMachineRequestOptions,
+  ): Promise<CronJob> {
+    const cronJobs = await this.retrieveMany([id], options);
+    const cronJob = cronJobs[0];
+    if (!cronJob) {
+      throw resourceMissingError("cron job", id, "srcGetCronJobsByIdsQuery");
+    }
+    return cronJob;
+  }
+
+  async retrieveMany(
+    ids: string[],
+    options?: StackMachineRequestOptions,
+  ): Promise<(CronJob | null)[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    const query = await this.client._query<any>(
+      graphql`
+        query srcGetCronJobsByIdsQuery($ids: [ID!]!) {
+          nodes(ids: $ids) {
+            __typename
+            ... on CronJob {
+              ...srcCronJobData
+            }
+          }
+        }
+      `,
+      { ids },
+      options,
+    );
+    const nodes = query?.nodes ?? [];
+    return ids.map((_, index) => {
+      const node = nodes[index];
+      return node?.__typename === "CronJob" ? this.cronJobFromNode(node) : null;
+    });
+  }
+
+  async create(
+    input: AppsCronJobsCreateInput,
+    options?: StackMachineRequestOptions,
+  ): Promise<CronJob> {
+    const { app, execute, fetch, ...commonInput } = input;
+    const response = await this.client._mutation<any>(
+      graphql`
+        mutation srcCreateCronJobMutation($input: CreateCronJobInput!) {
+          createCronJob(input: $input) {
+            cronJob {
+              ...srcCronJobData
+            }
+          }
+        }
+      `,
+      {
+        input: {
+          ...commonInput,
+          appId: app,
+          execute: execute ? serializeCronExecuteTarget(execute) : undefined,
+          fetch,
+        },
+      },
+      options,
+    );
+    const cronJob = requiredPayload(
+      response.createCronJob?.cronJob,
+      "Failed to create cron job.",
+      "srcCreateCronJobMutation",
+    );
+    return this.cronJobFromNode(cronJob);
+  }
+
+  async update(
+    id: string,
+    input: AppsCronJobsUpdateInput,
+    options?: StackMachineRequestOptions,
+  ): Promise<CronJob> {
+    const { execute, fetch, ...commonInput } = input;
+    const response = await this.client._mutation<any>(
+      graphql`
+        mutation srcUpdateCronJobMutation($input: UpdateCronJobInput!) {
+          updateCronJob(input: $input) {
+            cronJob {
+              ...srcCronJobData
+            }
+          }
+        }
+      `,
+      {
+        input: {
+          ...commonInput,
+          cronJobId: id,
+          execute: execute ? serializeCronExecuteTarget(execute) : undefined,
+          fetch,
+        },
+      },
+      options,
+    );
+    const cronJob = requiredPayload(
+      response.updateCronJob?.cronJob,
+      "Failed to update cron job.",
+      "srcUpdateCronJobMutation",
+    );
+    return this.cronJobFromNode(cronJob);
+  }
+
+  async del(id: string, options?: StackMachineRequestOptions): Promise<void> {
+    const response = await this.client._mutation<any>(
+      graphql`
+        mutation srcDeleteCronJobMutation($input: DeleteCronJobInput!) {
+          deleteCronJob(input: $input) {
+            success
+            deletedCronJobId
+          }
+        }
+      `,
+      { input: { cronJobId: id } },
+      options,
+    );
+    if (!response.deleteCronJob?.success) {
+      throw new StackMachineAPIError({
+        message: "Failed to delete cron job.",
+        operationName: "srcDeleteCronJobMutation",
+      });
+    }
+  }
+}
+
 export class DeployAppsResource {
+  cache: AppsCacheResource;
+  cronjobs: AppsCronJobsResource;
   domains: AppsDomainsResource;
   volumes: AppsVolumesResource;
   databases: AppsDatabasesResource;
@@ -3522,6 +4128,8 @@ export class DeployAppsResource {
     private client: SdkContext,
     private deployments: DeploymentsResource,
   ) {
+    this.cache = new AppsCacheResource(client);
+    this.cronjobs = new AppsCronJobsResource(client);
     this.domains = new AppsDomainsResource(client);
     this.volumes = new AppsVolumesResource(client);
     this.databases = new AppsDatabasesResource(client);

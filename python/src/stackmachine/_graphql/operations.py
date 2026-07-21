@@ -1477,3 +1477,147 @@ query srcSearchPackagesQuery(
   }}
 }}
 """
+
+GET_APP_CACHE_QUERY = """
+query srcGetAppCacheQuery($id: ID!) {
+  node(id: $id) {
+    __typename
+    ... on DeployApp {
+      id
+      cdnCacheEnabled
+      cdnCachePurgedAt
+    }
+  }
+}
+"""
+
+CONFIGURE_APP_CDN_CACHE_MUTATION = """
+mutation srcConfigureAppCdnCacheMutation(
+  $app: ID!
+  $config: AppCdnCacheConfigUpdate!
+) {
+  configureAppCdnCache(app: $app, config: $config) {
+    success
+  }
+}
+"""
+
+PURGE_APP_CDN_CACHE_MUTATION = """
+mutation srcPurgeAppCdnCacheMutation($app: ID!) {
+  purgeAppCdnCache(app: $app) {
+    success
+  }
+}
+"""
+
+CRON_JOB_FIELDS = """
+id
+name
+schedule
+enabled
+kind
+source
+isManaged
+maxRetries
+maxScheduleDrift
+timeout
+createdAt
+updatedAt
+target {
+  __typename
+  ... on ExecuteCronJobTarget {
+    command
+    cliArgs
+    env
+    packageName
+  }
+  ... on FetchCronJobTarget {
+    path
+    method
+    headers
+    body
+    expectBodyIncludes
+    expectBodyRegex
+    expectStatusCodes
+  }
+}
+"""
+
+LIST_APP_CRON_JOBS_QUERY = f"""
+query srcListAppCronJobsQuery(
+  $appId: ID!
+  $first: Int
+  $after: String
+  $last: Int
+  $before: String
+  $kind: CronJobKind
+  $sortBy: CronJobsSortBy
+) {{
+  node(id: $appId) {{
+    ... on DeployApp {{
+      cronJobs(
+        first: $first
+        after: $after
+        last: $last
+        before: $before
+        kind: $kind
+        sortBy: $sortBy
+      ) {{
+        edges {{
+          cursor
+          node {{
+            {CRON_JOB_FIELDS}
+          }}
+        }}
+        pageInfo {{
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }}
+        totalCount
+      }}
+    }}
+  }}
+}}
+"""
+
+GET_CRON_JOBS_BY_IDS_QUERY = f"""
+query srcGetCronJobsByIdsQuery($ids: [ID!]!) {{
+  nodes(ids: $ids) {{
+    __typename
+    ... on CronJob {{
+      {CRON_JOB_FIELDS}
+    }}
+  }}
+}}
+"""
+
+CREATE_CRON_JOB_MUTATION = f"""
+mutation srcCreateCronJobMutation($input: CreateCronJobInput!) {{
+  createCronJob(input: $input) {{
+    cronJob {{
+      {CRON_JOB_FIELDS}
+    }}
+  }}
+}}
+"""
+
+UPDATE_CRON_JOB_MUTATION = f"""
+mutation srcUpdateCronJobMutation($input: UpdateCronJobInput!) {{
+  updateCronJob(input: $input) {{
+    cronJob {{
+      {CRON_JOB_FIELDS}
+    }}
+  }}
+}}
+"""
+
+DELETE_CRON_JOB_MUTATION = """
+mutation srcDeleteCronJobMutation($input: DeleteCronJobInput!) {
+  deleteCronJob(input: $input) {
+    success
+    deletedCronJobId
+  }
+}
+"""

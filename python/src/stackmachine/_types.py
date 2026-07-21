@@ -77,6 +77,9 @@ class PaginationOptions(TypedDict, total=False):
 
 
 DeployAppsSortBy = Literal["MOST_ACTIVE", "NEWEST", "OLDEST"]
+CronJobKind = Literal["EXECUTE", "FETCH", "%future added value"]
+CronJobSource = Literal["API", "CONFIG", "PROVISIONED", "%future added value"]
+CronJobsSortBy = Literal["NEWEST", "OLDEST"]
 AppAliasSortBy = Literal["NEWEST", "OLDEST"]
 DeployAppVersionsSortBy = Literal["NEWEST", "OLDEST"]
 DNSRecordsSortBy = Literal["NEWEST", "OLDEST"]
@@ -341,6 +344,64 @@ class AppsVolumesUpdateInput(TypedDict, total=False):
     redeployApp: Optional[bool]
     s3_enabled: Optional[bool]
     s3Enabled: Optional[bool]
+
+
+class AppsCacheUpdateInput(TypedDict):
+    enabled: bool
+
+
+class CronJobExecuteTargetInput(TypedDict, total=False):
+    command: Optional[str]
+    env: Optional[Mapping[str, str]]
+    package_name: Optional[str]
+    packageName: Optional[str]
+
+
+class CronJobFetchTargetInput(TypedDict, total=False):
+    path: str
+    method: Optional[str]
+    headers: Optional[Mapping[str, str]]
+    body: Optional[str]
+    expect_body_includes: Optional[str]
+    expectBodyIncludes: Optional[str]
+    expect_body_regex: Optional[str]
+    expectBodyRegex: Optional[str]
+    expect_status_codes: Optional[Sequence[int]]
+    expectStatusCodes: Optional[Sequence[int]]
+
+
+class AppsCronJobsListInput(PaginationOptions, total=False):
+    app: str
+    kind: Optional[CronJobKind]
+    sort_by: Optional[CronJobsSortBy]
+    sortBy: Optional[CronJobsSortBy]
+
+
+class AppsCronJobsCreateInput(TypedDict, total=False):
+    app: str
+    name: str
+    schedule: str
+    enabled: Optional[bool]
+    max_retries: Optional[int]
+    maxRetries: Optional[int]
+    max_schedule_drift: Optional[str]
+    maxScheduleDrift: Optional[str]
+    timeout: Optional[str]
+    execute: CronJobExecuteTargetInput
+    fetch: CronJobFetchTargetInput
+
+
+class AppsCronJobsUpdateInput(TypedDict, total=False):
+    name: Optional[str]
+    schedule: Optional[str]
+    enabled: Optional[bool]
+    max_retries: Optional[int]
+    maxRetries: Optional[int]
+    max_schedule_drift: Optional[str]
+    maxScheduleDrift: Optional[str]
+    timeout: Optional[str]
+    execute: CronJobExecuteTargetInput
+    fetch: CronJobFetchTargetInput
 
 
 class AppsGitConnectInput(TypedDict, total=False):

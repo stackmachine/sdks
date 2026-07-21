@@ -23,7 +23,7 @@ from ._errors import (
     stackmachine_error_from_graphql_errors,
 )
 from ._types import FileInput, RequestOptionsLike
-from ._utils import operation_name, read_file_bytes
+from ._utils import EXPLICIT_NULL, operation_name, read_file_bytes
 
 RETRYABLE_STATUS_CODES = {408, 409, 425, 429, 500, 502, 503, 504}
 
@@ -240,6 +240,8 @@ def _variables_with_client_mutation_id(
 
 
 def _clean_json(value: Any) -> Any:
+    if value is EXPLICIT_NULL:
+        return None
     if isinstance(value, Mapping):
         return {
             key: _clean_json(item)

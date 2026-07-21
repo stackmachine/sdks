@@ -289,6 +289,14 @@ enum AppAliasVerificationStates {
   VERIFIED
 }
 
+input AppCdnCacheConfigUpdate {
+  enabled: Boolean
+}
+
+type AppCdnCacheMutationPayload {
+  success: Boolean!
+}
+
 input AppConfigV1 {
   appId: ID
   description: String
@@ -1389,6 +1397,34 @@ type CreateCheckoutSessionPayload {
   clientSecret: String!
 }
 
+"""
+Create a new `Api`-sourced unified cronjob on an app.
+
+Exactly one of `fetch` / `execute` must be provided; that choice fixes the
+cronjob's (immutable) kind.
+"""
+input CreateCronJobInput {
+  """The app the cronjob belongs to."""
+  appId: ID!
+  clientMutationId: String
+
+  """Whether the cronjob is enabled. Defaults to `true`."""
+  enabled: Boolean
+  execute: ExecuteCronJobTargetInput
+  fetch: FetchCronJobTargetInput
+  maxRetries: Int
+  maxScheduleDrift: String
+  name: String!
+  schedule: String!
+  timeout: String
+}
+
+type CreateCronJobPayload {
+  app: DeployApp!
+  clientMutationId: String
+  cronJob: CronJob!
+}
+
 input CreateNamespaceAPIKeyInput {
   clientMutationId: String
   name: String
@@ -1779,6 +1815,20 @@ type DeleteAppVolumePayload {
   success: Boolean!
 }
 
+"""Delete an `Api`-sourced unified cronjob."""
+input DeleteCronJobInput {
+  clientMutationId: String
+
+  """CronJob ID."""
+  cronJobId: ID!
+}
+
+type DeleteCronJobPayload {
+  clientMutationId: String
+  deletedCronJobId: ID!
+  success: Boolean!
+}
+
 input DeleteDNSRecordInput {
   clientMutationId: String
   recordId: ID!
@@ -1864,6 +1914,8 @@ type DeployApp implements Node {
   aggregateMetrics: AggregateMetrics!
   aliases(after: String, before: String, first: Int, last: Int, offset: Int): AppAliasConnection!
   buildConfiguration: BuildConfiguration
+  cdnCacheEnabled: Boolean!
+  cdnCachePurgedAt: DateTime
   createdAt: DateTime!
   createdBy: User!
   cronJobs(after: String, before: String, first: Int, kind: CronJobKind, last: Int, offset: Int, sortBy: CronJobsSortBy): CronJobConnection!
@@ -2495,6 +2547,21 @@ type ExecuteCronJobTarget {
   packageName: String
 }
 
+"""
+Execute (package/command) target for an `Api`-sourced cronjob.
+
+On update, providing an `execute` object replaces the whole execute target.
+"""
+input ExecuteCronJobTargetInput {
+  """CLI arguments as a JSON array."""
+  cliArgs: GenericScalar
+  command: String
+
+  """Environment variables as a JSON object."""
+  env: GenericScalar
+  packageName: String
+}
+
 type FetchCronJob implements Node {
   id: ID!
 }
@@ -2512,6 +2579,28 @@ type FetchCronJobTarget {
   expectStatusCodes: GenericScalar
   headers: GenericScalar!
   method: String!
+  path: String!
+}
+
+"""
+Fetch (HTTP) target for an `Api`-sourced cronjob.
+
+On update, providing a `fetch` object replaces the whole fetch target of the
+cronjob; individual fields left unset fall back to their defaults.
+"""
+input FetchCronJobTargetInput {
+  body: String
+  expectBodyIncludes: String
+  expectBodyRegex: String
+
+  """Accepted status codes as a JSON array."""
+  expectStatusCodes: GenericScalar
+
+  """Request headers as a JSON object."""
+  headers: GenericScalar
+
+  """HTTP method. Defaults to `GET`."""
+  method: String
   path: String!
 }
 
@@ -3196,6 +3285,7 @@ type Mutation {
 
   """Claim a perishable app as their own."""
   claimPerishableApp(input: ClaimPerishableAppInput!): ClaimPerishableAppPayload
+  configureAppCdnCache(app: ID!, config: AppCdnCacheConfigUpdate!): AppCdnCacheMutationPayload!
 
   """Connect a github repo to an app."""
   connectGithubRepoToApp(input: ConnectGithubRepoToAppInput!): ConnectGithubRepoToAppPayload!
@@ -3207,6 +3297,9 @@ type Mutation {
   """Create a UI-managed volume for an app."""
   createAppVolume(input: CreateAppVolumeInput!): CreateAppVolumePayload!
   createCheckoutSession(input: CreateCheckoutSessionInput!): CreateCheckoutSessionPayload!
+
+  """Create a new API-sourced cronjob on an app."""
+  createCronJob(input: CreateCronJobInput!): CreateCronJobPayload
 
   """Create a new database and link it to an app."""
   createDatabaseAndLinkToApp(input: CreateAppDatabaseInput!): CreateAppDBPayload
@@ -3227,6 +3320,9 @@ type Mutation {
 
   """Soft-delete an app volume."""
   deleteAppVolume(input: DeleteAppVolumeInput!): DeleteAppVolumePayload!
+
+  """Delete an existing API-sourced cronjob."""
+  deleteCronJob(input: DeleteCronJobInput!): DeleteCronJobPayload
   deleteDNSRecord(input: DeleteDNSRecordInput!): DeleteDNSRecordPayload
   deleteDomain(input: DeleteDomainInput!): DeleteDomainPayload
   deleteNamespace(input: DeleteNamespaceInput!): DeleteNamespacePayload
@@ -3311,6 +3407,7 @@ type Mutation {
   publishDeployApp(input: PublishDeployAppInput!): PublishDeployAppPayload
   publishPackage(input: PublishPackageInput!): PublishPackagePayload
   publishPublicKey(input: PublishPublicKeyInput!): PublishPublicKeyPayload
+  purgeAppCdnCache(app: ID!): AppCdnCacheMutationPayload!
 
   """Purges all cache for this app version"""
   purgeCacheForAppVersion(input: PurgeCacheForAppVersionInput!): PurgeCacheForAppVersionPayload
@@ -3394,6 +3491,9 @@ type Mutation {
   """Update autobuild config for an app."""
   updateAutobuildConfigForApp(input: UpdateAutobuildConfigForAppInput!): UpdateAutobuildConfigForAppPayload!
   updateBuildConfig(input: UpdateBuildConfigInput!): UpdateBuildConfigPayload
+
+  """Update an existing API-sourced cronjob."""
+  updateCronJob(input: UpdateCronJobInput!): UpdateCronJobPayload
   updateDNSRecords(input: UpdateDNSRecordsInput!): UpdateDNSRecordsPayload
 
   """
@@ -6144,6 +6244,35 @@ type UpdateBuildConfigPayload {
   buildConfig: BuildConfiguration!
   clientMutationId: String
   success: Boolean!
+}
+
+"""
+Update an existing `Api`-sourced unified cronjob.
+
+Absent fields are left unchanged (partial patch). The nullable duration /
+retry fields are tri-state: absent = keep, explicit `null` = clear. The
+cronjob `kind` is immutable, so a provided `fetch` / `execute` target must
+match the existing kind and replaces that target wholesale.
+"""
+input UpdateCronJobInput {
+  clientMutationId: String
+
+  """CronJob ID."""
+  cronJobId: ID!
+  enabled: Boolean
+  execute: ExecuteCronJobTargetInput
+  fetch: FetchCronJobTargetInput
+  maxRetries: Int
+  maxScheduleDrift: String
+  name: String
+  schedule: String
+  timeout: String
+}
+
+type UpdateCronJobPayload {
+  app: DeployApp!
+  clientMutationId: String
+  cronJob: CronJob!
 }
 
 input UpdateDNSRecordsInput {
