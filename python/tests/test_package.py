@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shlex
 import zipfile
 from importlib.metadata import version
 from io import BytesIO
@@ -46,6 +47,33 @@ def volume_payload(id: str = "volume_1", **overrides: Any) -> dict[str, Any]:
         "s3Url": None,
         "explorerUrl": f"https://console.example.test/volumes/{id}",
         "isAddedByUi": True,
+    }
+    payload.update(overrides)
+    return payload
+
+
+def cron_job_payload(id: str = "cron_1", **overrides: Any) -> dict[str, Any]:
+    payload = {
+        "__typename": "CronJob",
+        "id": id,
+        "name": f"cron-{id}",
+        "schedule": "0 * * * *",
+        "enabled": True,
+        "kind": "EXECUTE",
+        "source": "API",
+        "isManaged": False,
+        "maxRetries": 3,
+        "maxScheduleDrift": "5m",
+        "timeout": "30s",
+        "createdAt": "2026-07-01T00:00:00Z",
+        "updatedAt": "2026-07-02T00:00:00Z",
+        "target": {
+            "__typename": "ExecuteCronJobTarget",
+            "command": "python",
+            "cliArgs": ["cleanup.py", "--older-than", "30 days", "it's-old"],
+            "env": {"LOG_LEVEL": "info"},
+            "packageName": None,
+        },
     }
     payload.update(overrides)
     return payload
@@ -304,6 +332,8 @@ def test_exports_clients_and_models() -> None:
     assert stackmachine.StackMachine is StackMachine
     assert stackmachine.AsyncStackMachine is AsyncStackMachine
     assert stackmachine.AppVolume.__name__ == "AppVolume"
+    assert stackmachine.AppCache.__name__ == "AppCache"
+    assert stackmachine.CronJob.__name__ == "CronJob"
     assert stackmachine.AppDatabase.__name__ == "AppDatabase"
     assert stackmachine.DeployAppReference.__name__ == "DeployAppReference"
     assert stackmachine.GithubRepoConnection.__name__ == "GithubRepoConnection"
@@ -314,6 +344,8 @@ def test_exports_clients_and_models() -> None:
     assert "StackMachine" in stackmachine.__all__
     assert "AsyncStackMachine" in stackmachine.__all__
     assert "AppVolume" in stackmachine.__all__
+    assert "AppCache" in stackmachine.__all__
+    assert "CronJob" in stackmachine.__all__
     assert "AppDatabase" in stackmachine.__all__
     assert "DeployAppReference" in stackmachine.__all__
     assert "GithubRepoConnection" in stackmachine.__all__
@@ -329,6 +361,12 @@ def test_exports_public_input_types() -> None:
     assert "AppsVolumesCreateInput" in stackmachine.__all__
     assert "AppsVolumesListInput" in stackmachine.__all__
     assert "AppsVolumesUpdateInput" in stackmachine.__all__
+    assert "AppsCacheUpdateInput" in stackmachine.__all__
+    assert "AppsCronJobsCreateInput" in stackmachine.__all__
+    assert "AppsCronJobsListInput" in stackmachine.__all__
+    assert "AppsCronJobsUpdateInput" in stackmachine.__all__
+    assert "CronJobExecuteTargetInput" in stackmachine.__all__
+    assert "CronJobFetchTargetInput" in stackmachine.__all__
     assert "AppsGitConnectInput" in stackmachine.__all__
     assert "AppsGitUpdateInput" in stackmachine.__all__
     assert "AppsDatabasesCreateInput" in stackmachine.__all__
@@ -355,6 +393,8 @@ def test_new_resource_trees_are_available() -> None:
     transport = httpx.MockTransport(lambda _: graphql_response({}))
     with StackMachine("secret", http_transport=transport) as client:
         assert client.apps.git is not None
+        assert client.apps.cache is not None
+        assert client.apps.cronjobs is not None
         assert client.apps.databases is not None
         assert client.dns.domains is not None
         assert client.dns.records is not None
@@ -368,6 +408,8 @@ async def test_async_new_resource_trees_are_available() -> None:
     client = AsyncStackMachine("secret", http_transport=transport)
     try:
         assert client.apps.git is not None
+        assert client.apps.cache is not None
+        assert client.apps.cronjobs is not None
         assert client.apps.databases is not None
         assert client.dns.domains is not None
         assert client.dns.records is not None
@@ -1917,6 +1959,362 @@ def test_pagination_validation() -> None:
     with StackMachine("secret", http_transport=transport) as client:
         with pytest.raises(StackMachineValidationError):
             client.apps.list(limit=0)
+
+
+def test_sync_app_cache_lifecycle_and_errors() -> None:
+    calls: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        calls.append(body)
+        if body["operationName"] == "srcGetAppCacheQuery":
+            return graphql_response(
+                {
+                    "node": {
+                        "__typename": "DeployApp",
+                        "id": "app_1",
+                        "cdnCacheEnabled": True,
+                        "cdnCachePurgedAt": "2026-07-03T04:05:06Z",
+                    }
+                }
+            )
+        if body["operationName"] == "srcConfigureAppCdnCacheMutation":
+            return graphql_response({"configureAppCdnCache": {"success": True}})
+        if body["operationName"] == "srcPurgeAppCdnCacheMutation":
+            return graphql_response({"purgeAppCdnCache": {"success": True}})
+        raise AssertionError(f"Unexpected operation {body['operationName']}")
+
+    with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
+        cache = client.apps.cache.retrieve("app_1")
+        client.apps.cache.update("app_1", enabled=False)
+        client.apps.cache.purge("app_1")
+
+    assert cache.app_id == "app_1"
+    assert cache.enabled is True
+    assert cache.purged_at is not None
+    assert cache.purged_at.isoformat() == "2026-07-03T04:05:06+00:00"
+    assert calls[1]["variables"] == {
+        "app": "app_1",
+        "config": {"enabled": False},
+    }
+    assert calls[2]["variables"] == {"app": "app_1"}
+
+    missing = httpx.MockTransport(lambda _: graphql_response({"node": None}))
+    with StackMachine("secret", http_transport=missing) as client:
+        with pytest.raises(stackmachine.StackMachineInvalidRequestError):
+            client.apps.cache.retrieve("missing")
+
+    def failure_handler(request: httpx.Request) -> httpx.Response:
+        operation_name = json.loads(request.content)["operationName"]
+        field = (
+            "configureAppCdnCache"
+            if operation_name == "srcConfigureAppCdnCacheMutation"
+            else "purgeAppCdnCache"
+        )
+        return graphql_response({field: {"success": False}})
+
+    with StackMachine(
+        "secret", http_transport=httpx.MockTransport(failure_handler)
+    ) as client:
+        with pytest.raises(StackMachineAPIError):
+            client.apps.cache.update("app_1", enabled=True)
+        with pytest.raises(StackMachineAPIError):
+            client.apps.cache.purge("app_1")
+
+
+def test_sync_app_cronjobs_lifecycle_and_command_round_trip() -> None:
+    calls: list[dict[str, Any]] = []
+    fetch_job = cron_job_payload(
+        "fetch_1",
+        kind="FETCH",
+        target={
+            "__typename": "FetchCronJobTarget",
+            "path": "/health",
+            "method": "POST",
+            "headers": {"authorization": "Bearer token"},
+            "body": "ping",
+            "expectBodyIncludes": "pong",
+            "expectBodyRegex": None,
+            "expectStatusCodes": [200, 204],
+        },
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        calls.append(body)
+        if body["operationName"] == "srcListAppCronJobsQuery":
+            return graphql_response(
+                {
+                    "node": {
+                        "cronJobs": {
+                            "edges": [
+                                {"node": cron_job_payload("execute_1")},
+                                {"node": fetch_job},
+                            ],
+                            "pageInfo": {
+                                "hasNextPage": False,
+                                "hasPreviousPage": False,
+                                "endCursor": "cursor_2",
+                                "startCursor": "cursor_1",
+                            },
+                            "totalCount": 2,
+                        }
+                    }
+                }
+            )
+        if body["operationName"] == "srcGetCronJobsByIdsQuery":
+            return graphql_response({"nodes": [cron_job_payload("execute_1"), None]})
+        if body["operationName"] == "srcCreateCronJobMutation":
+            return graphql_response(
+                {"createCronJob": {"cronJob": cron_job_payload("created")}}
+            )
+        if body["operationName"] == "srcUpdateCronJobMutation":
+            return graphql_response(
+                {
+                    "updateCronJob": {
+                        "cronJob": cron_job_payload(
+                            "created", enabled=False, maxRetries=None, timeout=None
+                        )
+                    }
+                }
+            )
+        if body["operationName"] == "srcDeleteCronJobMutation":
+            return graphql_response(
+                {
+                    "deleteCronJob": {
+                        "success": True,
+                        "deletedCronJobId": "created",
+                    }
+                }
+            )
+        raise AssertionError(f"Unexpected operation {body['operationName']}")
+
+    with StackMachine("secret", http_transport=httpx.MockTransport(handler)) as client:
+        page = client.apps.cronjobs.list(
+            app="app_1", kind="EXECUTE", sort_by="OLDEST", limit=2
+        )
+        many = client.apps.cronjobs.retrieve_many(["execute_1", "missing"])
+        created = client.apps.cronjobs.create(
+            app="app_1",
+            name="cleanup",
+            schedule="0 2 * * *",
+            execute={
+                "command": "python cleanup.py --label '30 days' path\\ with\\ spaces",
+                "env": {"LOG_LEVEL": "debug"},
+                "package_name": "python/python",
+            },
+            request_options={"idempotency_key": "cron-create-1"},
+        )
+        updated = client.apps.cronjobs.update(
+            "created",
+            enabled=False,
+            max_retries=None,
+            timeout=None,
+        )
+        client.apps.cronjobs.delete("created")
+
+    assert page.url == "/v1/apps/cronjobs"
+    assert page.total_count == 2
+    assert isinstance(page.data[0], stackmachine.CronJob)
+    assert isinstance(page.data[0].target, stackmachine.CronJobExecuteTarget)
+    assert shlex.split(page.data[0].target.command or "") == [
+        "python",
+        "cleanup.py",
+        "--older-than",
+        "30 days",
+        "it's-old",
+    ]
+    assert page.data[0].target.env == {"LOG_LEVEL": "info"}
+    assert isinstance(page.data[1].target, stackmachine.CronJobFetchTarget)
+    assert page.data[1].target.headers == {"authorization": "Bearer token"}
+    assert page.data[1].target.expect_status_codes == [200, 204]
+    assert [job.id if job else None for job in many] == ["execute_1", None]
+    assert created.id == "created"
+    assert updated.enabled is False
+    assert updated.max_retries is None
+
+    assert calls[0]["variables"] == {
+        "appId": "app_1",
+        "kind": "EXECUTE",
+        "sortBy": "OLDEST",
+        "first": 2,
+    }
+    assert calls[2]["variables"]["input"] == {
+        "appId": "app_1",
+        "name": "cleanup",
+        "schedule": "0 2 * * *",
+        "execute": {
+            "command": "python",
+            "cliArgs": ["cleanup.py", "--label", "30 days", "path with spaces"],
+            "env": {"LOG_LEVEL": "debug"},
+            "packageName": "python/python",
+        },
+        "clientMutationId": "cron-create-1",
+    }
+    assert calls[3]["variables"]["input"] == {
+        "cronJobId": "created",
+        "enabled": False,
+        "maxRetries": None,
+        "timeout": None,
+    }
+    assert calls[4]["variables"]["input"]["cronJobId"] == "created"
+
+
+def test_sync_app_cronjobs_validates_targets_commands_and_payloads() -> None:
+    transport = httpx.MockTransport(
+        lambda _: pytest.fail("invalid input should not make a request")
+    )
+    with StackMachine("secret", http_transport=transport) as client:
+        with pytest.raises(StackMachineValidationError):
+            client.apps.cronjobs.create(
+                app="app_1", name="missing", schedule="* * * * *"
+            )
+        with pytest.raises(StackMachineValidationError):
+            client.apps.cronjobs.create(
+                app="app_1",
+                name="both",
+                schedule="* * * * *",
+                execute={"command": "echo ok"},
+                fetch={"path": "/health"},
+            )
+        for command in ("   ", "''", "echo 'unterminated", "echo \\"):
+            with pytest.raises(StackMachineValidationError):
+                client.apps.cronjobs.create(
+                    app="app_1",
+                    name="invalid",
+                    schedule="* * * * *",
+                    execute={"command": command},
+                )
+
+    def failure_handler(request: httpx.Request) -> httpx.Response:
+        operation_name = json.loads(request.content)["operationName"]
+        if operation_name == "srcCreateCronJobMutation":
+            return graphql_response({"createCronJob": None})
+        if operation_name == "srcUpdateCronJobMutation":
+            return graphql_response({"updateCronJob": None})
+        return graphql_response(
+            {"deleteCronJob": {"success": False, "deletedCronJobId": "cron_1"}}
+        )
+
+    with StackMachine(
+        "secret", http_transport=httpx.MockTransport(failure_handler)
+    ) as client:
+        with pytest.raises(StackMachineAPIError):
+            client.apps.cronjobs.create(
+                app="app_1",
+                name="missing",
+                schedule="* * * * *",
+                execute={"command": "echo ok"},
+            )
+        with pytest.raises(StackMachineAPIError):
+            client.apps.cronjobs.update("cron_1", enabled=False)
+        with pytest.raises(StackMachineAPIError):
+            client.apps.cronjobs.delete("cron_1")
+
+
+async def test_async_app_cache_and_cronjobs() -> None:
+    calls: list[dict[str, Any]] = []
+    fetch_job = cron_job_payload(
+        "fetch_async",
+        kind="FETCH",
+        target={
+            "__typename": "FetchCronJobTarget",
+            "path": "/health",
+            "method": "GET",
+            "headers": {},
+            "body": None,
+            "expectBodyIncludes": None,
+            "expectBodyRegex": None,
+            "expectStatusCodes": [200],
+        },
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        calls.append(body)
+        operation_name = body["operationName"]
+        if operation_name == "srcGetAppCacheQuery":
+            return graphql_response(
+                {
+                    "node": {
+                        "__typename": "DeployApp",
+                        "id": "app_1",
+                        "cdnCacheEnabled": False,
+                        "cdnCachePurgedAt": None,
+                    }
+                }
+            )
+        if operation_name == "srcConfigureAppCdnCacheMutation":
+            return graphql_response({"configureAppCdnCache": {"success": True}})
+        if operation_name == "srcPurgeAppCdnCacheMutation":
+            return graphql_response({"purgeAppCdnCache": {"success": True}})
+        if operation_name == "srcListAppCronJobsQuery":
+            return graphql_response(
+                {
+                    "node": {
+                        "cronJobs": {
+                            "edges": [{"node": fetch_job}],
+                            "pageInfo": {
+                                "hasNextPage": False,
+                                "hasPreviousPage": False,
+                                "endCursor": "cursor",
+                                "startCursor": "cursor",
+                            },
+                            "totalCount": 1,
+                        }
+                    }
+                }
+            )
+        if operation_name == "srcCreateCronJobMutation":
+            return graphql_response({"createCronJob": {"cronJob": fetch_job}})
+        if operation_name == "srcUpdateCronJobMutation":
+            return graphql_response({"updateCronJob": {"cronJob": fetch_job}})
+        if operation_name == "srcDeleteCronJobMutation":
+            return graphql_response(
+                {
+                    "deleteCronJob": {
+                        "success": True,
+                        "deletedCronJobId": "fetch_async",
+                    }
+                }
+            )
+        raise AssertionError(f"Unexpected operation {operation_name}")
+
+    client = AsyncStackMachine("secret", http_transport=httpx.MockTransport(handler))
+    try:
+        cache = await client.apps.cache.retrieve("app_1")
+        await client.apps.cache.update("app_1", enabled=True)
+        await client.apps.cache.purge("app_1")
+        page = await client.apps.cronjobs.list(app="app_1", limit=1)
+        created = await client.apps.cronjobs.create(
+            app="app_1",
+            name="healthcheck",
+            schedule="*/5 * * * *",
+            fetch={
+                "path": "/health",
+                "headers": {"accept": "application/json"},
+                "expect_status_codes": [200],
+            },
+        )
+        await client.apps.cronjobs.update(
+            "fetch_async", fetch={"path": "/ready", "method": "POST"}
+        )
+        await client.apps.cronjobs.delete("fetch_async")
+    finally:
+        await client.close()
+
+    assert cache.enabled is False
+    assert page.data[0].id == "fetch_async"
+    assert created.target.kind == "FETCH"
+    assert calls[4]["variables"]["input"]["fetch"] == {
+        "path": "/health",
+        "headers": {"accept": "application/json"},
+        "expectStatusCodes": [200],
+    }
+    assert calls[5]["variables"]["input"]["fetch"] == {
+        "path": "/ready",
+        "method": "POST",
+    }
 
 
 def test_create_zip_supports_bytes_strings_and_file_paths(tmp_path) -> None:

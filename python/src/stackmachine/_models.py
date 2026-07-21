@@ -1,8 +1,19 @@
 from __future__ import annotations
 
+import shlex
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Callable, List, Mapping, Optional, Sequence, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    Mapping,
+    Optional,
+    Sequence,
+    Union,
+)
 
 from ._utils import parse_datetime
 
@@ -169,6 +180,146 @@ class DeployApp:
                 data["activeVersion"], app=app
             )
         return app
+
+
+@dataclass
+class AppCache:
+    app_id: str
+    enabled: bool
+    purged_at: Optional[datetime]
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "AppCache":
+        return cls(
+            app_id=str(data["id"]),
+            enabled=bool(data["cdnCacheEnabled"]),
+            purged_at=parse_datetime(data.get("cdnCachePurgedAt")),
+        )
+
+
+def _string_dictionary(value: Any) -> Dict[str, str]:
+    if not isinstance(value, Mapping):
+        return {}
+    return {str(key): item for key, item in value.items() if isinstance(item, str)}
+
+
+@dataclass
+class CronJobExecuteTarget:
+    kind: Literal["EXECUTE"]
+    command: Optional[str]
+    env: Dict[str, str]
+    package_name: Optional[str]
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "CronJobExecuteTarget":
+        command = data.get("command")
+        tokens = ([str(command)] if command is not None else []) + [
+            item for item in data.get("cliArgs") or [] if isinstance(item, str)
+        ]
+        return cls(
+            kind="EXECUTE",
+            command=shlex.join(tokens) if tokens else None,
+            env=_string_dictionary(data.get("env")),
+            package_name=(
+                str(data["packageName"])
+                if data.get("packageName") is not None
+                else None
+            ),
+        )
+
+
+@dataclass
+class CronJobFetchTarget:
+    kind: Literal["FETCH"]
+    path: str
+    method: str
+    headers: Dict[str, str]
+    body: Optional[str]
+    expect_body_includes: Optional[str]
+    expect_body_regex: Optional[str]
+    expect_status_codes: Optional[List[int]]
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "CronJobFetchTarget":
+        raw_status_codes = data.get("expectStatusCodes")
+        return cls(
+            kind="FETCH",
+            path=str(data["path"]),
+            method=str(data["method"]),
+            headers=_string_dictionary(data.get("headers")),
+            body=str(data["body"]) if data.get("body") is not None else None,
+            expect_body_includes=(
+                str(data["expectBodyIncludes"])
+                if data.get("expectBodyIncludes") is not None
+                else None
+            ),
+            expect_body_regex=(
+                str(data["expectBodyRegex"])
+                if data.get("expectBodyRegex") is not None
+                else None
+            ),
+            expect_status_codes=(
+                [
+                    int(status)
+                    for status in raw_status_codes
+                    if isinstance(status, int) and not isinstance(status, bool)
+                ]
+                if isinstance(raw_status_codes, list)
+                else None
+            ),
+        )
+
+
+CronJobTarget = Union[CronJobExecuteTarget, CronJobFetchTarget]
+
+
+@dataclass
+class CronJob:
+    id: str
+    name: str
+    schedule: str
+    enabled: bool
+    kind: str
+    source: str
+    is_managed: bool
+    max_retries: Optional[int]
+    max_schedule_drift: Optional[str]
+    timeout: Optional[str]
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
+    target: CronJobTarget
+
+    @classmethod
+    def from_graphql(cls, data: Mapping[str, Any]) -> "CronJob":
+        target_data = data["target"]
+        typename = target_data.get("__typename")
+        if typename == "ExecuteCronJobTarget":
+            target: CronJobTarget = CronJobExecuteTarget.from_graphql(target_data)
+        elif typename == "FetchCronJobTarget":
+            target = CronJobFetchTarget.from_graphql(target_data)
+        else:
+            raise ValueError("Unsupported cron job target returned by the API.")
+        return cls(
+            id=str(data["id"]),
+            name=str(data["name"]),
+            schedule=str(data["schedule"]),
+            enabled=bool(data["enabled"]),
+            kind=str(data["kind"]),
+            source=str(data["source"]),
+            is_managed=bool(data["isManaged"]),
+            max_retries=(
+                int(data["maxRetries"]) if data.get("maxRetries") is not None else None
+            ),
+            max_schedule_drift=(
+                str(data["maxScheduleDrift"])
+                if data.get("maxScheduleDrift") is not None
+                else None
+            ),
+            timeout=str(data["timeout"]) if data.get("timeout") is not None else None,
+            created_at=parse_datetime(data.get("createdAt")),
+            updated_at=parse_datetime(data.get("updatedAt")),
+            target=target,
+        )
 
 
 @dataclass

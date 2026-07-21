@@ -10,6 +10,8 @@ JavaScript SDK for deploying and managing apps on StackMachine.
 - Delete apps
 - Manage app domains
 - Manage app volumes
+- Manage app CDN cache
+- Manage app cron jobs
 - ...
 
 ## Installation
@@ -150,6 +152,52 @@ const updated = await client.apps.volumes.update(volume.id, {
 
 await client.apps.volumes.del(updated.id);
 ```
+
+Manage an app's CDN cache:
+
+```js
+const cache = await client.apps.cache.retrieve(app.id);
+console.log(cache.enabled, cache.purgedAt);
+
+await client.apps.cache.update(app.id, { enabled: true });
+await client.apps.cache.purge(app.id);
+```
+
+Manage execute and HTTP cron jobs:
+
+```js
+const cleanup = await client.apps.cronjobs.create({
+  app: app.id,
+  name: "cleanup",
+  schedule: "0 2 * * *",
+  execute: {
+    command: "python cleanup.py --older-than '30 days'",
+    env: { LOG_LEVEL: "info" },
+  },
+});
+
+const healthcheck = await client.apps.cronjobs.create({
+  app: app.id,
+  name: "healthcheck",
+  schedule: "*/5 * * * *",
+  fetch: {
+    path: "/health",
+    method: "GET",
+    expectStatusCodes: [200],
+  },
+});
+
+const cronJobs = await client.apps.cronjobs
+  .list({ app: app.id, limit: 25 })
+  .autoPagingToArray({ limit: 100 });
+
+await client.apps.cronjobs.update(cleanup.id, { enabled: false });
+await client.apps.cronjobs.del(healthcheck.id);
+```
+
+Execute cron jobs expose one shell-safe `target.command` string. The SDK splits
+that string into the API's command and argument fields on writes and joins them
+again on reads. Environment variables are represented as string dictionaries.
 
 Manage app databases:
 

@@ -63,6 +63,30 @@ const appNode = (id) => ({
   screenshot: null,
 });
 
+const cronJobNode = (id, overrides = {}) => ({
+  __typename: "CronJob",
+  id,
+  name: `cron-${id}`,
+  schedule: "0 * * * *",
+  enabled: true,
+  kind: "EXECUTE",
+  source: "API",
+  isManaged: false,
+  maxRetries: 3,
+  maxScheduleDrift: "5m",
+  timeout: "30s",
+  createdAt: "2026-07-01T00:00:00Z",
+  updatedAt: "2026-07-02T00:00:00Z",
+  target: {
+    __typename: "ExecuteCronJobTarget",
+    command: "python",
+    cliArgs: ["cleanup.py", "--older-than", "30 days", "it's-old"],
+    env: { LOG_LEVEL: "info" },
+    packageName: null,
+  },
+  ...overrides,
+});
+
 const appAliasNode = (id) => ({
   __typename: "AppAlias",
   id,
@@ -551,6 +575,8 @@ test("clients keep independent keys, endpoints, caches, and resources", async ()
 
   assert.notEqual(clientA.environment, clientB.environment);
   assert.notEqual(clientA.apps, clientB.apps);
+  assert.notEqual(clientA.apps.cache, clientB.apps.cache);
+  assert.notEqual(clientA.apps.cronjobs, clientB.apps.cronjobs);
   assert.notEqual(clientA.apps.volumes, clientB.apps.volumes);
   assert.notEqual(clientA.apps.databases, clientB.apps.databases);
   assert.notEqual(clientA.apps.git, clientB.apps.git);
@@ -3549,5 +3575,350 @@ test("packages.search maps every package version in the page", async () => {
   assert.deepEqual(
     page.data.map((result) => result.package.packageName),
     ["alpha", "beta"],
+  );
+});
+
+test("apps.cache retrieves, configures, and purges CDN cache state", async () => {
+  const fetch = mockFetch((call) => {
+    switch (call.body.operationName) {
+      case "srcGetAppCacheQuery":
+        return jsonResponse({
+          data: {
+            node: {
+              __typename: "DeployApp",
+              id: "app_1",
+              cdnCacheEnabled: true,
+              cdnCachePurgedAt: "2026-07-03T04:05:06Z",
+            },
+          },
+        });
+      case "srcConfigureAppCdnCacheMutation":
+        return jsonResponse({
+          data: { configureAppCdnCache: { success: true } },
+        });
+      case "srcPurgeAppCdnCacheMutation":
+        return jsonResponse({ data: { purgeAppCdnCache: { success: true } } });
+      default:
+        throw new Error(`Unexpected operation: ${call.body.operationName}`);
+    }
+  });
+  const client = new StackMachine("key", {
+    apiUrl: "https://api.example.test/graphql",
+    fetch,
+  });
+
+  const cache = await client.apps.cache.retrieve("app_1");
+  await client.apps.cache.update(
+    "app_1",
+    { enabled: false },
+    { apiKey: "request-key" },
+  );
+  await client.apps.cache.purge("app_1");
+
+  assert.deepEqual(cache, {
+    appId: "app_1",
+    enabled: true,
+    purgedAt: new Date("2026-07-03T04:05:06Z"),
+  });
+  assert.deepEqual(fetch.calls[1].body.variables, {
+    app: "app_1",
+    config: { enabled: false },
+  });
+  assert.deepEqual(fetch.calls[2].body.variables, { app: "app_1" });
+  assert.equal(
+    fetch.calls[1].headers.get("authorization"),
+    "Bearer request-key",
+  );
+});
+
+test("apps.cache reports missing apps and unsuccessful mutations", async () => {
+  const missingClient = new StackMachine("key", {
+    fetch: mockFetch(() => jsonResponse({ data: { node: null } })),
+  });
+  await assert.rejects(
+    missingClient.apps.cache.retrieve("app_missing"),
+    StackMachineInvalidRequestError,
+  );
+
+  const failureClient = new StackMachine("key", {
+    fetch: mockFetch((call) =>
+      jsonResponse({
+        data:
+          call.body.operationName === "srcConfigureAppCdnCacheMutation"
+            ? { configureAppCdnCache: { success: false } }
+            : { purgeAppCdnCache: { success: false } },
+      }),
+    ),
+  });
+  await assert.rejects(
+    failureClient.apps.cache.update("app_1", { enabled: true }),
+    StackMachineAPIError,
+  );
+  await assert.rejects(
+    failureClient.apps.cache.purge("app_1"),
+    StackMachineAPIError,
+  );
+});
+
+test("apps.cronjobs lists and maps execute and fetch targets", async () => {
+  const fetchJob = cronJobNode("fetch_1", {
+    kind: "FETCH",
+    target: {
+      __typename: "FetchCronJobTarget",
+      path: "/health",
+      method: "POST",
+      headers: { authorization: "Bearer token" },
+      body: "ping",
+      expectBodyIncludes: "pong",
+      expectBodyRegex: null,
+      expectStatusCodes: [200, 204],
+    },
+  });
+  const fetch = mockFetch(() =>
+    jsonResponse({
+      data: {
+        node: {
+          __typename: "DeployApp",
+          id: "app_1",
+          cronJobs: {
+            edges: [
+              { cursor: "cursor_1", node: cronJobNode("execute_1") },
+              { cursor: "cursor_2", node: fetchJob },
+            ],
+            pageInfo: {
+              hasNextPage: false,
+              hasPreviousPage: false,
+              endCursor: "cursor_2",
+              startCursor: "cursor_1",
+            },
+            totalCount: 2,
+          },
+        },
+      },
+    }),
+  );
+  const client = new StackMachine("key", { fetch });
+
+  const page = await client.apps.cronjobs.list({
+    app: "app_1",
+    kind: "EXECUTE",
+    sortBy: "OLDEST",
+    limit: 2,
+  });
+
+  assert.equal(page.url, "/v1/apps/cronjobs");
+  assert.equal(page.totalCount, 2);
+  assert.equal(
+    page.data[0].target.command,
+    "python cleanup.py --older-than '30 days' 'it'\\''s-old'",
+  );
+  assert.deepEqual(page.data[0].target.env, { LOG_LEVEL: "info" });
+  assert.ok(page.data[0].createdAt instanceof Date);
+  assert.deepEqual(page.data[1].target, {
+    kind: "FETCH",
+    path: "/health",
+    method: "POST",
+    headers: { authorization: "Bearer token" },
+    body: "ping",
+    expectBodyIncludes: "pong",
+    expectBodyRegex: null,
+    expectStatusCodes: [200, 204],
+  });
+  assert.equal(fetch.calls[0].body.variables.appId, "app_1");
+  assert.equal(fetch.calls[0].body.variables.kind, "EXECUTE");
+  assert.equal(fetch.calls[0].body.variables.sortBy, "OLDEST");
+  assert.equal(fetch.calls[0].body.variables.first, 2);
+});
+
+test("apps.cronjobs retrieves many in input order and reports missing jobs", async () => {
+  const fetch = mockFetch((call) =>
+    jsonResponse({
+      data: {
+        nodes: call.body.variables.ids.map((id) =>
+          id === "missing" ? null : cronJobNode(id),
+        ),
+      },
+    }),
+  );
+  const client = new StackMachine("key", { fetch });
+
+  const jobs = await client.apps.cronjobs.retrieveMany([
+    "cron_1",
+    "missing",
+    "cron_2",
+  ]);
+  assert.deepEqual(
+    jobs.map((job) => job?.id ?? null),
+    ["cron_1", null, "cron_2"],
+  );
+  assert.deepEqual(await client.apps.cronjobs.retrieveMany([]), []);
+  await assert.rejects(
+    client.apps.cronjobs.retrieve("missing"),
+    StackMachineInvalidRequestError,
+  );
+});
+
+test("apps.cronjobs creates execute jobs from one parsed command", async () => {
+  const fetch = mockFetch(() =>
+    jsonResponse({
+      data: { createCronJob: { cronJob: cronJobNode("cron_created") } },
+    }),
+  );
+  const client = new StackMachine("key", { fetch });
+
+  const cronJob = await client.apps.cronjobs.create(
+    {
+      app: "app_1",
+      name: "cleanup",
+      schedule: "0 2 * * *",
+      execute: {
+        command: "python cleanup.py --label '30 days' path\\ with\\ spaces",
+        env: { LOG_LEVEL: "debug" },
+        packageName: "python/python",
+      },
+    },
+    { idempotencyKey: "cron-create-1" },
+  );
+
+  assert.equal(cronJob.id, "cron_created");
+  assert.deepEqual(fetch.calls[0].body.variables.input, {
+    appId: "app_1",
+    name: "cleanup",
+    schedule: "0 2 * * *",
+    execute: {
+      command: "python",
+      cliArgs: ["cleanup.py", "--label", "30 days", "path with spaces"],
+      env: { LOG_LEVEL: "debug" },
+      packageName: "python/python",
+    },
+    clientMutationId: "cron-create-1",
+  });
+});
+
+test("apps.cronjobs creates fetch jobs, updates partial fields, and deletes", async () => {
+  const fetch = mockFetch((call) => {
+    if (call.body.operationName === "srcCreateCronJobMutation") {
+      return jsonResponse({
+        data: {
+          createCronJob: {
+            cronJob: cronJobNode("fetch_created", {
+              kind: "FETCH",
+              target: {
+                __typename: "FetchCronJobTarget",
+                path: "/health",
+                method: "GET",
+                headers: {},
+                body: null,
+                expectBodyIncludes: null,
+                expectBodyRegex: null,
+                expectStatusCodes: [200],
+              },
+            }),
+          },
+        },
+      });
+    }
+    if (call.body.operationName === "srcUpdateCronJobMutation") {
+      return jsonResponse({
+        data: {
+          updateCronJob: {
+            cronJob: cronJobNode("fetch_created", {
+              enabled: false,
+              maxRetries: null,
+            }),
+          },
+        },
+      });
+    }
+    return jsonResponse({
+      data: {
+        deleteCronJob: {
+          success: true,
+          deletedCronJobId: "fetch_created",
+        },
+      },
+    });
+  });
+  const client = new StackMachine("key", { fetch });
+
+  await client.apps.cronjobs.create({
+    app: "app_1",
+    name: "healthcheck",
+    schedule: "*/5 * * * *",
+    fetch: {
+      path: "/health",
+      headers: { accept: "application/json" },
+      expectStatusCodes: [200],
+    },
+  });
+  await client.apps.cronjobs.update("fetch_created", {
+    enabled: false,
+    maxRetries: null,
+  });
+  await client.apps.cronjobs.del("fetch_created");
+
+  assert.deepEqual(fetch.calls[0].body.variables.input.fetch, {
+    path: "/health",
+    headers: { accept: "application/json" },
+    expectStatusCodes: [200],
+  });
+  assert.equal(fetch.calls[1].body.variables.input.cronJobId, "fetch_created");
+  assert.equal(fetch.calls[1].body.variables.input.enabled, false);
+  assert.equal(fetch.calls[1].body.variables.input.maxRetries, null);
+  assert.equal(fetch.calls[2].body.variables.input.cronJobId, "fetch_created");
+});
+
+test("apps.cronjobs rejects blank and malformed execute commands", async () => {
+  const fetch = mockFetch(() => {
+    throw new Error("fetch should not be called");
+  });
+  const client = new StackMachine("key", { fetch });
+  const base = {
+    app: "app_1",
+    name: "invalid",
+    schedule: "* * * * *",
+  };
+
+  for (const command of ["   ", "''", "echo 'unterminated", "echo \\"]) {
+    await assert.rejects(
+      client.apps.cronjobs.create({ ...base, execute: { command } }),
+      StackMachineValidationError,
+    );
+  }
+  assert.equal(fetch.calls.length, 0);
+});
+
+test("apps.cronjobs rejects missing and unsuccessful mutation payloads", async () => {
+  const fetch = mockFetch((call) => {
+    if (call.body.operationName === "srcCreateCronJobMutation") {
+      return jsonResponse({ data: { createCronJob: null } });
+    }
+    if (call.body.operationName === "srcUpdateCronJobMutation") {
+      return jsonResponse({ data: { updateCronJob: null } });
+    }
+    return jsonResponse({
+      data: {
+        deleteCronJob: { success: false, deletedCronJobId: "cron_1" },
+      },
+    });
+  });
+  const client = new StackMachine("key", { fetch });
+
+  await assert.rejects(
+    client.apps.cronjobs.create({
+      app: "app_1",
+      name: "missing",
+      schedule: "* * * * *",
+      execute: { command: "echo ok" },
+    }),
+    StackMachineAPIError,
+  );
+  await assert.rejects(
+    client.apps.cronjobs.update("cron_1", { enabled: false }),
+    StackMachineAPIError,
+  );
+  await assert.rejects(
+    client.apps.cronjobs.del("cron_1"),
+    StackMachineAPIError,
   );
 });

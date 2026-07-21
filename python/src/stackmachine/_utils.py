@@ -8,6 +8,13 @@ from typing import Any, Optional
 from ._types import FileInput
 
 
+class ExplicitNull:
+    """Marker that survives variable cleanup and serializes as JSON null."""
+
+
+EXPLICIT_NULL = ExplicitNull()
+
+
 def parse_datetime(value: Any) -> Optional[datetime]:
     if value is None or isinstance(value, datetime):
         return value

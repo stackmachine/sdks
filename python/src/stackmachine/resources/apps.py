@@ -23,6 +23,8 @@ from .._types import (
     UploadProgressCallback,
 )
 from ._shared import page_variables, resource_missing_error
+from .cache import AppsCacheResource, AsyncAppsCacheResource
+from .cronjobs import AppsCronJobsResource, AsyncAppsCronJobsResource
 from .databases import AppsDatabasesResource, AsyncAppsDatabasesResource
 from .deployments import (
     AsyncDeployment,
@@ -41,6 +43,8 @@ class DeployAppsResource:
     def __init__(self, client: Any, deployments: DeploymentsResource) -> None:
         self._client = client
         self._deployments = deployments
+        self.cache = AppsCacheResource(client)
+        self.cronjobs = AppsCronJobsResource(client)
         self.databases = AppsDatabasesResource(client)
         self.domains = AppsDomainsResource(client)
         self.git = AppsGitResource(client)
@@ -180,6 +184,8 @@ class AsyncDeployAppsResource:
     def __init__(self, client: Any, deployments: AsyncDeploymentsResource) -> None:
         self._client = client
         self._deployments = deployments
+        self.cache = AsyncAppsCacheResource(client)
+        self.cronjobs = AsyncAppsCronJobsResource(client)
         self.databases = AsyncAppsDatabasesResource(client)
         self.domains = AsyncAppsDomainsResource(client)
         self.git = AsyncAppsGitResource(client)

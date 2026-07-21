@@ -139,6 +139,50 @@ updated = stackmachine.apps.volumes.update(
 stackmachine.apps.volumes.delete(updated.id)
 ```
 
+## CDN Cache
+
+```python
+cache = stackmachine.apps.cache.retrieve("app_id")
+print(cache.enabled, cache.purged_at)
+
+stackmachine.apps.cache.update("app_id", enabled=True)
+stackmachine.apps.cache.purge("app_id")
+```
+
+## Cron Jobs
+
+```python
+cleanup = stackmachine.apps.cronjobs.create(
+    app="app_id",
+    name="cleanup",
+    schedule="0 2 * * *",
+    execute={
+        "command": "python cleanup.py --older-than '30 days'",
+        "env": {"LOG_LEVEL": "info"},
+    },
+)
+
+healthcheck = stackmachine.apps.cronjobs.create(
+    app="app_id",
+    name="healthcheck",
+    schedule="*/5 * * * *",
+    fetch={
+        "path": "/health",
+        "method": "GET",
+        "expect_status_codes": [200],
+    },
+)
+
+cron_jobs = stackmachine.apps.cronjobs.list(app="app_id", limit=25)
+stackmachine.apps.cronjobs.update(cleanup.id, enabled=False)
+stackmachine.apps.cronjobs.delete(healthcheck.id)
+```
+
+Execute cron jobs expose one shell-safe `target.command` string. The SDK uses
+Python's POSIX `shlex` rules to split it into the API's command and argument
+fields on writes and join those fields on reads. Environment variables are
+represented as string dictionaries.
+
 ## Git Connections
 
 ```python
