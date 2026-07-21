@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/stackmachine/sdks/compare/stackmachine-v0.4.0...stackmachine-v0.5.0) (2026-07-21)
+
+
+### Features
+
+* Cronjobs ([#22](https://github.com/stackmachine/sdks/issues/22)) ([18a8d65](https://github.com/stackmachine/sdks/commit/18a8d65c9170d58644a0e97be635e9c71aa2ec5c))
+
 ## [0.4.0](https://github.com/stackmachine/sdks/compare/stackmachine-v0.3.0...stackmachine-v0.4.0) (2026-07-02)
 
 
