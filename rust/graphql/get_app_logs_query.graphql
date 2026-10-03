@@ -1,0 +1,47 @@
+query srcGetAppLogsQuery(
+  $appId: ID!
+  $since: DateTime
+  $until: DateTime
+  $instanceId: String
+  $requestId: String
+  $streams: [LogStream]
+  $textSearch: String
+  $first: Int
+  $after: String
+  $last: Int
+  $before: String
+) {
+  node(id: $appId) {
+    ... on DeployAppVersion {
+      logs(
+        startingFromISO: $since
+        end: $until
+        instanceId: $instanceId
+        requestId: $requestId
+        streams: $streams
+        textSearch: $textSearch
+        first: $first
+        after: $after
+        last: $last
+        before: $before
+      ) {
+        edges {
+          cursor
+          node {
+            datetime
+            instanceId
+            message
+            stream
+            timestamp
+          }
+        }
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }
+      }
+    }
+  }
+}

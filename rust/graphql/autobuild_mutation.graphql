@@ -1,0 +1,6 @@
+mutation srcAutobuildMutation($input: DeployViaAutobuildInput!) {
+  deployViaAutobuild(input: $input) {
+    success
+    buildId
+  }
+}

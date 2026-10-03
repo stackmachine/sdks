@@ -1,0 +1,764 @@
+{
+  "VIEWER_QUERY": {
+    "username": "fixture"
+  },
+  "VIEWER_QUERY_NULLABLE": {
+    "username": "fixture"
+  },
+  "GET_APP_BY_ID_QUERY": {
+    "__typename": "DeployApp",
+    "id": "fixture-id",
+    "willPerishAt": "2026-10-03T00:00:00Z",
+    "name": "fixture",
+    "url": "fixture",
+    "adminUrl": "fixture",
+    "activeVersion": {
+      "id": "fixture-id"
+    },
+    "favicon": "https://example.com",
+    "screenshot": "https://example.com"
+  },
+  "GET_APP_BY_ID_QUERY_NULLABLE": {
+    "__typename": "DeployApp",
+    "id": "fixture-id",
+    "willPerishAt": null,
+    "name": "fixture",
+    "url": "fixture",
+    "adminUrl": "fixture",
+    "activeVersion": {
+      "id": "fixture-id"
+    },
+    "favicon": null,
+    "screenshot": null
+  },
+  "GET_DEPLOYMENT_STATUS_QUERY": {
+    "buildId": "00000000-0000-4000-8000-000000000001",
+    "status": "CANCELLED",
+    "appVersion": {
+      "id": "fixture-id",
+      "app": {
+        "id": "fixture-id",
+        "willPerishAt": "2026-10-03T00:00:00Z",
+        "name": "fixture",
+        "url": "fixture",
+        "adminUrl": "fixture",
+        "activeVersion": {
+          "id": "fixture-id"
+        },
+        "favicon": "https://example.com",
+        "screenshot": "https://example.com"
+      }
+    }
+  },
+  "GET_DEPLOYMENT_STATUS_QUERY_NULLABLE": {
+    "buildId": "00000000-0000-4000-8000-000000000001",
+    "status": "CANCELLED",
+    "appVersion": {
+      "id": "fixture-id",
+      "app": {
+        "id": "fixture-id",
+        "willPerishAt": null,
+        "name": "fixture",
+        "url": "fixture",
+        "adminUrl": "fixture",
+        "activeVersion": {
+          "id": "fixture-id"
+        },
+        "favicon": null,
+        "screenshot": null
+      }
+    }
+  },
+  "GET_APP_ALIASES_QUERY": {
+    "__typename": "AppAlias",
+    "id": "fixture-id",
+    "hostname": "fixture",
+    "url": "fixture",
+    "state": "APEX_WITHOUT_REDIRECTION",
+    "redirectionHttpCode": "PERMANENT_MOVED",
+    "redirectsFrom": [
+      {
+        "id": "fixture-id"
+      }
+    ],
+    "redirectsTo": {
+      "id": "fixture-id"
+    },
+    "expectedDnsRecords": [
+      {
+        "host": "fixture",
+        "recordType": "fixture",
+        "value": "fixture"
+      }
+    ],
+    "firstCheckedAt": "2026-10-03T00:00:00Z",
+    "lastCheckedAt": "2026-10-03T00:00:00Z",
+    "updatedAt": "2026-10-03T00:00:00Z",
+    "createdAt": "2026-10-03T00:00:00Z"
+  },
+  "GET_APP_ALIASES_QUERY_NULLABLE": {
+    "__typename": "AppAlias",
+    "id": "fixture-id",
+    "hostname": "fixture",
+    "url": "fixture",
+    "state": "APEX_WITHOUT_REDIRECTION",
+    "redirectionHttpCode": null,
+    "redirectsFrom": [
+      {
+        "id": "fixture-id"
+      }
+    ],
+    "redirectsTo": {
+      "id": "fixture-id"
+    },
+    "expectedDnsRecords": [
+      {
+        "host": "fixture",
+        "recordType": "fixture",
+        "value": "fixture"
+      }
+    ],
+    "firstCheckedAt": null,
+    "lastCheckedAt": null,
+    "updatedAt": "2026-10-03T00:00:00Z",
+    "createdAt": "2026-10-03T00:00:00Z"
+  },
+  "CREATE_APP_VOLUME_MUTATION": {
+    "id": "fixture-id",
+    "volumeId": "fixture",
+    "mountPath": "fixture",
+    "maxSizeBytes": "1024",
+    "s3Enabled": true,
+    "s3Url": "https://example.com",
+    "explorerUrl": "https://example.com",
+    "isAddedByUi": true
+  },
+  "CREATE_APP_VOLUME_MUTATION_NULLABLE": {
+    "id": "fixture-id",
+    "volumeId": "fixture",
+    "mountPath": "fixture",
+    "maxSizeBytes": "1024",
+    "s3Enabled": true,
+    "s3Url": null,
+    "explorerUrl": null,
+    "isAddedByUi": true
+  },
+  "CREATE_APP_DATABASE_MUTATION": {
+    "database": {
+      "id": "fixture-id",
+      "name": "fixture",
+      "host": "fixture",
+      "port": "fixture",
+      "username": "fixture",
+      "password": "fixture",
+      "phpmyadminUrl": "fixture",
+      "dbExplorerUrl": "fixture",
+      "deletedAt": "2026-10-03T00:00:00Z",
+      "createdAt": "2026-10-03T00:00:00Z",
+      "updatedAt": "2026-10-03T00:00:00Z",
+      "app": {
+        "id": "fixture-id",
+        "willPerishAt": "2026-10-03T00:00:00Z",
+        "name": "fixture",
+        "url": "fixture",
+        "adminUrl": "fixture",
+        "activeVersion": {
+          "id": "fixture-id"
+        },
+        "favicon": "https://example.com",
+        "screenshot": "https://example.com"
+      }
+    },
+    "password": "fixture"
+  },
+  "CREATE_APP_DATABASE_MUTATION_NULLABLE": {
+    "database": {
+      "id": "fixture-id",
+      "name": "fixture",
+      "host": "fixture",
+      "port": "fixture",
+      "username": "fixture",
+      "password": null,
+      "phpmyadminUrl": null,
+      "dbExplorerUrl": null,
+      "deletedAt": null,
+      "createdAt": "2026-10-03T00:00:00Z",
+      "updatedAt": "2026-10-03T00:00:00Z",
+      "app": {
+        "id": "fixture-id",
+        "willPerishAt": null,
+        "name": "fixture",
+        "url": "fixture",
+        "adminUrl": "fixture",
+        "activeVersion": {
+          "id": "fixture-id"
+        },
+        "favicon": null,
+        "screenshot": null
+      }
+    },
+    "password": "fixture"
+  },
+  "GET_APP_CACHE_QUERY": {
+    "__typename": "DeployApp",
+    "id": "fixture-id",
+    "cdnCacheEnabled": true,
+    "cdnCachePurgedAt": "2026-10-03T00:00:00Z"
+  },
+  "GET_APP_CACHE_QUERY_NULLABLE": {
+    "__typename": "DeployApp",
+    "id": "fixture-id",
+    "cdnCacheEnabled": true,
+    "cdnCachePurgedAt": null
+  },
+  "GET_CRON_JOBS_BY_IDS_QUERY": {
+    "__typename": "CronJob",
+    "id": "fixture-id",
+    "name": "fixture",
+    "schedule": "fixture",
+    "enabled": true,
+    "kind": "EXECUTE",
+    "source": "API",
+    "isManaged": true,
+    "maxRetries": 1,
+    "maxScheduleDrift": "fixture",
+    "timeout": "fixture",
+    "createdAt": "2026-10-03T00:00:00Z",
+    "updatedAt": "2026-10-03T00:00:00Z",
+    "target": {
+      "__typename": "ExecuteCronJobTarget",
+      "command": "fixture",
+      "cliArgs": {},
+      "env": {},
+      "packageName": "fixture"
+    }
+  },
+  "GET_CRON_JOBS_BY_IDS_QUERY_NULLABLE": {
+    "__typename": "CronJob",
+    "id": "fixture-id",
+    "name": "fixture",
+    "schedule": "fixture",
+    "enabled": true,
+    "kind": "EXECUTE",
+    "source": "API",
+    "isManaged": true,
+    "maxRetries": null,
+    "maxScheduleDrift": null,
+    "timeout": null,
+    "createdAt": "2026-10-03T00:00:00Z",
+    "updatedAt": "2026-10-03T00:00:00Z",
+    "target": {
+      "__typename": "ExecuteCronJobTarget",
+      "command": null,
+      "cliArgs": {},
+      "env": {},
+      "packageName": null
+    }
+  },
+  "GET_APP_GIT_CONNECTION_QUERY": {
+    "id": "fixture-id",
+    "connectedAt": "2026-10-03T00:00:00Z",
+    "deployBranch": "fixture",
+    "deploymentStatusEvents": true,
+    "pullRequestComments": true,
+    "connectedBy": {
+      "id": "fixture-id",
+      "username": "fixture",
+      "globalName": "fixture"
+    },
+    "app": {
+      "id": "fixture-id",
+      "willPerishAt": "2026-10-03T00:00:00Z",
+      "name": "fixture",
+      "url": "fixture",
+      "adminUrl": "fixture",
+      "activeVersion": {
+        "id": "fixture-id"
+      },
+      "favicon": "https://example.com",
+      "screenshot": "https://example.com"
+    },
+    "githubRepoInstallation": {
+      "id": "fixture-id",
+      "name": "fixture",
+      "namespace": "fixture",
+      "repoUrl": "fixture",
+      "url": "fixture",
+      "installation": {
+        "id": "fixture-id",
+        "slug": "fixture",
+        "githubConfigureUrl": "fixture"
+      }
+    }
+  },
+  "GET_APP_GIT_CONNECTION_QUERY_NULLABLE": {
+    "id": "fixture-id",
+    "connectedAt": "2026-10-03T00:00:00Z",
+    "deployBranch": "fixture",
+    "deploymentStatusEvents": true,
+    "pullRequestComments": true,
+    "connectedBy": {
+      "id": "fixture-id",
+      "username": "fixture",
+      "globalName": "fixture"
+    },
+    "app": {
+      "id": "fixture-id",
+      "willPerishAt": null,
+      "name": "fixture",
+      "url": "fixture",
+      "adminUrl": "fixture",
+      "activeVersion": {
+        "id": "fixture-id"
+      },
+      "favicon": null,
+      "screenshot": null
+    },
+    "githubRepoInstallation": {
+      "id": "fixture-id",
+      "name": "fixture",
+      "namespace": "fixture",
+      "repoUrl": "fixture",
+      "url": "fixture",
+      "installation": {
+        "id": "fixture-id",
+        "slug": "fixture",
+        "githubConfigureUrl": "fixture"
+      }
+    }
+  },
+  "GET_DNS_DOMAINS_QUERY": {
+    "__typename": "DNSDomain",
+    "id": "fixture-id",
+    "name": "fixture",
+    "slug": "fixture",
+    "zoneFile": "fixture",
+    "delegationStatus": "MISCONFIGURED",
+    "nameservers": [
+      "fixture"
+    ],
+    "lastCheckedAt": "2026-10-03T00:00:00Z",
+    "verifiedAt": "2026-10-03T00:00:00Z",
+    "deletedAt": "2026-10-03T00:00:00Z",
+    "createdAt": "2026-10-03T00:00:00Z",
+    "updatedAt": "2026-10-03T00:00:00Z",
+    "owner": {
+      "__typename": "Namespace",
+      "globalId": "fixture-id",
+      "globalName": "fixture",
+      "isPro": true,
+      "id": "fixture-id",
+      "name": "fixture",
+      "displayName": "fixture"
+    },
+    "records": [
+      {
+        "__typename": "AAAARecord",
+        "id": "fixture-id",
+        "createdAt": "2026-10-03T00:00:00Z",
+        "deletedAt": "2026-10-03T00:00:00Z",
+        "dnsClass": "fixture",
+        "domain": {
+          "id": "fixture-id",
+          "name": "fixture",
+          "slug": "fixture"
+        },
+        "name": "fixture",
+        "text": "fixture",
+        "ttl": 1,
+        "updatedAt": "2026-10-03T00:00:00Z",
+        "address": "fixture"
+      }
+    ]
+  },
+  "GET_DNS_DOMAINS_QUERY_NULLABLE": {
+    "__typename": "DNSDomain",
+    "id": "fixture-id",
+    "name": "fixture",
+    "slug": "fixture",
+    "zoneFile": "fixture",
+    "delegationStatus": "MISCONFIGURED",
+    "nameservers": [
+      "fixture"
+    ],
+    "lastCheckedAt": null,
+    "verifiedAt": null,
+    "deletedAt": null,
+    "createdAt": "2026-10-03T00:00:00Z",
+    "updatedAt": "2026-10-03T00:00:00Z",
+    "owner": {
+      "__typename": "Namespace",
+      "globalId": "fixture-id",
+      "globalName": "fixture",
+      "isPro": true,
+      "id": "fixture-id",
+      "name": "fixture",
+      "displayName": null
+    },
+    "records": [
+      {
+        "__typename": "AAAARecord",
+        "id": "fixture-id",
+        "createdAt": "2026-10-03T00:00:00Z",
+        "deletedAt": null,
+        "dnsClass": null,
+        "domain": {
+          "id": "fixture-id",
+          "name": "fixture",
+          "slug": "fixture"
+        },
+        "name": "fixture",
+        "text": "fixture",
+        "ttl": 1,
+        "updatedAt": "2026-10-03T00:00:00Z",
+        "address": "fixture"
+      }
+    ]
+  },
+  "UPSERT_DNS_RECORD_MUTATION": {
+    "__typename": "AAAARecord",
+    "id": "fixture-id",
+    "createdAt": "2026-10-03T00:00:00Z",
+    "deletedAt": "2026-10-03T00:00:00Z",
+    "dnsClass": "fixture",
+    "domain": {
+      "id": "fixture-id",
+      "name": "fixture",
+      "slug": "fixture"
+    },
+    "name": "fixture",
+    "text": "fixture",
+    "ttl": 1,
+    "updatedAt": "2026-10-03T00:00:00Z",
+    "address": "fixture"
+  },
+  "UPSERT_DNS_RECORD_MUTATION_NULLABLE": {
+    "__typename": "AAAARecord",
+    "id": "fixture-id",
+    "createdAt": "2026-10-03T00:00:00Z",
+    "deletedAt": null,
+    "dnsClass": null,
+    "domain": {
+      "id": "fixture-id",
+      "name": "fixture",
+      "slug": "fixture"
+    },
+    "name": "fixture",
+    "text": "fixture",
+    "ttl": 1,
+    "updatedAt": "2026-10-03T00:00:00Z",
+    "address": "fixture"
+  },
+  "SEND_APP_EMAIL_MUTATION": {
+    "id": "fixture-id",
+    "bcc": [
+      "fixture"
+    ],
+    "cc": [
+      "fixture"
+    ],
+    "createdAt": "2026-10-03T00:00:00Z",
+    "direction": "RECEIVED",
+    "from": "fixture",
+    "htmlBody": "fixture",
+    "receivedAt": "2026-10-03T00:00:00Z",
+    "replyTo": "fixture",
+    "sentAt": "2026-10-03T00:00:00Z",
+    "status": "DELIVERED",
+    "subject": "fixture",
+    "textBody": "fixture",
+    "to": [
+      "fixture"
+    ],
+    "app": {
+      "id": "fixture-id"
+    },
+    "owner": {
+      "__typename": "Namespace",
+      "globalId": "fixture-id",
+      "globalName": "fixture",
+      "isPro": true,
+      "id": "fixture-id",
+      "name": "fixture",
+      "displayName": "fixture"
+    }
+  },
+  "SEND_APP_EMAIL_MUTATION_NULLABLE": {
+    "id": "fixture-id",
+    "bcc": [
+      "fixture"
+    ],
+    "cc": [
+      "fixture"
+    ],
+    "createdAt": "2026-10-03T00:00:00Z",
+    "direction": "RECEIVED",
+    "from": "fixture",
+    "htmlBody": null,
+    "receivedAt": null,
+    "replyTo": null,
+    "sentAt": null,
+    "status": "DELIVERED",
+    "subject": "fixture",
+    "textBody": null,
+    "to": [
+      "fixture"
+    ],
+    "app": {
+      "id": "fixture-id"
+    },
+    "owner": {
+      "__typename": "Namespace",
+      "globalId": "fixture-id",
+      "globalName": "fixture",
+      "isPro": true,
+      "id": "fixture-id",
+      "name": "fixture",
+      "displayName": null
+    }
+  },
+  "GET_APP_LOGS_QUERY": {
+    "datetime": "2026-10-03T00:00:00Z",
+    "instanceId": "fixture",
+    "message": "fixture",
+    "stream": "RUNTIME",
+    "timestamp": 1.5
+  },
+  "GET_APP_LOGS_QUERY_NULLABLE": {
+    "datetime": "2026-10-03T00:00:00Z",
+    "instanceId": "fixture",
+    "message": "fixture",
+    "stream": null,
+    "timestamp": 1.5
+  },
+  "GET_APP_SSH_SERVER_QUERY": {
+    "id": "fixture-id",
+    "enabled": true
+  },
+  "GET_APP_SSH_SERVER_QUERY_NULLABLE": {
+    "id": "fixture-id",
+    "enabled": true
+  },
+  "GET_SSH_USERS_BY_IDS_QUERY": {
+    "__typename": "SshUser",
+    "id": "fixture-id",
+    "username": "fixture",
+    "port": 1,
+    "serverHost": "fixture",
+    "sftpRootFolder": "fixture",
+    "authenticationMethods": [
+      "PASSWORD"
+    ]
+  },
+  "GET_SSH_USERS_BY_IDS_QUERY_NULLABLE": {
+    "__typename": "SshUser",
+    "id": "fixture-id",
+    "username": "fixture",
+    "port": 1,
+    "serverHost": "fixture",
+    "sftpRootFolder": "fixture",
+    "authenticationMethods": [
+      null
+    ]
+  },
+  "REVEAL_SSH_USER_PASSWORD_MUTATION": {
+    "password": "fixture",
+    "sshUser": {
+      "id": "fixture-id",
+      "username": "fixture",
+      "port": 1,
+      "serverHost": "fixture",
+      "sftpRootFolder": "fixture",
+      "authenticationMethods": [
+        "PASSWORD"
+      ]
+    }
+  },
+  "REVEAL_SSH_USER_PASSWORD_MUTATION_NULLABLE": {
+    "password": null,
+    "sshUser": {
+      "id": "fixture-id",
+      "username": "fixture",
+      "port": 1,
+      "serverHost": "fixture",
+      "sftpRootFolder": "fixture",
+      "authenticationMethods": [
+        null
+      ]
+    }
+  },
+  "GET_SSH_AUTHORIZED_KEYS_QUERY": {
+    "id": "fixture-id",
+    "name": "fixture",
+    "publicKey": "fixture",
+    "createdAt": "2026-10-03T00:00:00Z"
+  },
+  "GET_SSH_AUTHORIZED_KEYS_QUERY_NULLABLE": {
+    "id": "fixture-id",
+    "name": null,
+    "publicKey": "fixture",
+    "createdAt": "2026-10-03T00:00:00Z"
+  },
+  "SEARCH_PACKAGES_QUERY": {
+    "__typename": "PackageVersion",
+    "id": "fixture-id",
+    "version": "fixture",
+    "createdAt": "2026-10-03T00:00:00Z",
+    "package": {
+      "id": "fixture-id",
+      "packageName": "fixture",
+      "namespace": "fixture",
+      "private": true,
+      "lastVersion": {
+        "id": "fixture-id",
+        "version": "fixture",
+        "createdAt": "2026-10-03T00:00:00Z",
+        "distribution": {
+          "piritaSha256Hash": "fixture",
+          "piritaDownloadUrl": "fixture",
+          "downloadUrl": "fixture",
+          "size": 1,
+          "piritaSize": 1,
+          "webcVersion": "V2",
+          "webcManifest": "{}"
+        }
+      }
+    }
+  },
+  "SEARCH_PACKAGES_QUERY_NULLABLE": {
+    "__typename": "PackageVersion",
+    "id": "fixture-id",
+    "version": "fixture",
+    "createdAt": "2026-10-03T00:00:00Z",
+    "package": {
+      "id": "fixture-id",
+      "packageName": "fixture",
+      "namespace": "fixture",
+      "private": true,
+      "lastVersion": {
+        "id": "fixture-id",
+        "version": "fixture",
+        "createdAt": "2026-10-03T00:00:00Z",
+        "distribution": {
+          "piritaSha256Hash": null,
+          "piritaDownloadUrl": null,
+          "downloadUrl": "fixture",
+          "size": null,
+          "piritaSize": null,
+          "webcVersion": null,
+          "webcManifest": null
+        }
+      }
+    }
+  },
+  "USAGE_APP_METRICS_QUERY": {
+    "startAt": "2026-10-03T00:00:00Z",
+    "endAt": "2026-10-03T00:00:00Z",
+    "grouped": [
+      {
+        "groupedAt": "2026-10-03T00:00:00Z",
+        "requests": {
+          "cachedRequests": "1024",
+          "dataCachedBytes": "1024",
+          "dataServedBytes": "1024",
+          "http2xx": "1024",
+          "http3xx": "1024",
+          "http4xx": "1024",
+          "http5xx": "1024",
+          "httpOther": "1024",
+          "percentageCached": 1.5,
+          "requestDurationMillis": "1024",
+          "totalRequests": "1024",
+          "uniqueUsers": 1
+        },
+        "workloads": {
+          "memoryBytes": "1024",
+          "networkEgressBytes": "1024",
+          "networkIngressBytes": "1024",
+          "realCpuTimeMillis": "1024",
+          "wallCpuTimeMillis": "1024",
+          "workloads": 1
+        }
+      }
+    ],
+    "totals": {
+      "requests": {
+        "cachedRequests": "1024",
+        "dataCachedBytes": "1024",
+        "dataServedBytes": "1024",
+        "http2xx": "1024",
+        "http3xx": "1024",
+        "http4xx": "1024",
+        "http5xx": "1024",
+        "httpOther": "1024",
+        "percentageCached": 1.5,
+        "requestDurationMillis": "1024",
+        "totalRequests": "1024",
+        "uniqueUsers": 1
+      },
+      "workloads": {
+        "memoryBytes": "1024",
+        "networkEgressBytes": "1024",
+        "networkIngressBytes": "1024",
+        "realCpuTimeMillis": "1024",
+        "wallCpuTimeMillis": "1024",
+        "workloads": 1
+      }
+    }
+  },
+  "USAGE_APP_METRICS_QUERY_NULLABLE": {
+    "startAt": "2026-10-03T00:00:00Z",
+    "endAt": "2026-10-03T00:00:00Z",
+    "grouped": [
+      {
+        "groupedAt": "2026-10-03T00:00:00Z",
+        "requests": {
+          "cachedRequests": "1024",
+          "dataCachedBytes": "1024",
+          "dataServedBytes": "1024",
+          "http2xx": "1024",
+          "http3xx": "1024",
+          "http4xx": "1024",
+          "http5xx": "1024",
+          "httpOther": "1024",
+          "percentageCached": 1.5,
+          "requestDurationMillis": "1024",
+          "totalRequests": "1024",
+          "uniqueUsers": 1
+        },
+        "workloads": {
+          "memoryBytes": "1024",
+          "networkEgressBytes": "1024",
+          "networkIngressBytes": "1024",
+          "realCpuTimeMillis": "1024",
+          "wallCpuTimeMillis": "1024",
+          "workloads": 1
+        }
+      }
+    ],
+    "totals": {
+      "requests": {
+        "cachedRequests": "1024",
+        "dataCachedBytes": "1024",
+        "dataServedBytes": "1024",
+        "http2xx": "1024",
+        "http3xx": "1024",
+        "http4xx": "1024",
+        "http5xx": "1024",
+        "httpOther": "1024",
+        "percentageCached": 1.5,
+        "requestDurationMillis": "1024",
+        "totalRequests": "1024",
+        "uniqueUsers": 1
+      },
+      "workloads": {
+        "memoryBytes": "1024",
+        "networkEgressBytes": "1024",
+        "networkIngressBytes": "1024",
+        "realCpuTimeMillis": "1024",
+        "wallCpuTimeMillis": "1024",
+        "workloads": 1
+      }
+    }
+  }
+}

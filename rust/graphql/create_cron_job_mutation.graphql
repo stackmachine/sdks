@@ -1,0 +1,38 @@
+mutation srcCreateCronJobMutation($input: CreateCronJobInput!) {
+  createCronJob(input: $input) {
+    cronJob {
+
+id
+name
+schedule
+enabled
+kind
+source
+isManaged
+maxRetries
+maxScheduleDrift
+timeout
+createdAt
+updatedAt
+target {
+  __typename
+  ... on ExecuteCronJobTarget {
+    command
+    cliArgs
+    env
+    packageName
+  }
+  ... on FetchCronJobTarget {
+    path
+    method
+    headers
+    body
+    expectBodyIncludes
+    expectBodyRegex
+    expectStatusCodes
+  }
+}
+
+    }
+  }
+}

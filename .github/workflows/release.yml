@@ -16,6 +16,11 @@ on:
         required: true
         default: false
         type: boolean
+      publish_existing_rust_version:
+        description: Publish the Cargo.toml version already on main
+        required: true
+        default: false
+        type: boolean
 
 concurrency:
   group: release-${{ github.ref }}
@@ -32,6 +37,8 @@ jobs:
     outputs:
       js_release_created: ${{ steps.release.outputs['js--release_created'] }}
       python_release_created: ${{ steps.release.outputs['python--release_created'] }}
+      rust_release_created: ${{ steps.release.outputs['rust--release_created'] }}
+      rust_release_sha: ${{ steps.release.outputs['rust--sha'] }}
     steps:
       - name: Create release
         id: release
@@ -132,6 +139,61 @@ jobs:
 
       - name: Publish to PyPI
         run: uv publish
+
+  publish-rust:
+    # A manual retry must run even though the release job is skipped.
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && ((github.event_name == 'push' && needs.release.outputs.rust_release_created == 'true') || (github.event_name == 'workflow_dispatch' && inputs.publish_existing_rust_version)) }}
+    needs: release
+    runs-on: ubuntu-latest
+    environment: crates-io
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: rust
+    env:
+      HAS_CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN != '' }}
+    steps:
+      - name: Check out release commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.release.outputs.rust_release_sha || github.sha }}
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Lint
+        run: cargo clippy --locked --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test --locked --all-targets
+
+      - name: Test documentation
+        run: cargo test --locked --doc
+
+      - name: Verify package
+        run: cargo publish --locked --dry-run
+
+      - name: Authenticate with crates.io
+        if: ${{ env.HAS_CARGO_REGISTRY_TOKEN != 'true' }}
+        id: auth
+        uses: rust-lang/crates-io-auth-action@v1
+
+      - name: Publish to crates.io
+        run: cargo publish --locked
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN || steps.auth.outputs.token }}
 
   publish-existing:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_existing_version }}

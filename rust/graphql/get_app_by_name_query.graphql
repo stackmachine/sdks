@@ -1,0 +1,16 @@
+query srcGetAppByNameQuery($name: String!, $owner: String) {
+  app: getDeployApp(name: $name, owner: $owner) {
+
+id
+willPerishAt
+name
+url
+adminUrl
+activeVersion {
+  id
+}
+favicon
+screenshot
+
+  }
+}

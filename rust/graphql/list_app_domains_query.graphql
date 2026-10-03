@@ -1,0 +1,55 @@
+query srcListAppDomainsQuery(
+  $appId: ID!
+  $first: Int
+  $after: String
+  $last: Int
+  $before: String
+  $sortBy: AppAliasSortBy!
+) {
+  node(id: $appId) {
+    ... on DeployApp {
+      domains(
+        first: $first
+        after: $after
+        last: $last
+        before: $before
+        sortBy: $sortBy
+      ) {
+        edges {
+          cursor
+          node {
+
+id
+hostname
+url
+state
+redirectionHttpCode
+redirectsFrom {
+  id
+}
+redirectsTo {
+  id
+}
+expectedDnsRecords {
+  host
+  recordType
+  value
+}
+firstCheckedAt
+lastCheckedAt
+updatedAt
+createdAt
+
+          }
+        }
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }
+        totalCount
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+query srcGetAppByIdQuery($id: ID!) {
+  app: node(id: $id) {
+    __typename
+    ... on DeployApp {
+
+id
+willPerishAt
+name
+url
+adminUrl
+activeVersion {
+  id
+}
+favicon
+screenshot
+
+    }
+  }
+}

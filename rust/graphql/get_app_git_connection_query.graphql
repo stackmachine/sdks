@@ -1,0 +1,47 @@
+query srcGetAppGitConnectionQuery($id: ID!) {
+  node(id: $id) {
+    __typename
+    ... on DeployApp {
+      githubRepoConnection {
+
+id
+connectedAt
+deployBranch
+deploymentStatusEvents
+pullRequestComments
+connectedBy {
+  id
+  username
+  globalName
+}
+app {
+
+id
+willPerishAt
+name
+url
+adminUrl
+activeVersion {
+  id
+}
+favicon
+screenshot
+
+}
+githubRepoInstallation {
+  id
+  name
+  namespace
+  repoUrl
+  url
+  installation {
+    id
+    slug
+    githubConfigureUrl
+  }
+}
+
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+mutation srcDisconnectGithubRepoFromAppMutation(
+  $input: DisconnectGithubRepoFromAppInput!
+) {
+  disconnectGithubRepoFromApp(input: $input) {
+    success
+  }
+}

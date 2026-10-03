@@ -1,0 +1,5 @@
+mutation srcPurgeAppCdnCacheMutation($app: ID!) {
+  purgeAppCdnCache(app: $app) {
+    success
+  }
+}

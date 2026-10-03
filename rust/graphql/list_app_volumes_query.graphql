@@ -1,0 +1,41 @@
+query srcListAppVolumesQuery(
+  $appId: ID!
+  $first: Int
+  $after: String
+  $last: Int
+  $before: String
+) {
+  node(id: $appId) {
+    ... on DeployApp {
+      volumes(
+        first: $first
+        after: $after
+        last: $last
+        before: $before
+      ) {
+        edges {
+          cursor
+          node {
+
+id
+volumeId
+mountPath
+maxSizeBytes
+s3Enabled
+s3Url
+explorerUrl
+isAddedByUi
+
+          }
+        }
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }
+        totalCount
+      }
+    }
+  }
+}

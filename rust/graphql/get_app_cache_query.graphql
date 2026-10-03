@@ -1,0 +1,10 @@
+query srcGetAppCacheQuery($id: ID!) {
+  node(id: $id) {
+    __typename
+    ... on DeployApp {
+      id
+      cdnCacheEnabled
+      cdnCachePurgedAt
+    }
+  }
+}

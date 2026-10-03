@@ -1,0 +1,6 @@
+mutation srcDeleteCronJobMutation($input: DeleteCronJobInput!) {
+  deleteCronJob(input: $input) {
+    success
+    deletedCronJobId
+  }
+}

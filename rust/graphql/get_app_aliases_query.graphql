@@ -1,0 +1,29 @@
+query srcGetAppAliasesQuery($ids: [ID!]!) {
+  nodes(ids: $ids) {
+    __typename
+    ... on AppAlias {
+
+id
+hostname
+url
+state
+redirectionHttpCode
+redirectsFrom {
+  id
+}
+redirectsTo {
+  id
+}
+expectedDnsRecords {
+  host
+  recordType
+  value
+}
+firstCheckedAt
+lastCheckedAt
+updatedAt
+createdAt
+
+    }
+  }
+}

@@ -1,0 +1,5 @@
+mutation srcDeleteAppMutation($input: DeleteAppInput!) {
+  deleteApp(input: $input) {
+    success
+  }
+}

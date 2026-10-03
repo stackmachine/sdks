@@ -1,0 +1,12 @@
+mutation srcAddSshAuthorizedKeyMutation($input: AddSshAuthorizedKeyInput!) {
+  addSshAuthorizedKey(input: $input) {
+    authorizedKey {
+
+id
+name
+publicKey
+createdAt
+
+    }
+  }
+}

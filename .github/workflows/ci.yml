@@ -44,6 +44,14 @@ jobs:
       - name: Validate
         run: npm run ci
 
+      - name: Set up Rust for schema generation checks
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Validate Rust GraphQL operations and generated types
+        run: node ../rust/tools/generate.mjs --check
+
   validate-python:
     runs-on: ubuntu-latest
     defaults:
@@ -85,3 +93,45 @@ jobs:
 
       - name: Build package
         run: uv build --no-sources
+
+  validate-rust:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain:
+          - "1.88.0"
+          - stable
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: rustfmt, clippy
+
+      - name: Cache Rust build output
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Lint
+        run: cargo clippy --locked --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test --locked --all-targets
+
+      - name: Test documentation
+        run: cargo test --locked --doc
+
+      - name: Build package
+        run: cargo package --locked

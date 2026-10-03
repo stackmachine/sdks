@@ -1,0 +1,58 @@
+query srcListAppDatabasesQuery(
+  $appId: ID!
+  $first: Int
+  $after: String
+  $last: Int
+  $before: String
+) {
+  node(id: $appId) {
+    ... on DeployApp {
+      databases(
+        first: $first
+        after: $after
+        last: $last
+        before: $before
+      ) {
+        edges {
+          cursor
+          node {
+
+id
+name
+host
+port
+username
+password
+phpmyadminUrl
+dbExplorerUrl
+deletedAt
+createdAt
+updatedAt
+app {
+
+id
+willPerishAt
+name
+url
+adminUrl
+activeVersion {
+  id
+}
+favicon
+screenshot
+
+}
+
+          }
+        }
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }
+        totalCount
+      }
+    }
+  }
+}

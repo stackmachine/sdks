@@ -1,0 +1,8 @@
+mutation srcConfigureAppCdnCacheMutation(
+  $app: ID!
+  $config: AppCdnCacheConfigUpdate!
+) {
+  configureAppCdnCache(app: $app, config: $config) {
+    success
+  }
+}

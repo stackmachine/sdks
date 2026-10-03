@@ -1,0 +1,6 @@
+mutation srcDeleteAppDomainMutation($input: DeleteAppDomainInput!) {
+  deleteAppDomain(input: $input) {
+    success
+    id
+  }
+}

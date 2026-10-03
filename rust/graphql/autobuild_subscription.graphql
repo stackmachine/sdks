@@ -1,0 +1,23 @@
+subscription srcAutobuildSubscription($buildId: UUID!) {
+  autobuildDeployment(buildId: $buildId) {
+    appVersion {
+      id
+      app {
+        id
+        willPerishAt
+        name
+        url
+        adminUrl
+        activeVersion {
+          id
+        }
+        favicon
+        screenshot
+      }
+    }
+    kind
+    datetime
+    stream
+    message
+  }
+}

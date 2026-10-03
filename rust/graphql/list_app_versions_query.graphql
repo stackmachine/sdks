@@ -1,0 +1,50 @@
+query srcListAppVersionsQuery(
+  $appId: ID!
+  $createdAfter: DateTime
+  $sortBy: DeployAppVersionsSortBy
+  $first: Int
+  $after: String
+  $last: Int
+  $before: String
+) {
+  node(id: $appId) {
+    ... on DeployApp {
+      versions(
+        createdAfter: $createdAfter
+        sortBy: $sortBy
+        first: $first
+        after: $after
+        last: $last
+        before: $before
+      ) {
+        edges {
+          cursor
+          node {
+            id
+            app {
+
+id
+willPerishAt
+name
+url
+adminUrl
+activeVersion {
+  id
+}
+favicon
+screenshot
+
+            }
+          }
+        }
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }
+        totalCount
+      }
+    }
+  }
+}

@@ -1,0 +1,5 @@
+mutation srcDeleteAppVolumeMutation($input: DeleteAppVolumeInput!) {
+  deleteAppVolume(input: $input) {
+    success
+  }
+}

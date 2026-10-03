@@ -1,0 +1,5 @@
+query uploadQuery($filename: String!) {
+  getSignedUrl(filename: $filename) {
+    url
+  }
+}

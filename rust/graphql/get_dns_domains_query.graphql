@@ -1,0 +1,111 @@
+query srcGetDNSDomainsQuery($ids: [ID!]!) {
+  nodes(ids: $ids) {
+    __typename
+    ... on DNSDomain {
+
+id
+name
+slug
+zoneFile
+delegationStatus
+nameservers
+lastCheckedAt
+verifiedAt
+deletedAt
+createdAt
+updatedAt
+owner {
+
+__typename
+globalId
+globalName
+isPro
+... on Namespace {
+  id
+  name
+  displayName
+}
+... on User {
+  id
+  username
+}
+
+}
+records {
+
+__typename
+... on Node {
+  id
+}
+... on DNSRecordInterface {
+  createdAt
+  deletedAt
+  dnsClass
+  domain {
+    id
+    name
+    slug
+  }
+  name
+  text
+  ttl
+  updatedAt
+}
+... on AAAARecord {
+  address
+}
+... on ARecord {
+  address
+}
+... on CAARecord {
+  flags
+  tag
+  value
+}
+... on CNAMERecord {
+  cName
+}
+... on DNAMERecord {
+  dName
+}
+... on MXRecord {
+  exchange
+  preference
+}
+... on NSRecord {
+  nsdname
+}
+... on PTRRecord {
+  ptrdname
+}
+... on SOARecord {
+  expire
+  minimum
+  mname
+  refresh
+  retry
+  rname
+  serial
+}
+... on SRVRecord {
+  port
+  priority
+  protocol
+  service
+  target
+  weight
+}
+... on SSHFPRecord {
+  algorithm
+  fingerprint
+  type
+}
+... on TXTRecord {
+  data
+}
+
+}
+
+    }
+  }
+}

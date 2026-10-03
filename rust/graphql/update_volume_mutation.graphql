@@ -1,0 +1,17 @@
+mutation srcUpdateVolumeMutation($input: UpdateVolumeInput!) {
+  updateVolume(input: $input) {
+    success
+    volume {
+
+id
+volumeId
+mountPath
+maxSizeBytes
+s3Enabled
+s3Url
+explorerUrl
+isAddedByUi
+
+    }
+  }
+}

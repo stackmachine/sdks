@@ -1,0 +1,43 @@
+mutation srcSendAppEmailMutation($input: SendAppEmailInput!) {
+  sendAppEmail(input: $input) {
+    success
+    message {
+
+id
+bcc
+cc
+createdAt
+direction
+from
+htmlBody
+receivedAt
+replyTo
+sentAt
+status
+subject
+textBody
+to
+app {
+  id
+}
+owner {
+
+__typename
+globalId
+globalName
+isPro
+... on Namespace {
+  id
+  name
+  displayName
+}
+... on User {
+  id
+  username
+}
+
+}
+
+    }
+  }
+}

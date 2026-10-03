@@ -1,0 +1,42 @@
+query srcListDeployAppsQuery(
+  $first: Int
+  $after: String
+  $last: Int
+  $before: String
+  $ownerId: ID
+  $sortBy: DeployAppsSortBy
+) {
+  getDeployApps(
+    first: $first
+    after: $after
+    last: $last
+    before: $before
+    ownerId: $ownerId
+    sortBy: $sortBy
+  ) {
+    edges {
+      cursor
+      node {
+
+id
+willPerishAt
+name
+url
+adminUrl
+activeVersion {
+  id
+}
+favicon
+screenshot
+
+      }
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      endCursor
+      startCursor
+    }
+    totalCount
+  }
+}
