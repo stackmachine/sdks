@@ -1,0 +1,5 @@
+mutation srcGenerateSshTokenMutation($input: GenerateSshTokenInput!) {
+  generateSshToken(input: $input) {
+    token
+  }
+}

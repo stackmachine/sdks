@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3b4fe073e0e60abd152eb52d0837ff67>>
+ * @generated SignedSource<<1946958d2b6b479365ed6db6883bb11a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,6 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type DatabaseEngine = "MYSQL" | "POSTGRES" | "SQLITE" | "%future added value";
 export type DeployViaAutobuildInput = {
   afterDeployCmd?: string | null | undefined;
   allowExistingApp?: boolean | null | undefined;
@@ -17,6 +18,7 @@ export type DeployViaAutobuildInput = {
   branch?: string | null | undefined;
   buildCmd?: string | null | undefined;
   clientMutationId?: string | null | undefined;
+  dbEngine?: DatabaseEngine | null | undefined;
   domains?: ReadonlyArray<string | null | undefined> | null | undefined;
   enableDatabase?: boolean | null | undefined;
   envVars?: ReadonlyArray<EnvVarInput | null | undefined> | null | undefined;
@@ -37,7 +39,9 @@ export type DeployViaAutobuildInput = {
   waitForScreenshotGeneration?: boolean | null | undefined;
 };
 export type EnvVarInput = {
+  build?: boolean | null | undefined;
   name: string;
+  runtime?: boolean | null | undefined;
   sensitive?: boolean | null | undefined;
   value: string;
 };

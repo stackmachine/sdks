@@ -1,0 +1,5 @@
+mutation srcDeleteDNSRecordMutation($input: DeleteDNSRecordInput!) {
+  deleteDNSRecord(input: $input) {
+    success
+  }
+}

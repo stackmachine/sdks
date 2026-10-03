@@ -1,0 +1,19 @@
+query srcGetAppsByIdsQuery($ids: [ID!]!) {
+  nodes(ids: $ids) {
+    __typename
+    ... on DeployApp {
+
+id
+willPerishAt
+name
+url
+adminUrl
+activeVersion {
+  id
+}
+favicon
+screenshot
+
+    }
+  }
+}

@@ -1,0 +1,5 @@
+mutation srcVerifyAppDomainMutation($input: VerifyAppDomainInput!) {
+  verifyAppDomain(input: $input) {
+    verified
+  }
+}

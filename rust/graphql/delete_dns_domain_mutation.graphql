@@ -1,0 +1,5 @@
+mutation srcDeleteDNSDomainMutation($input: DeleteDomainInput!) {
+  deleteDomain(input: $input) {
+    success
+  }
+}

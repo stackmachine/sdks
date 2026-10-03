@@ -1,0 +1,182 @@
+query srcListReceivedEmailsQuery(
+  $id: ID!
+  $first: Int
+  $after: String
+  $last: Int
+  $before: String
+) {
+  node(id: $id) {
+    __typename
+    ... on DeployApp {
+      emails: receivedEmails(
+        first: $first
+        after: $after
+        last: $last
+        before: $before
+      ) {
+        edges {
+          cursor
+          node {
+
+id
+bcc
+cc
+createdAt
+direction
+from
+htmlBody
+receivedAt
+replyTo
+sentAt
+status
+subject
+textBody
+to
+app {
+  id
+}
+owner {
+
+__typename
+globalId
+globalName
+isPro
+... on Namespace {
+  id
+  name
+  displayName
+}
+... on User {
+  id
+  username
+}
+
+}
+
+          }
+        }
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }
+        totalCount
+      }
+    }
+    ... on Namespace {
+      emails: receivedEmails(
+        first: $first
+        after: $after
+        last: $last
+        before: $before
+      ) {
+        edges {
+          cursor
+          node {
+
+id
+bcc
+cc
+createdAt
+direction
+from
+htmlBody
+receivedAt
+replyTo
+sentAt
+status
+subject
+textBody
+to
+app {
+  id
+}
+owner {
+
+__typename
+globalId
+globalName
+isPro
+... on Namespace {
+  id
+  name
+  displayName
+}
+... on User {
+  id
+  username
+}
+
+}
+
+          }
+        }
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }
+        totalCount
+      }
+    }
+    ... on User {
+      emails: receivedEmails(
+        first: $first
+        after: $after
+        last: $last
+        before: $before
+      ) {
+        edges {
+          cursor
+          node {
+
+id
+bcc
+cc
+createdAt
+direction
+from
+htmlBody
+receivedAt
+replyTo
+sentAt
+status
+subject
+textBody
+to
+app {
+  id
+}
+owner {
+
+__typename
+globalId
+globalName
+isPro
+... on Namespace {
+  id
+  name
+  displayName
+}
+... on User {
+  id
+  username
+}
+
+}
+
+          }
+        }
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }
+        totalCount
+      }
+    }
+  }
+}

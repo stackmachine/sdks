@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<227f5fe27469471ea42e0bb3fea4092b>>
+ * @generated SignedSource<<bddd6232e4fea0de917e0d3cb8ad2054>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,7 +10,7 @@
 
 import { ReaderFragment } from 'relay-runtime';
 export type EmailMessageDirection = "RECEIVED" | "SENT" | "%future added value";
-export type EmailMessageStatus = "DELIVERED" | "FAILED" | "QUEUED" | "RECEIVED" | "SENT" | "%future added value";
+export type EmailMessageStatus = "BOUNCED" | "DELIVERED" | "FAILED" | "HELD" | "QUEUED" | "RECEIVED" | "SENDING" | "SENT" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type srcEmailMessageData$data = {
   readonly app: {

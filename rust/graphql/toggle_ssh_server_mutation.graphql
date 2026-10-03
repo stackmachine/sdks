@@ -1,0 +1,10 @@
+mutation srcToggleSshServerMutation($input: ToggleSshServerInput!) {
+  toggleSshServer(input: $input) {
+    sshServer {
+
+id
+enabled
+
+    }
+  }
+}

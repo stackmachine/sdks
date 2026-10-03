@@ -1,0 +1,15 @@
+query srcGetSshUsersByIdsQuery($ids: [ID!]!) {
+  nodes(ids: $ids) {
+    __typename
+    ... on SshUser {
+
+id
+username
+port
+serverHost
+sftpRootFolder
+authenticationMethods
+
+    }
+  }
+}

@@ -1,0 +1,69 @@
+query srcListAppCronJobsQuery(
+  $appId: ID!
+  $first: Int
+  $after: String
+  $last: Int
+  $before: String
+  $filter: CronJobFilter
+  $orderBy: CronJobOrderBy
+  $direction: CronJobSortDirection
+) {
+  node(id: $appId) {
+    ... on DeployApp {
+      cronJobs(
+        first: $first
+        after: $after
+        last: $last
+        before: $before
+        filter: $filter
+        orderBy: $orderBy
+        direction: $direction
+      ) {
+        edges {
+          cursor
+          node {
+
+id
+name
+schedule
+enabled
+kind
+source
+isManaged
+maxRetries
+maxScheduleDrift
+timeout
+createdAt
+updatedAt
+target {
+  __typename
+  ... on ExecuteCronJobTarget {
+    command
+    cliArgs
+    env
+    packageName
+  }
+  ... on FetchCronJobTarget {
+    path
+    method
+    headers
+    body
+    expectBodyIncludes
+    expectBodyRegex
+    expectStatusCodes
+  }
+}
+
+          }
+        }
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
+        }
+        totalCount
+      }
+    }
+  }
+}

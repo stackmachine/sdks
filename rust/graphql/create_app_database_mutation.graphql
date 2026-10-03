@@ -1,0 +1,34 @@
+mutation srcCreateAppDatabaseMutation($input: CreateAppDBInput!) {
+  createAppDb(input: $input) {
+    database {
+
+id
+name
+host
+port
+username
+password
+phpmyadminUrl
+dbExplorerUrl
+deletedAt
+createdAt
+updatedAt
+app {
+
+id
+willPerishAt
+name
+url
+adminUrl
+activeVersion {
+  id
+}
+favicon
+screenshot
+
+}
+
+    }
+    password
+  }
+}

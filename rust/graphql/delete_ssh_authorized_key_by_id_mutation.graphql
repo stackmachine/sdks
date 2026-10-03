@@ -1,0 +1,7 @@
+mutation srcDeleteSshAuthorizedKeyByIdMutation(
+  $input: DeleteSshAuthorizedKeyByIdInput!
+) {
+  deleteSshAuthorizedKeyById(input: $input) {
+    success
+  }
+}

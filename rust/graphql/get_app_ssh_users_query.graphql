@@ -1,0 +1,36 @@
+query srcGetAppSshUsersQuery(
+  $id: ID!
+  $first: Int
+  $after: String
+  $last: Int
+  $before: String
+) {
+  node(id: $id) {
+    ... on DeployApp {
+      sshServer {
+        users(first: $first, after: $after, last: $last, before: $before) {
+          edges {
+            cursor
+            node {
+
+id
+username
+port
+serverHost
+sftpRootFolder
+authenticationMethods
+
+            }
+          }
+          pageInfo {
+            hasNextPage
+            hasPreviousPage
+            endCursor
+            startCursor
+          }
+          totalCount
+        }
+      }
+    }
+  }
+}

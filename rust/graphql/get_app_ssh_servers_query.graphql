@@ -1,0 +1,14 @@
+query srcGetAppSshServersQuery($ids: [ID!]!) {
+  nodes(ids: $ids) {
+    __typename
+    ... on DeployApp {
+      id
+      sshServer {
+
+id
+enabled
+
+      }
+    }
+  }
+}

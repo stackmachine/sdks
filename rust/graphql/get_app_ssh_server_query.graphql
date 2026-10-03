@@ -1,0 +1,12 @@
+query srcGetAppSshServerQuery($id: ID!) {
+  node(id: $id) {
+    ... on DeployApp {
+      sshServer {
+
+id
+enabled
+
+      }
+    }
+  }
+}

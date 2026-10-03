@@ -1,0 +1,29 @@
+mutation srcUpsertAppDomainMutation($input: UpsertAppDomainInput!) {
+  upsertAppDomain(input: $input) {
+    success
+    domains {
+
+id
+hostname
+url
+state
+redirectionHttpCode
+redirectsFrom {
+  id
+}
+redirectsTo {
+  id
+}
+expectedDnsRecords {
+  host
+  recordType
+  value
+}
+firstCheckedAt
+lastCheckedAt
+updatedAt
+createdAt
+
+    }
+  }
+}

@@ -1,0 +1,21 @@
+query srcGetDeploymentStatusQuery($buildId: UUID!) {
+  autobuildDeploymentStatus(buildId: $buildId) {
+    buildId
+    status
+    appVersion {
+      id
+      app {
+        id
+        willPerishAt
+        name
+        url
+        adminUrl
+        activeVersion {
+          id
+        }
+        favicon
+        screenshot
+      }
+    }
+  }
+}

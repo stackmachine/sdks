@@ -3725,9 +3725,17 @@ test("apps.cronjobs lists and maps execute and fetch targets", async () => {
     expectStatusCodes: [200, 204],
   });
   assert.equal(fetch.calls[0].body.variables.appId, "app_1");
-  assert.equal(fetch.calls[0].body.variables.kind, "EXECUTE");
-  assert.equal(fetch.calls[0].body.variables.sortBy, "OLDEST");
+  assert.deepEqual(fetch.calls[0].body.variables.filter, { kind: "EXECUTE" });
+  assert.equal(fetch.calls[0].body.variables.orderBy, "ID");
+  assert.equal(fetch.calls[0].body.variables.direction, "ASC");
+  assert.equal(fetch.calls[0].body.variables.kind, undefined);
+  assert.equal(fetch.calls[0].body.variables.sortBy, undefined);
   assert.equal(fetch.calls[0].body.variables.first, 2);
+
+  await client.apps.cronjobs.list({ app: "app_1" });
+  assert.equal(fetch.calls[1].body.variables.filter, undefined);
+  assert.equal(fetch.calls[1].body.variables.orderBy, "ID");
+  assert.equal(fetch.calls[1].body.variables.direction, "DESC");
 });
 
 test("apps.cronjobs retrieves many in input order and reports missing jobs", async () => {

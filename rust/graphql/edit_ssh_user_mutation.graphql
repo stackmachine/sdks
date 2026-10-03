@@ -1,0 +1,14 @@
+mutation srcEditSshUserMutation($input: EditSshUserInput!) {
+  editSshUser(input: $input) {
+    sshUser {
+
+id
+username
+port
+serverHost
+sftpRootFolder
+authenticationMethods
+
+    }
+  }
+}
