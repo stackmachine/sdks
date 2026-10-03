@@ -263,7 +263,7 @@ The workflow uses the `crates-io` GitHub environment, restricted to `main`, and
 does not read a stored crates.io API token from GitHub secrets.
 
 The initial [`0.1.0`](https://crates.io/crates/stackmachine/0.1.0) publication is
-complete. Configure the crate's GitHub publisher in **Settings → Trusted Publishing**
+complete. The crate's GitHub publisher is registered in **Settings → Trusted Publishing**
 with these settings:
 
 | Setting | Value |
