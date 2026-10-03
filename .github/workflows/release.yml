@@ -186,6 +186,7 @@ jobs:
       - name: Check whether the version is already published
         id: registry
         run: |
+          set -euo pipefail
           crate_version=$(cargo metadata --locked --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "stackmachine") | .version')
           response_file="$RUNNER_TEMP/stackmachine-crate-version.json"
           status=$(curl --silent --show-error --retry 3 \
