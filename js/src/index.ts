@@ -391,10 +391,13 @@ export type DNSRecordsUpdateManyInput = {
 };
 export type EmailMessageDirection = "RECEIVED" | "SENT" | "%future added value";
 export type EmailMessageStatus =
+  | "BOUNCED"
   | "DELIVERED"
   | "FAILED"
+  | "HELD"
   | "QUEUED"
   | "RECEIVED"
+  | "SENDING"
   | "SENT"
   | "%future added value";
 export type MetricGrouping =
@@ -3936,8 +3939,9 @@ export class AppsCronJobsResource {
               $after: String
               $last: Int
               $before: String
-              $kind: CronJobKind
-              $sortBy: CronJobsSortBy
+              $filter: CronJobFilter
+              $orderBy: CronJobOrderBy
+              $direction: CronJobSortDirection
             ) {
               node(id: $appId) {
                 ... on DeployApp {
@@ -3946,8 +3950,9 @@ export class AppsCronJobsResource {
                     after: $after
                     last: $last
                     before: $before
-                    kind: $kind
-                    sortBy: $sortBy
+                    filter: $filter
+                    orderBy: $orderBy
+                    direction: $direction
                   ) {
                     edges {
                       cursor
@@ -3973,8 +3978,9 @@ export class AppsCronJobsResource {
             after: pagination.after,
             last: pagination.last,
             before: pagination.before,
-            kind: params.kind,
-            sortBy: params.sortBy ?? "NEWEST",
+            filter: params.kind == null ? undefined : { kind: params.kind },
+            orderBy: "ID",
+            direction: params.sortBy === "OLDEST" ? "ASC" : "DESC",
           },
           requestOptions,
         );

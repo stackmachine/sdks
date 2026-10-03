@@ -4,10 +4,11 @@ use stackmachine::{
     Error, ErrorKind, Pagination, RequestOptions, StackMachine, UploadOptions, WaitOptions,
     create_zip,
     inputs::{
-        CreateAppVolumeInput, CreateCronJobInput, DeployAppsSortBy, DeployViaAutobuildInput,
+        CreateAppVolumeInput, CreateCronJobInput, CronJobFilter, CronJobKind, CronJobOrderBy,
+        CronJobSortDirection, CronJobSource, DeployAppsSortBy, DeployViaAutobuildInput,
         ExecuteCronJobTargetInput, FetchCronJobTargetInput,
     },
-    resources::AppsListParams,
+    resources::{AppsListParams, CronJobsListParams},
 };
 use std::{
     io::{Cursor, Read},
@@ -507,6 +508,72 @@ async fn volume_inputs_use_schema_field_names_and_bigint_responses_are_lossless(
             .pointer("/variables/input/clientMutationId")
             .is_none()
     );
+}
+
+#[tokio::test]
+async fn cron_job_list_preserves_filters_and_ordering_across_pages() {
+    let server = MockServer::start().await;
+    let fixtures: Value = serde_json::from_str(include_str!("fixtures/responses.json")).unwrap();
+    let filter = json!({"kind": "FETCH", "enabled": false, "isManaged": false,
+        "source": "API", "nameContains": "health"});
+    for (after, has_next) in [(None, true), (Some("cursor-1"), false)] {
+        graphql("srcListAppCronJobsQuery", json!({"node": {"cronJobs":
+            connection(vec![fixtures["GET_CRON_JOBS_BY_IDS_QUERY"].clone()], has_next, Some("cursor-1"))}}))
+            .and(body_partial_json(json!({"variables": {"appId": "app-1", "filter": filter,
+                "orderBy": "NAME", "direction": "ASC", "first": 2, "after": after}})))
+            .expect(1).mount(&server).await;
+    }
+    graphql(
+        "srcListAppCronJobsQuery",
+        json!({"node": {"cronJobs": connection(vec![], false, None)}}),
+    )
+    .and(body_partial_json(
+        json!({"variables": {"appId": "app-1", "filter": null,
+            "orderBy": "ID", "direction": "DESC", "first": 25}}),
+    ))
+    .expect(1)
+    .mount(&server)
+    .await;
+    let client = client(&server);
+    let page = client
+        .apps()
+        .cronjobs()
+        .list(
+            "app-1",
+            CronJobsListParams {
+                filter: Some(CronJobFilter {
+                    kind: Some(CronJobKind::Fetch),
+                    enabled: Some(false),
+                    is_managed: Some(false),
+                    source: Some(CronJobSource::Api),
+                    name_contains: Some("health".into()),
+                }),
+                order_by: CronJobOrderBy::Name,
+                direction: CronJobSortDirection::Asc,
+                pagination: Pagination::new(2),
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(page.data[0].id, "fixture-id");
+    let next = page.next_page().await.unwrap().unwrap();
+    assert_eq!(next.data[0].id, "fixture-id");
+    assert!(next.next_page().await.unwrap().is_none());
+    assert!(
+        client
+            .apps()
+            .cronjobs()
+            .list("app-1", CronJobsListParams::default())
+            .await
+            .unwrap()
+            .data
+            .is_empty()
+    );
+    for request in server.received_requests().await.unwrap() {
+        let body: Value = request.body_json().unwrap();
+        assert!(body["variables"].get("kind").is_none());
+        assert!(body["variables"].get("sortBy").is_none());
+    }
 }
 
 #[tokio::test]

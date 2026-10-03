@@ -242,16 +242,18 @@ impl Cache<'_> {
 
 #[derive(Clone, Debug)]
 pub struct CronJobsListParams {
-    pub kind: Option<CronJobKind>,
-    pub sort_by: CronJobsSortBy,
+    pub filter: Option<CronJobFilter>,
+    pub order_by: CronJobOrderBy,
+    pub direction: CronJobSortDirection,
     pub pagination: Pagination,
 }
 
 impl Default for CronJobsListParams {
     fn default() -> Self {
         Self {
-            kind: None,
-            sort_by: CronJobsSortBy::Newest,
+            filter: None,
+            order_by: CronJobOrderBy::Id,
+            direction: CronJobSortDirection::Desc,
             pagination: Pagination::default(),
         }
     }
@@ -262,9 +264,10 @@ impl CronJobs<'_> {
         self.client
             .page(
                 gql::LIST_APP_CRON_JOBS_QUERY,
-                params.pagination.variables(
-                    json!({"appId": app_id, "kind": params.kind, "sortBy": params.sort_by}),
-                )?,
+                params
+                    .pagination
+                    .variables(json!({"appId": app_id, "filter": params.filter,
+                        "orderBy": params.order_by, "direction": params.direction}))?,
                 "/node/cronJobs",
             )
             .await

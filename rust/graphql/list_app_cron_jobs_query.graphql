@@ -4,8 +4,9 @@ query srcListAppCronJobsQuery(
   $after: String
   $last: Int
   $before: String
-  $kind: CronJobKind
-  $sortBy: CronJobsSortBy
+  $filter: CronJobFilter
+  $orderBy: CronJobOrderBy
+  $direction: CronJobSortDirection
 ) {
   node(id: $appId) {
     ... on DeployApp {
@@ -14,8 +15,9 @@ query srcListAppCronJobsQuery(
         after: $after
         last: $last
         before: $before
-        kind: $kind
-        sortBy: $sortBy
+        filter: $filter
+        orderBy: $orderBy
+        direction: $direction
       ) {
         edges {
           cursor

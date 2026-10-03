@@ -464,7 +464,7 @@
     "receivedAt": "2026-10-03T00:00:00Z",
     "replyTo": "fixture",
     "sentAt": "2026-10-03T00:00:00Z",
-    "status": "DELIVERED",
+    "status": "BOUNCED",
     "subject": "fixture",
     "textBody": "fixture",
     "to": [
@@ -498,7 +498,7 @@
     "receivedAt": null,
     "replyTo": null,
     "sentAt": null,
-    "status": "DELIVERED",
+    "status": "BOUNCED",
     "subject": "fixture",
     "textBody": null,
     "to": [

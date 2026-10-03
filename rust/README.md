@@ -153,6 +153,8 @@ decimal strings without losing integer precision.
 Cron jobs require exactly one of `execute` or `fetch` when creating a job.
 Execute inputs carry `command` and `cli_args` separately, as defined by the
 GraphQL API; the SDK does not parse shell command strings.
+`CronJobsListParams` accepts a `CronJobFilter`, `order_by` and `direction` for
+listing jobs. The default order is newest first (`ID`, descending).
 
 ## Deployments and files
 

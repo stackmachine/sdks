@@ -310,6 +310,12 @@ type AppDatabase implements Node {
   createdAt: DateTime!
   dbExplorerUrl: String
   deletedAt: DateTime
+
+  """
+  Engine of the database instance backing this database. Databases
+  predating engine awareness render as MySQL.
+  """
+  engine: DatabaseEngine!
   host: String!
 
   """The ID of the object"""
@@ -319,6 +325,27 @@ type AppDatabase implements Node {
   phpmyadminUrl: String
   port: String!
   updatedAt: DateTime!
+
+  """
+  Storage occupied by this database as of the last usage sweep, in bytes.
+  `null` when no sweep has produced a reading yet, which is distinct from
+  `0` — the sweep read it and found it empty.
+  
+  Each engine is read the way it natively reports, so the figures are
+  approximate and not comparable across engines:
+  
+  - MySQL: InnoDB's `data_length + index_length`, an estimate from sampled
+  table statistics. An empty schema reads `0`.
+  - Postgres: `pg_database_size`, on-disk bytes including indexes, TOAST
+  and catalog bloat. A fresh database is already several megabytes, so
+  `0` is not a value this engine reaches.
+  
+  Pair with `usageCheckedAt` before presenting as current.
+  """
+  usageBytes: BigInt
+
+  """When `usageBytes` was measured. `null` whenever `usageBytes` is."""
+  usageCheckedAt: DateTime
   username: String!
 }
 
@@ -629,6 +656,10 @@ type AppVolumeEdge {
   node: AppVolume!
 }
 
+"""
+Input for the deprecated `archivePackage` compatibility mutation, which
+delegates to `setPackageArchived` with `archived: true`.
+"""
 input ArchivePackageInput {
   clientMutationId: String
   packageId: ID!
@@ -771,7 +802,10 @@ type AutobuildZipUpload implements Node {
 }
 
 input BanAppInput {
-  """ID of app to disable"""
+  """
+  ID of the deploy app or one of its app versions. Accepts global IDs
+  (`da_…`/`dav_…`) and URL IDs.
+  """
   appId: ID!
 
   """Blackhole the app (no network access)"""
@@ -796,6 +830,15 @@ compatible type.
 scalar BigInt
 
 type Billing {
+  """
+  The owner's invoices. `statuses` selects which lifecycle states to
+  include; omitting it returns every state a customer can act on or
+  account for, which is all of them except the not-yet-finalized drafts.
+  """
+  invoiceConnection(after: String, before: String, first: Int, last: Int, offset: Int, statuses: [InvoiceStatus!]): InvoiceConnection!
+
+  """The finalized invoice the owner still has to settle, if any."""
+  openInvoice: Invoice
   paymentConnection(after: String, before: String, first: Int, last: Int, offset: Int): PaymentIntentConnection!
   paymentMethodConnection(after: String, before: String, first: Int, last: Int, offset: Int): CardPaymentMethodConnection!
   paymentMethods: [PaymentMethod!]! @deprecated(reason: "Use `payment_connection` instead")
@@ -1151,8 +1194,14 @@ type CategoryEdge {
   node: Category!
 }
 
+"""
+Input for the deprecated `changePackageVersionArchivedStatus` compatibility
+mutation, which delegates to `yankPackageVersions` for one version.
+"""
 input ChangePackageVersionArchivedStatusInput {
   clientMutationId: String
+
+  """When omitted, defaults to `true`."""
   isArchived: Boolean
   packageVersionId: ID!
 }
@@ -1285,6 +1334,89 @@ type ConnectGithubRepoToAppPayload {
   success: Boolean!
 }
 
+type Conversation implements Node {
+  app: DeployApp
+  createdAt: DateTime!
+
+  """The ID of the object"""
+  id: ID!
+  kind: ConversationKind!
+  lastMessageAt: DateTime
+  messageCount: Int!
+  messages(first: Int, offset: Int): ConversationMessageConnection!
+  status: ConversationStatus!
+}
+
+enum ConversationActorRole {
+  AGENT
+  OWNER
+  STAFF
+}
+
+type ConversationAttachment implements Node {
+  downloadUrl: String
+  fileName: String
+
+  """The ID of the object"""
+  id: ID!
+
+  """
+  False once the bytes are gone, so a client can render the row as removed
+  rather than as a link that will not load.
+  """
+  isAvailable: Boolean!
+  mimeType: String
+  sizeBytes: Int!
+}
+
+enum ConversationKind {
+  APP_BAN_APPEAL
+}
+
+type ConversationMessage implements Node {
+  actorRole: ConversationActorRole!
+  attachments: [ConversationAttachment!]!
+
+  """
+  Null once the message is deleted; the row itself stays in the thread so
+  the conversation does not silently change shape.
+  """
+  body: String
+  createdAt: DateTime!
+  deletedAt: DateTime
+
+  """
+  Server-derived, and only meaningful to the author, so nobody else is
+  shown a countdown on a message they may not touch.
+  """
+  editableUntil: DateTime
+  editedAt: DateTime
+
+  """The ID of the object"""
+  id: ID!
+  statusChange: ConversationStatus
+  viewerIsAuthor: Boolean!
+}
+
+type ConversationMessageConnection {
+  edges: [ConversationMessageEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+type ConversationMessageEdge {
+  cursor: String!
+  node: ConversationMessage!
+}
+
+enum ConversationStatus {
+  AWAITING_OWNER
+  AWAITING_STAFF
+  REJECTED
+  RESOLVED
+  WITHDRAWN
+}
+
 enum CountComparison {
   EQUAL
   GREATER_THAN
@@ -1388,6 +1520,11 @@ input CreateCheckoutSessionInput {
   """ID of price (product) to charge the user."""
   priceId: ID!
 
+  """
+  Stripe Promotion Code id (`promo_...`) or customer-facing code to apply.
+  """
+  promotionCode: String
+
   """URL to redirect."""
   returnUrl: String!
 }
@@ -1472,6 +1609,32 @@ type CreateRepoForAppTemplatePayload {
   success: Boolean!
 }
 
+"""
+Copies a public source snapshot to a new repository in a connected GitHub namespace.
+"""
+input CreateRepoFromSourceInput {
+  branch: String
+  clientMutationId: String
+  name: String!
+  namespace: String!
+  private: Boolean = false
+  rootDir: String
+  sourceUrl: String!
+}
+
+type CreateRepoFromSourcePayload {
+  branch: String!
+  clientMutationId: String
+  repoUrl: String!
+  success: Boolean!
+}
+
+"""The product surface from which the resource was created."""
+enum CreatedFrom {
+  stackmachine
+  wasmer
+}
+
 type CronJob implements Node {
   createdAt: DateTime!
   enabled: Boolean!
@@ -1502,9 +1665,33 @@ type CronJobEdge {
   node: CronJob!
 }
 
+"""
+Predicates applied to a cronjob listing. Unset fields are not restricted.
+"""
+input CronJobFilter {
+  """`true` returns only enabled cronjobs, `false` only disabled ones."""
+  enabled: Boolean
+
+  """
+  Restrict to platform-managed (`true`) or user-owned (`false`) cronjobs.
+  """
+  isManaged: Boolean
+
+  """
+  Restrict to fetch or execute cronjobs. Takes precedence over the
+  deprecated top-level `kind` argument.
+  """
+  kind: CronJobKind
+
+  """Case-insensitive substring match on the cronjob name."""
+  nameContains: String
+
+  """Restrict by where the cronjob was defined."""
+  source: CronJobSource
+}
+
 type CronJobInvocation {
   durationMs: Int
-  edgeJobId: String!
   errorSummary: String
   finishedAt: DateTime
   id: ID!
@@ -1517,14 +1704,8 @@ type CronJobInvocation {
 }
 
 type CronJobInvocationConnection {
-  edges: [CronJobInvocationEdge!]!
   nodes: [CronJobInvocation!]!
   pageInfo: PageInfo!
-}
-
-type CronJobInvocationEdge {
-  cursor: String!
-  node: CronJobInvocation!
 }
 
 union CronJobInvocationResult = ExecuteCronJobInvocationResult | FetchCronJobInvocationResult
@@ -1539,6 +1720,27 @@ enum CronJobInvocationStatus {
 enum CronJobKind {
   EXECUTE
   FETCH
+}
+
+"""
+Field a cronjob listing is ordered by. Ties are broken by insertion order so
+pagination cursors stay stable.
+"""
+enum CronJobOrderBy {
+  CREATED_AT
+
+  """
+  Insertion order, which tracks creation order without depending on the
+  `createdAt` timestamp.
+  """
+  ID
+  NAME
+  UPDATED_AT
+}
+
+enum CronJobSortDirection {
+  ASC
+  DESC
 }
 
 enum CronJobSource {
@@ -1815,6 +2017,26 @@ type DeleteAppVolumePayload {
   success: Boolean!
 }
 
+input DeleteConversationAttachmentInput {
+  attachmentId: ID!
+  clientMutationId: String
+}
+
+type DeleteConversationAttachmentPayload {
+  attachment: ConversationAttachment!
+  clientMutationId: String
+}
+
+input DeleteConversationMessageInput {
+  clientMutationId: String
+  messageId: ID!
+}
+
+type DeleteConversationMessagePayload {
+  clientMutationId: String
+  message: ConversationMessage!
+}
+
 """Delete an `Api`-sourced unified cronjob."""
 input DeleteCronJobInput {
   clientMutationId: String
@@ -1916,9 +2138,32 @@ type DeployApp implements Node {
   buildConfiguration: BuildConfiguration
   cdnCacheEnabled: Boolean!
   cdnCachePurgedAt: DateTime
+
+  """
+  The conversation of this kind for this app: the open one if there is
+  one, else the most recent terminal one, so a decided appeal stays
+  readable.
+  
+  Null to anyone who neither administers the app nor is staff — a public
+  app must not hand its appeal thread to every visitor.
+  """
+  conversation(kind: ConversationKind!): Conversation
   createdAt: DateTime!
   createdBy: User!
-  cronJobs(after: String, before: String, first: Int, kind: CronJobKind, last: Int, offset: Int, sortBy: CronJobsSortBy): CronJobConnection!
+  cronJobs(
+    after: String
+    before: String
+
+    """
+    Sort direction. Defaults to ascending, or to the direction implied by `sortBy` when `orderBy` is omitted.
+    """
+    direction: CronJobSortDirection
+    filter: CronJobFilter
+    first: Int
+    last: Int
+    offset: Int
+    orderBy: CronJobOrderBy
+  ): CronJobConnection!
   databases(after: String, before: String, first: Int, last: Int, offset: Int): AppDatabaseConnection!
   deleted: Boolean!
   deployments(after: String, before: String, first: Int, last: Int): DeploymentConnection @deprecated(reason: "Use rollouts instead")
@@ -1937,6 +2182,12 @@ type DeployApp implements Node {
   """The ID of the object"""
   id: ID!
   isPro: Boolean!
+
+  """
+  Whether staff quarantined this app. Null unless the viewer is staff, so
+  the app's owner cannot tell.
+  """
+  isQuarantined: Boolean
   kind: Kind
   logs(
     after: String
@@ -2021,7 +2272,14 @@ type DeployAppVersion implements Node {
   description: String
   disabledAt: DateTime
   disabledBy: User
+  disabledCategory: DisableCategory!
   disabledPermanently: Boolean!
+
+  """
+  Staff only. The text is free-form and written by a human or by an
+  automated reviewer; handing it to an owner teaches evasion and can
+  defame. Owner-facing callers read `disabledCategory`.
+  """
   disabledReason: String
   favicon: URL
   gitSource: AutobuildRepository @deprecated(reason: "This field is deprecated and return null always.")
@@ -2129,6 +2387,9 @@ enum DeployDeployAppPerishReasonChoices {
   """App Unclaimed"""
   APP_UNCLAIMED
 
+  """Plan Non Persistent"""
+  PLAN_NON_PERSISTENT
+
   """User Pending Verification"""
   USER_PENDING_VERIFICATION
 
@@ -2166,6 +2427,9 @@ input DeployViaAutobuildInput {
   buildCmd: String
   clientMutationId: String
 
+  """Engine for the provisioned database. Defaults to MySQL."""
+  dbEngine: DatabaseEngine
+
   """Domains for this app"""
   domains: [String]
   enableDatabase: Boolean
@@ -2195,11 +2459,12 @@ input DeployViaAutobuildInput {
   startCmd: String
   uploadUrl: String
 
-  """If set, the screenshot is waited for."""
-  waitForScreenshotGeneration: Boolean = false
+  """If set, deployment completion waits for screenshot generation."""
+  waitForScreenshotGeneration: Boolean = true
 }
 
 type DeployViaAutobuildPayload {
+  appToken: String
   buildId: UUID!
   clientMutationId: String
   success: Boolean!
@@ -2289,7 +2554,10 @@ type DetachPaymentMethodPayload {
 }
 
 input DisableAppInput {
-  """ID of app to disable"""
+  """
+  ID of the deploy app or one of its app versions. Accepts global IDs
+  (`da_…`/`dav_…`) and URL IDs.
+  """
   appId: ID!
   clientMutationId: String
 
@@ -2301,6 +2569,15 @@ input DisableAppInput {
 type DisableAppPayload {
   app: DeployApp!
   clientMutationId: String
+}
+
+enum DisableCategory {
+  BLACKLISTED
+  MALWARE
+  OTHER
+  PHISHING
+  PROXY
+  USAGE_LIMIT
 }
 
 input DisconnectGithubRepoFromAppInput {
@@ -2352,6 +2629,17 @@ enum DnsmanagerSshFingerprintRecordTypeChoices {
   A_2
 }
 
+input EditConversationMessageInput {
+  body: String!
+  clientMutationId: String
+  messageId: ID!
+}
+
+type EditConversationMessagePayload {
+  clientMutationId: String
+  message: ConversationMessage!
+}
+
 input EditSshUserInput {
   authenticationMethods: [SshAuthenticationMethod] = null
   clientMutationId: String
@@ -2372,9 +2660,23 @@ type EmailMessage implements Node {
   app: DeployApp
   bcc: [String!]!
   cc: [String!]!
+
+  """
+  Whether `textBody` and `htmlBody` are readable: only when the owner's plan
+  includes email. Otherwise both are `null`.
+  """
+  contentsVisible: Boolean!
   createdAt: DateTime!
   direction: EmailMessageDirection!
+
+  """Why delivery failed, when it did."""
+  errorMessage: String
   from: String!
+
+  """
+  The HTML body. `null` unless the owner's plan includes email. Only
+  available when fetching a single email, not in a list.
+  """
   htmlBody: String
 
   """The ID of the object"""
@@ -2385,6 +2687,11 @@ type EmailMessage implements Node {
   sentAt: DateTime
   status: EmailMessageStatus!
   subject: String!
+
+  """
+  The plain-text body. `null` unless the owner's plan includes email. Only
+  available when fetching a single email, not in a list.
+  """
   textBody: String
   to: [String!]!
 }
@@ -2406,10 +2713,27 @@ type EmailMessageEdge {
 }
 
 enum EmailMessageStatus {
+  """The recipient's server rejected it."""
+  BOUNCED
+
+  """The recipient's server accepted it."""
   DELIVERED
   FAILED
+
+  """
+  The owner's plan does not include email: stored, and sent once the owner
+  upgrades to Pro.
+  """
+  HELD
+
+  """Stored, waiting to be sent."""
   QUEUED
   RECEIVED
+
+  """Being sent."""
+  SENDING
+
+  """Accepted by the email provider."""
   SENT
 }
 
@@ -2420,7 +2744,10 @@ type EmailUsageSummary {
 }
 
 input EnableAppInput {
-  """ID of app to disable"""
+  """
+  ID of the deploy app or one of its app versions. Accepts global IDs
+  (`da_…`/`dav_…`) and URL IDs.
+  """
   appId: ID!
   clientMutationId: String
 }
@@ -2432,11 +2759,13 @@ type EnableAppPayload {
 }
 
 type EnvVar implements Node {
+  build: Boolean!
   createdAt: DateTime!
 
   """The ID of the object"""
   id: ID!
   name: String!
+  runtime: Boolean!
   sensitive: Boolean!
   updatedAt: DateTime!
   value: String
@@ -2463,8 +2792,14 @@ type EnvVarEdge {
 }
 
 input EnvVarInput {
+  """Whether the environment variable is available during builds."""
+  build: Boolean
+
   """Name of the environment variable."""
   name: String!
+
+  """Whether the environment variable is available at runtime."""
+  runtime: Boolean
 
   """Whether the environment variable value should be hidden from GraphQL."""
   sensitive: Boolean = false
@@ -2503,6 +2838,9 @@ type EnvVarLogEdge {
 }
 
 input EnvVarUpdate {
+  """Whether the environment variable is available during builds."""
+  build: Boolean
+
   """
   Whether the environment variable should be deleted by name instead of upserted.
   """
@@ -2514,8 +2852,11 @@ input EnvVarUpdate {
   """Name of the environment variable."""
   name: String
 
+  """Whether the environment variable is available at runtime."""
+  runtime: Boolean
+
   """Whether the environment variable value should be hidden from GraphQL."""
-  sensitive: Boolean = false
+  sensitive: Boolean
 
   """Value of the environment variable."""
   value: String
@@ -2641,6 +2982,11 @@ input GenerateCheckoutUrlInput {
   """ID of price (product) to charge the user."""
   priceId: ID!
 
+  """
+  Stripe Promotion Code id (`promo_...`) or customer-facing code to apply.
+  """
+  promotionCode: String
+
   """URL to redirect to on success."""
   successUrl: String!
 }
@@ -2648,6 +2994,21 @@ input GenerateCheckoutUrlInput {
 type GenerateCheckoutUrlPayload {
   checkout: StripeCheckout!
   clientMutationId: String
+}
+
+input GenerateConversationAttachmentUploadInput {
+  clientMutationId: String
+  expiresAfterSeconds: Int! = 900
+  fileName: String!
+  mimeType: String!
+  sizeBytes: Int!
+}
+
+type GenerateConversationAttachmentUploadPayload {
+  attachmentId: ID!
+  clientMutationId: String
+  method: String!
+  signedUrl: String!
 }
 
 input GenerateDeployConfigTokenInput {
@@ -2940,6 +3301,60 @@ type InvitePackageCollaboratorPayload {
   package: Package!
 }
 
+type Invoice {
+  """The amount still owed, formatted with its currency."""
+  amountDue: String!
+
+  """The datetime this object was created in stripe."""
+  created: DateTime
+  currency: String
+
+  """The Stripe-hosted page where an open invoice can be paid."""
+  hostedInvoiceUrl: String
+
+  """The ID of the object"""
+  id: ID!
+
+  """Direct link to the invoice PDF."""
+  invoicePdf: String
+
+  """Human-facing invoice number, once Stripe has assigned one."""
+  number: String
+  status: String
+
+  """The Stripe invoice id (`in_…`)."""
+  stripeId: String!
+}
+
+type InvoiceConnection {
+  """Contains the nodes in this connection."""
+  edges: [InvoiceEdge!]!
+
+  """Pagination data for this connection."""
+  pageInfo: PageInfo!
+
+  """Total number of items in the connection."""
+  totalCount: Int
+}
+
+"""A Relay edge containing an `Invoice` and its cursor."""
+type InvoiceEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: Invoice!
+}
+
+"""The lifecycle states Stripe assigns to an invoice."""
+enum InvoiceStatus {
+  DRAFT
+  OPEN
+  PAID
+  UNCOLLECTIBLE
+  VOID
+}
+
 """
 Allows use of a JSON String for input / output from the GraphQL schema.
 
@@ -3205,7 +3620,7 @@ enum MetricUnit {
   """represents the unit of "kilobytes"."""
   KB
 
-  """represents the unit of "kilobytes per second"."""
+  """represents the unit of "kilobyte-seconds"."""
   KBS
 
   """represents the unit of "milliseconds"."""
@@ -3263,7 +3678,9 @@ type Mutation {
 
   """Add an SSH authorized key to an SSH user."""
   addSshAuthorizedKey(input: AddSshAuthorizedKeyInput!): AddSshAuthorizedKeyPayload
-  archivePackage(input: ArchivePackageInput!): ArchivePackagePayload
+
+  """Archive a package. Compatibility wrapper kept for pre-rework clients."""
+  archivePackage(input: ArchivePackageInput!): ArchivePackagePayload @deprecated(reason: "Use `setPackageArchived` instead.")
 
   """Attach vault to an app"""
   attachVault(input: AttachVaultInput!): AttachVaultPayload
@@ -3274,10 +3691,18 @@ type Mutation {
   """Get the autobuild config for a given zip upload URL"""
   autobuildConfigForZipUpload(input: AutobuildConfigForZipUploadInput!): AutobuildConfigForZipUploadPayload!
 
-  """Ban app with a reason."""
+  """
+  Ban an app with a reason. The target may be a deploy app or app-version
+  global ID or URL ID.
+  """
   banApp(input: BanAppInput!): BanAppPayload
   cancelSubscription(input: CancelSubscriptionInput!): CancelSubscriptionPayload!
-  changePackageVersionArchivedStatus(input: ChangePackageVersionArchivedStatusInput!): ChangePackageVersionArchivedStatusPayload
+
+  """
+  Yank (or unyank) one package version. Compatibility wrapper kept for
+  pre-rework clients.
+  """
+  changePackageVersionArchivedStatus(input: ChangePackageVersionArchivedStatusInput!): ChangePackageVersionArchivedStatusPayload @deprecated(reason: "Use `yankPackageVersions` instead.")
   changeUserEmail(input: ChangeUserEmailInput!): ChangeUserEmailPayload
   changeUserPassword(input: ChangeUserPasswordInput!): ChangeUserPasswordPayload
   changeUserUsername(input: ChangeUserUsernameInput!): ChangeUserUsernamePayload
@@ -3306,6 +3731,7 @@ type Mutation {
   createNamespace(input: CreateNamespaceInput!): CreateNamespacePayload!
   createNamespaceApiKey(input: CreateNamespaceAPIKeyInput!): CreateNamespaceAPIKeyPayload
   createRepoForAppTemplate(input: CreateRepoForAppTemplateInput!): CreateRepoForAppTemplatePayload
+  createRepoFromSource(input: CreateRepoFromSourceInput!): CreateRepoFromSourcePayload!
   deleteApp(input: DeleteAppInput!): DeleteAppPayload
 
   """Delete a database for an app."""
@@ -3320,6 +3746,12 @@ type Mutation {
 
   """Soft-delete an app volume."""
   deleteAppVolume(input: DeleteAppVolumeInput!): DeleteAppVolumePayload!
+
+  """Remove an attachment's bytes, at any time, by its sender or by staff."""
+  deleteConversationAttachment(input: DeleteConversationAttachmentInput!): DeleteConversationAttachmentPayload
+
+  """Tombstone one's own message inside the edit window."""
+  deleteConversationMessage(input: DeleteConversationMessageInput!): DeleteConversationMessagePayload
 
   """Delete an existing API-sourced cronjob."""
   deleteCronJob(input: DeleteCronJobInput!): DeleteCronJobPayload
@@ -3354,20 +3786,35 @@ type Mutation {
   """
   detachPaymentMethod(input: DetachPaymentMethodInput!): DetachPaymentMethodPayload!
 
-  """Disable app with a reason."""
+  """
+  Disable an app with a reason. The target may be a deploy app or
+  app-version global ID or URL ID.
+  """
   disableApp(input: DisableAppInput!): DisableAppPayload
 
   """Disconnect a github repo from an app."""
   disconnectGithubRepoFromApp(input: DisconnectGithubRepoFromAppInput!): DisconnectGithubRepoFromAppPayload!
 
+  """Replace the text of one's own message inside the edit window."""
+  editConversationMessage(input: EditConversationMessageInput!): EditConversationMessagePayload
+
   """Edit an SSH user."""
   editSshUser(input: EditSshUserInput!): EditSshUserPayload
 
-  """Enable app that was previously disabled."""
+  """
+  Enable an app that was previously disabled. The target may be a deploy
+  app or app-version global ID or URL ID.
+  """
   enableApp(input: EnableAppInput!): EnableAppPayload
   generateApiToken(input: GenerateAPITokenInput!): GenerateAPITokenPayload
   generateBindingsForAllPackages(input: GenerateBindingsForAllPackagesInput!): GenerateBindingsForAllPackagesPayload
   generateCheckoutUrl(input: GenerateCheckoutUrlInput!): GenerateCheckoutUrlPayload!
+
+  """
+  Mint a presigned upload for a conversation attachment. The client PUTs
+  the bytes itself and names the attachment on a later message.
+  """
+  generateConversationAttachmentUpload(input: GenerateConversationAttachmentUploadInput!): GenerateConversationAttachmentUploadPayload
   generateDeployConfigToken(input: GenerateDeployConfigTokenInput!): GenerateDeployConfigTokenPayload
   generateDeployToken(input: GenerateDeployTokenInput!): GenerateDeployTokenPayload
   generateSshToken(input: GenerateSshTokenInput!): GenerateSshTokenPayload
@@ -3404,6 +3851,15 @@ type Mutation {
   """Migrate an app to a different region."""
   migrateAppRegion(input: MigrateAppRegionInput!): MigrateAppRegionPayload
   newNonce(input: NewNonceInput!): NewNoncePayload!
+
+  """
+  Open a conversation on an app. Owner-side only: staff reply to a
+  conversation, they never start one.
+  """
+  openConversation(input: OpenConversationInput!): OpenConversationPayload
+
+  """Append a message to a conversation."""
+  postConversationMessage(input: PostConversationMessageInput!): PostConversationMessagePayload
   publishDeployApp(input: PublishDeployAppInput!): PublishDeployAppPayload
   publishPackage(input: PublishPackageInput!): PublishPackagePayload
   publishPublicKey(input: PublishPublicKeyInput!): PublishPublicKeyPayload
@@ -3415,6 +3871,13 @@ type Mutation {
   """Purges all cache for this app version by app version ID."""
   purgeCacheForAppVersionById(input: PurgeCacheForAppVersionByIdInput!): PurgeCacheForAppVersionPayload
   pushPackageRelease(input: PushPackageReleaseInput!): PushPackageReleasePayload
+
+  """
+  Quarantine an app with a reason: its public DNS answers only point at
+  the quarantine region while it keeps running. Staff only. The target
+  may be a deploy app or app-version global ID or URL ID.
+  """
+  quarantineApp(input: QuarantineAppInput!): QuarantineAppPayload
   readNotification(input: ReadNotificationInput!): ReadNotificationPayload
 
   """Redeploy the active version of an app by app ID."""
@@ -3465,7 +3928,13 @@ type Mutation {
 
   """Set the requested default domain for an app."""
   setAppDefaultAlias(input: SetAppDefaultAliasInput!): SetAppDefaultAliasPayload
+
+  """Set or clear a package's archived state."""
+  setPackageArchived(input: SetPackageArchivedInput!): SetPackageArchivedPayload
   socialAuth(input: SocialAuthJWTInput!): SocialAuthJWTPayload!
+
+  """Add a user/contact to a Resend Segment."""
+  subscribeToResendSegment(input: ResendSegmentMembershipInput!): ResendSegmentMembershipPayload!
 
   """Sync all blog posts from Notion to the database."""
   syncNotionBlogPosts(input: SyncNotionBlogPostsInput!): SyncNotionBlogPostsPayload
@@ -3481,9 +3950,21 @@ type Mutation {
   toggleSshServer(input: ToggleSshServerInput!): ToggleSshServerPayload
   tokenAuth(input: ObtainJSONWebTokenInput!): ObtainJSONWebTokenPayload!
 
-  """Un-ban app with a reason."""
+  """
+  Un-ban an app. The target may be a deploy app or app-version global ID
+  or URL ID.
+  """
   unbanApp(input: UnbanAppInput!): UnbanAppPayload
   unlikePackage(input: UnlikePackageInput!): UnlikePackagePayload
+
+  """
+  Lift an app's quarantine with a reason. Staff only. The target may be a
+  deploy app or app-version global ID or URL ID.
+  """
+  unquarantineApp(input: UnquarantineAppInput!): UnquarantineAppPayload
+
+  """Remove a user/contact from a Resend Segment."""
+  unsubscribeFromResendSegment(input: ResendSegmentMembershipInput!): ResendSegmentMembershipPayload!
   unwatchPackage(input: UnwatchPackageInput!): UnwatchPackagePayload
   updateApiKey(input: UpdateAPIKeyInput!): UpdateAPIKeyPayload
   updateAppTemplate(input: UpdateAppTemplateInput!): UpdateAppTemplatePayload
@@ -3508,6 +3989,7 @@ type Mutation {
   updatePackageCollaboratorInviteRole(input: UpdatePackageCollaboratorInviteRoleInput!): UpdatePackageCollaboratorInviteRolePayload
   updatePackageCollaboratorRole(input: UpdatePackageCollaboratorRoleInput!): UpdatePackageCollaboratorRolePayload
   updateUserInfo(input: UpdateUserInfoInput!): UpdateUserInfoPayload
+  updateUserMarketingDetails(input: UpdateUserMarketingDetailsInput!): UpdateUserMarketingDetailsPayload!
 
   """Update an app volume."""
   updateVolume(input: UpdateVolumeInput!): UpdateVolumePayload!
@@ -3534,6 +4016,16 @@ type Mutation {
   """Detach autobuild from app."""
   verifyAppDomain(input: VerifyAppDomainInput!): VerifyAppDomainPayload
   watchPackage(input: WatchPackageInput!): WatchPackagePayload
+
+  """Close an open conversation from the owner's side."""
+  withdrawConversation(input: WithdrawConversationInput!): WithdrawConversationPayload
+
+  """
+  Yank a set of package-version node ids, all belonging to one package.
+  With `undo`, unyank them. Yanked versions still resolve when pinned
+  exactly. `latest` and semver-range resolution exclude them.
+  """
+  yankPackageVersions(input: YankPackageVersionsInput!): YankPackageVersionsPayload
 }
 
 type NSRecord implements DNSRecordInterface & Node {
@@ -3568,13 +4060,14 @@ type Namespace implements Node & Owner & PackageOwner {
   billing: Billing
   collaborators(after: String, before: String, first: Int, last: Int, offset: Int): NamespaceCollaboratorConnection!
   createdAt: DateTime!
+  createdFrom: CreatedFrom!
   currentUsage(
     """List of app IDs. Usage gets filtered for the specific apps."""
     appIds: [ID]
 
     """Optional time range filter."""
     timeRange: TimeRangeInput
-  ): OwnerUsageSummary
+  ): OwnerUsageSummary @deprecated(reason: "Use `usageReport`, which covers every metered dimension over the owner's billing period.")
   description: String!
   displayName: String
   domains(after: String, before: String, first: Int, last: Int, offset: Int): DNSDomainConnection!
@@ -3609,6 +4102,41 @@ type Namespace implements Node & Owner & PackageOwner {
     timeRange: TimeRangeInput
     variant: MetricType!
   ): [UsageMetric]!
+
+  """
+  Usage over the namespace's billing period, measured against its plan's limits
+  exactly as limit enforcement measures them. Null when the new billing pipeline
+  is off for the namespace's origin, or when no plan can be resolved for the
+  namespace.
+  
+  `period` overrides the reported window: omit it (or pass null) for the current
+  billing cycle, or pass an explicit range for a "last 7 days"-style view. The
+  limits stay those of the namespace's current plan; only the usage window moves.
+  """
+  usageReport(
+    """
+    Report usage over this window instead of the current billing cycle. Null reports the current cycle.
+    """
+    period: TimeRangeInput
+  ): OwnerUsageReport
+
+  """
+  One metric's usage bucketed over a period, for the usage page's
+  click-to-expand chart. `period` and `grouping` mirror `usageReport`; the metric
+  is selected by `kind`. Null under the same conditions as `usageReport`.
+  """
+  usageReportSeries(
+    """Bucket granularity: BY_HOUR, BY_DAY (default), or BY_WEEK."""
+    grouping: MetricGrouping
+
+    """Which metric to chart."""
+    kind: UsageMetricKind!
+
+    """
+    Report over this window instead of the current billing cycle. Null reports the current cycle.
+    """
+    period: TimeRangeInput
+  ): OwnerUsageMetricSeries
   userSet(after: String, before: String, first: Int, last: Int, offset: Int): UserConnection!
   viewerAsCollaborator(role: GrapheneRole): NamespaceCollaborator
   viewerCan(action: OwnerAction!): Boolean!
@@ -3845,6 +4373,19 @@ type ObtainJSONWebTokenPayload {
   username: CaseInsensitiveString!
 }
 
+input OpenConversationInput {
+  appId: ID!
+  attachments: [ID!]
+  body: String!
+  clientMutationId: String
+  kind: ConversationKind!
+}
+
+type OpenConversationPayload {
+  clientMutationId: String
+  conversation: Conversation!
+}
+
 interface Owner {
   emailUsage: EmailUsageSummary
   globalId: ID!
@@ -3858,11 +4399,117 @@ enum OwnerAction {
   PUBLISH_PACKAGE
 }
 
+type OwnerUsageMetric {
+  """
+  What this metric has cost so far this period, taken from Stripe's own
+  invoice preview — so it accounts for tiers, allowances and discounts.
+  
+  Zero means Stripe bills nothing for the metric. Null means the amount is
+  unknown, because Stripe could not be reached or usage is not being reported
+  to it; the usage figures beside it are unaffected either way.
+  """
+  charge: MoneyType
+
+  """The metric's human-readable name, e.g. "Network Ingress"."""
+  displayName: String!
+
+  """Which usage dimension this measures."""
+  kind: UsageMetricKind!
+
+  """
+  The plan's limit, as a decimal string; null when the metric is unlimited.
+  """
+  limit: String
+
+  """
+  Whether usage has reached the share of the limit the backend treats as
+  close enough to warn about. Being *over* the limit is `used > limit`,
+  which the client can read off those two fields.
+  """
+  nearingLimits: Boolean!
+
+  """The unit `used` and `limit` are expressed in, e.g. "bytes" or "hours"."""
+  unit: String!
+
+  """Usage over the report's period, as a decimal string."""
+  used: String!
+
+  """`used / limit` as a percentage; zero when the metric is unlimited."""
+  usedPercent: Float!
+}
+
+type OwnerUsageMetricSeries {
+  """
+  True when this metric is a gauge, so `total` and every bucket are a peak rather
+  than a sum.
+  """
+  isGauge: Boolean!
+
+  """Which metric this series measures."""
+  kind: UsageMetricKind!
+
+  """The owner's plan limit for this metric, or null when unlimited."""
+  limit: String
+
+  """
+  One point per bucket across the period, zero-filled and ordered by time.
+  """
+  points: [OwnerUsageMetricSeriesPoint!]!
+
+  """
+  The period aggregate: the sum of the buckets for a counter, their peak for a
+  gauge. Matches the metric's `used` in `usageReport` for the same period —
+  exactly for counters, and for gauges over an explicit window. For the current
+  cycle a gauge differs: `usageReport` shows the live level there, while this
+  stays the period peak.
+  """
+  total: String!
+
+  """The metric's raw unit, e.g. "bytes" or "hours"."""
+  unit: String!
+}
+
+type OwnerUsageMetricSeriesPoint {
+  """Start of the bucket, inclusive, in UTC."""
+  start: DateTime!
+
+  """Usage in this bucket, a decimal string in the metric's raw unit."""
+  used: String!
+}
+
+type OwnerUsageReport {
+  """
+  One entry per metric the owner's plan version limits, in catalog order. A
+  metric the plan does not limit is omitted.
+  """
+  metrics: [OwnerUsageMetric!]!
+
+  """End of the reported period, exclusive."""
+  periodEnd: DateTime!
+
+  """Start of the reported period, inclusive."""
+  periodStart: DateTime!
+}
+
 """Usage summary for a specific owner."""
 type OwnerUsageSummary {
   appCount: Usage!
   buildMinutes: Usage!
   cpuTime: Usage!
+
+  """
+  Storage occupied by the owner's app databases, as of the most recent
+  usage sweep at or before the end of the window. A point-in-time gauge,
+  not a total accumulated over the period.
+  
+  Metered in bytes and reported in `MiB`. `used` rounds up, so a database
+  holding anything at all never reads as `0`, and `usedPercent` comes from
+  the underlying byte figures rather than this rounded pair.
+  
+  `charge` is always zero: database storage is metered and limited, but no
+  billing plan prices it.
+  """
+  dbStorage: Usage!
   egress: Usage!
   ingress: Usage!
   noRequests: Usage!
@@ -3893,6 +4540,11 @@ type Package implements Likeable & Node & PackageOwner {
 
   """List of app templates for this package"""
   appTemplates(after: String, before: String, first: Int, last: Int, offset: Int): AppTemplateConnection!
+
+  """
+  The user who most recently archived this package, or `null` while it is active.
+  """
+  archivedBy: User
   categories(after: String, before: String, first: Int, last: Int, offset: Int): CategoryConnection!
   collaborators(after: String, before: String, first: Int, last: Int, offset: Int): PackageCollaboratorConnection!
   collectionSet: [Collection!]!
@@ -3934,6 +4586,11 @@ type Package implements Likeable & Node & PackageOwner {
   similarPackageVersions(after: String, before: String, first: Int, last: Int): PackageSearchConnection!
   totalDownloads: Int!
   updatedAt: DateTime!
+
+  """
+  One row per version, the current rebuild. Superseded rels live under
+  `PackageVersion.rebuilds`.
+  """
   versions: [PackageVersion]
   viewerAsCollaborator(role: GrapheneRole): PackageCollaborator
   viewerCan(action: OwnerAction!): Boolean!
@@ -4263,7 +4920,12 @@ type PackageVersion implements Node & PackageInstance & PackageReleaseInterface 
 
   """The ID of the object"""
   id: ID!
-  isArchived: Boolean!
+
+  """
+  True when this version is yanked. Kept for older clients that still
+  read `versions { isArchived }`.
+  """
+  isArchived: Boolean! @deprecated(reason: "Use `yankedAt` instead; non-null means yanked.")
   isCorrupt: Boolean!
   isLastVersion: Boolean!
   isSigned: Boolean!
@@ -4292,6 +4954,12 @@ type PackageVersion implements Node & PackageInstance & PackageReleaseInterface 
   pythonBindings: PackageVersionPythonBinding
   pythonlanguagebindingSet(after: String, before: String, first: Int, last: Int, offset: Int): PackageVersionPythonBindingConnection!
   readme: String
+
+  """
+  Every other build of the same released version (differing only in
+  `+wasix.N` build metadata), newest first.
+  """
+  rebuilds: [PackageVersion!]!
   repository: String
   showDeployButton: Boolean!
   signature: Signature
@@ -4305,6 +4973,17 @@ type PackageVersion implements Node & PackageInstance & PackageReleaseInterface 
   webcV3: WebcImage
   witFile: String
   witMd: String
+
+  """Why the version was yanked, if a reason was supplied."""
+  yankReason: String
+
+  """When the version was yanked, or `null` if it is not yanked."""
+  yankedAt: DateTime
+
+  """
+  The user who most recently yanked this version, or `null` while it is active.
+  """
+  yankedBy: User
 }
 
 union PackageVersionBinding = PackageVersionNPMBinding | PackageVersionPythonBinding
@@ -4678,6 +5357,19 @@ enum PiritaFilesystemNameDisplay {
   RELATIVE
 }
 
+input PostConversationMessageInput {
+  attachments: [ID!]
+  body: String!
+  clientMutationId: String
+  conversationId: ID!
+}
+
+type PostConversationMessagePayload {
+  clientMutationId: String
+  conversation: Conversation!
+  message: ConversationMessage!
+}
+
 enum ProgrammingLanguage {
   JAVASCRIPT
   PYTHON
@@ -4824,6 +5516,24 @@ type PushPackageReleasePayload {
   success: Boolean!
 }
 
+input QuarantineAppInput {
+  """
+  ID of the deploy app or one of its app versions. Accepts global IDs
+  (`da_…`/`dav_…`) and URL IDs.
+  """
+  appId: ID!
+  clientMutationId: String
+
+  """Why the app is quarantined. Required."""
+  reason: String!
+}
+
+"""Quarantine app with a reason."""
+type QuarantineAppPayload {
+  app: DeployApp!
+  clientMutationId: String
+}
+
 type Query {
   allBlogpostTags(after: String, before: String, first: Int, last: Int, offset: Int): BlogPostTagConnection
   allPackageReleases(after: String, before: String, createdAfter: DateTime, first: Int, last: Int, offset: Int, sortBy: PackageVersionSortBy, updatedAfter: DateTime): PackageWebcConnection!
@@ -4870,6 +5580,7 @@ type Query {
   getContract(name: String!): Interface @deprecated(reason: "Please use getInterface instead")
   getContractVersion(name: String!, version: String): InterfaceVersion @deprecated(reason: "Please use getInterfaceVersion instead")
   getContracts(names: [String!]!): [Interface]! @deprecated(reason: "Please use getInterfaces instead")
+  getCronJobInvocation(id: ID!): CronJobInvocation
   getDeployApp(
     name: String!
 
@@ -4877,7 +5588,21 @@ type Query {
     owner: String
   ): DeployApp
   getDeployAppVersion(name: String!, owner: String, version: String): DeployAppVersion
-  getDeployApps(after: String, before: String, first: Int, last: Int, offset: Int, ownerId: ID, sortBy: DeployAppsSortBy, updatedAfter: DateTime): DeployAppConnection!
+  getDeployApps(
+    after: String
+
+    """
+    List apps across all owners. Restricted to staff/superusers and cannot be combined with ownerId.
+    """
+    allOwners: Boolean
+    before: String
+    first: Int
+    last: Int
+    offset: Int
+    ownerId: ID
+    sortBy: DeployAppsSortBy
+    updatedAfter: DateTime
+  ): DeployAppConnection!
   getDomain(name: String!): DNSDomain
   getGlobalObject(slug: String!): GlobalObject
   getInterface(name: String!): Interface
@@ -5014,6 +5739,11 @@ input RegisterUserInput {
   fullName: String
   intent: String
   password: String!
+
+  """
+  Stripe Promotion Code id (`promo_...`) or customer-facing code for the Pro trial.
+  """
+  promotionCode: String
   username: CaseInsensitiveString!
 }
 
@@ -5312,6 +6042,23 @@ type RequestValidationEmailPayload {
   clientMutationId: String
   success: Boolean!
   user: User
+}
+
+input ResendSegmentMembershipInput {
+  """Resend contact email. Exactly one of `userId` or `email` is required."""
+  email: String
+
+  """Resend Segment ID. Audiences are deprecated in Resend's current API."""
+  segmentId: String!
+
+  """Wasmer user global ID. Exactly one of `userId` or `email` is required."""
+  userId: ID
+}
+
+type ResendSegmentMembershipPayload {
+  email: String!
+  segmentId: String!
+  subscribed: Boolean!
 }
 
 input RevealSshUserPasswordInput {
@@ -5758,6 +6505,23 @@ type SetDefaultPaymentMethodPayload {
   success: Boolean!
 }
 
+"""
+Input for the `setPackageArchived` mutation.
+
+Archiving hides a package from search and listings. It does not affect
+resolution. `archived: false` restores it. Requires package-admin rights.
+"""
+input SetPackageArchivedInput {
+  archived: Boolean!
+  clientMutationId: String
+  packageId: ID!
+}
+
+type SetPackageArchivedPayload {
+  clientMutationId: String
+  package: Package!
+}
+
 type Signature {
   createdAt: DateTime!
   data: String!
@@ -5787,6 +6551,11 @@ input SocialAuthJWTInput {
   clientMutationId: String
   enterProTrial: Boolean
   fingerprintVisitorId: String
+
+  """
+  Stripe Promotion Code id (`promo_...`) or customer-facing code for the Pro trial.
+  """
+  promotionCode: String
   provider: String!
   register: Boolean = false
   registerIntent: String
@@ -5925,7 +6694,7 @@ type Subscription {
     searchTerm: String
 
     """
-    Get logs starting from this timestamp. Takes ISO timestamp in UTC timezone.
+    Get logs starting from and including this timestamp. Takes ISO timestamp in UTC timezone.
     """
     startingFromISO: DateTime
 
@@ -6121,14 +6890,14 @@ character sequences.
 """
 scalar URL
 
-"""
-Leverages the internal Python implementation of UUID (uuid.UUID) to provide native UUID objects
-in fields, resolvers and input.
-"""
+"""A UUID represented as a standard text string."""
 scalar UUID
 
 input UnbanAppInput {
-  """ID of app to disable"""
+  """
+  ID of the deploy app or one of its app versions. Accepts global IDs
+  (`da_…`/`dav_…`) and URL IDs.
+  """
   appId: ID!
   clientMutationId: String
 }
@@ -6147,6 +6916,24 @@ input UnlikePackageInput {
 type UnlikePackagePayload {
   clientMutationId: String
   package: Package!
+}
+
+input UnquarantineAppInput {
+  """
+  ID of the deploy app or one of its app versions. Accepts global IDs
+  (`da_…`/`dav_…`) and URL IDs.
+  """
+  appId: ID!
+  clientMutationId: String
+
+  """Why the quarantine is lifted. Required."""
+  reason: String!
+}
+
+"""Lift an app's quarantine with a reason."""
+type UnquarantineAppPayload {
+  app: DeployApp!
+  clientMutationId: String
 }
 
 input UnwatchPackageInput {
@@ -6300,6 +7087,10 @@ input UpdateEnvVarsInput {
 Create, update, or delete app environment variables on an app with given ID
 """
 type UpdateEnvVarsPayload {
+  """
+  Whether names, values, or build targets changed the effective build environment.
+  """
+  buildEnvChanged: Boolean!
   clientMutationId: String
   envVars: [EnvVar!]!
   success: Boolean!
@@ -6456,6 +7247,25 @@ type UpdateUserInfoPayload {
   user: User
 }
 
+"""
+Full answer snapshot. Null or omitted answers clear saved answers; null or omitted metadata preserves saved metadata.
+"""
+input UpdateUserMarketingDetailsInput {
+  country: String
+  language: String
+  role: UserMarketingDetailsRole
+  status: UserMarketingDetailsStatus!
+  teamSize: UserMarketingDetailsTeamSize
+  timezone: String
+  usage: UserMarketingDetailsUsage
+  userId: ID
+}
+
+type UpdateUserMarketingDetailsPayload {
+  marketingDetails: UserMarketingDetails!
+  user: User!
+}
+
 input UpdateVolumeInput {
   clientMutationId: String
 
@@ -6608,9 +7418,20 @@ type UpsertVaultPayload {
 """Individual usage metrics for a specific app."""
 type Usage {
   charge: MoneyType!
+
+  """
+  The limit `used` counts against, in the same unit, or `null` when the
+  resource is unlimited.
+  """
   max: Int
   nearingLimits: Boolean!
   unit: String
+
+  """
+  Usage in the unit `unit` names, which is not always the unit the
+  resource is metered in: database storage is metered in bytes and
+  reported in `MiB`. Always read `unit` alongside this field.
+  """
   used: Int!
   usedPercent: Float!
 }
@@ -6620,6 +7441,30 @@ type UsageMetric {
   unit: MetricUnit!
   value: Float!
   variant: MetricType!
+}
+
+"""
+Which usage dimension a reported metric measures.
+
+One variant per entitlement in the billing catalog's vocabulary
+(`sm_be_db::plan_catalog::ENTITLEMENT_DEFINITIONS`), which is what binds a
+reported metric to the limit enforcement acts on.
+"""
+enum UsageMetricKind {
+  ACTIVE_APP_COUNT
+  BUILD_MINUTES
+  CPU_TIME
+  DB_STORAGE
+  DEPLOYMENTS
+  DOMAIN_COUNT
+  EMAIL_SENT
+  MEMBER_COUNT
+  MEMORY_TIME
+  NETWORK_EGRESS
+  NETWORK_INGRESS
+  PACKAGE_STORAGE
+  REQUESTS
+  VOLUME_STORAGE
 }
 
 type UsageMetrics {
@@ -6637,13 +7482,14 @@ type User implements Node & Owner & PackageOwner {
   bio: String
   companyDescription: String
   companyRole: String
+  createdFrom: CreatedFrom!
   currentUsage(
     """List of app IDs. Usage gets filtered for the specific apps."""
     appIds: [ID]
 
     """Optional time range filter."""
     timeRange: TimeRangeInput
-  ): OwnerUsageSummary
+  ): OwnerUsageSummary @deprecated(reason: "Use `usageReport`, which covers every metered dimension over the owner's billing period.")
   dashboardActivity(after: String, before: String, first: Int, last: Int, offset: Int): ActivityEventConnection!
   dateJoined: DateTime!
   domains(after: String, before: String, first: Int, last: Int, offset: Int): DNSDomainConnection!
@@ -6673,9 +7519,17 @@ type User implements Node & Owner & PackageOwner {
   limitState: LimitState!
   location: String
   loginMethods: [LoginMethod!]!
+  marketingDetails: UserMarketingDetails
   namespaceInvitesIncoming(after: String, before: String, first: Int, last: Int, offset: Int): NamespaceCollaboratorInviteConnection!
   namespaces(after: String, before: String, first: Int, last: Int, offset: Int, role: GrapheneRole): NamespaceConnection!
   notifications(after: String, before: String, first: Int, last: Int, offset: Int): UserNotificationConnection!
+
+  """
+  The user's unpaid finalized invoice, if they have one. Resolves through an
+  existing Stripe customer only, so a user who never became a customer reads
+  `null` without one being created for them.
+  """
+  openInvoice: Invoice
   packageInvitesIncoming(after: String, before: String, first: Int, last: Int, offset: Int): PackageCollaboratorInviteConnection!
   packageTransfersIncoming(after: String, before: String, first: Int, last: Int, offset: Int): PackageTransferRequestConnection!
   packageVersions(after: String, before: String, first: Int, last: Int, offset: Int): PackageVersionConnection!
@@ -6696,6 +7550,40 @@ type User implements Node & Owner & PackageOwner {
     timeRange: TimeRangeInput
     variant: MetricType!
   ): [UsageMetric]!
+
+  """
+  Usage over the user's billing period, measured against their plan's limits
+  exactly as limit enforcement measures them. Null when the new billing pipeline
+  is off for the user's origin, or when no plan can be resolved for the user.
+  
+  `period` overrides the reported window: omit it (or pass null) for the current
+  billing cycle, or pass an explicit range for a "last 7 days"-style view. The
+  limits stay those of the user's current plan; only the usage window moves.
+  """
+  usageReport(
+    """
+    Report usage over this window instead of the current billing cycle. Null reports the current cycle.
+    """
+    period: TimeRangeInput
+  ): OwnerUsageReport
+
+  """
+  One metric's usage bucketed over a period, for the usage page's
+  click-to-expand chart. `period` and `grouping` mirror `usageReport`; the metric
+  is selected by `kind`. Null under the same conditions as `usageReport`.
+  """
+  usageReportSeries(
+    """Bucket granularity: BY_HOUR, BY_DAY (default), or BY_WEEK."""
+    grouping: MetricGrouping
+
+    """Which metric to chart."""
+    kind: UsageMetricKind!
+
+    """
+    Report over this window instead of the current billing cycle. Null reports the current cycle.
+    """
+    period: TimeRangeInput
+  ): OwnerUsageMetricSeries
 
   """Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only."""
   username: String!
@@ -6723,6 +7611,47 @@ type UserEdge {
 
   """The item at the end of the edge"""
   node: User!
+}
+
+type UserMarketingDetails {
+  completedAt: DateTime
+  country: String
+  language: String
+  registrationIp: String
+  role: UserMarketingDetailsRole
+  status: UserMarketingDetailsStatus!
+  teamSize: UserMarketingDetailsTeamSize
+  timezone: String
+  updatedAt: DateTime!
+  usage: UserMarketingDetailsUsage
+}
+
+enum UserMarketingDetailsRole {
+  DESIGNER
+  DEVELOPER
+  FOUNDER
+  MARKETING
+  OTHER
+  PRODUCT
+  STUDENT
+}
+
+enum UserMarketingDetailsStatus {
+  COMPLETED
+  IN_PROGRESS
+}
+
+enum UserMarketingDetailsTeamSize {
+  LARGE
+  MEDIUM
+  SMALL
+  SOLO
+}
+
+enum UserMarketingDetailsUsage {
+  BOTH
+  PERSONAL
+  PROFESSIONAL
 }
 
 type UserNotification implements Node {
@@ -6997,6 +7926,16 @@ enum WebcVersion {
   V3
 }
 
+input WithdrawConversationInput {
+  clientMutationId: String
+  conversationId: ID!
+}
+
+type WithdrawConversationPayload {
+  clientMutationId: String
+  conversation: Conversation!
+}
+
 type WordPressPlugin {
   active: Boolean!
   autoUpdate: Boolean
@@ -7084,12 +8023,43 @@ type WordpressVersionZip {
 }
 
 type WorkloadMetrics {
-  memoryBytes: BigInt!
+  memoryBytes: BigInt! @deprecated(reason: "Returns byte-seconds despite the name, and is not a byte count. Use `memoryGigabyteHours`.")
+
+  """Memory held over time, in gigabyte-hours."""
+  memoryGigabyteHours: Float!
   networkEgressBytes: BigInt!
   networkIngressBytes: BigInt!
   realCpuTimeMillis: BigInt!
   wallCpuTimeMillis: BigInt!
   workloads: Int!
+}
+
+"""
+Input for the `yankPackageVersions` mutation.
+
+Operates on an explicit set of version node ids belonging to one package.
+The client expands any selector. Requires package-admin rights.
+"""
+input YankPackageVersionsInput {
+  clientMutationId: String
+
+  """
+  The `PackageVersion` node ids to act on. Must be non-empty and share a
+  package.
+  """
+  packageVersionIds: [ID!]!
+
+  """Why the versions were yanked. Surfaced to anyone still pinning them."""
+  reason: String
+
+  """Unyank the given versions."""
+  undo: Boolean
+}
+
+type YankPackageVersionsPayload {
+  clientMutationId: String
+  package: Package!
+  packageVersions: [PackageVersion!]!
 }
 
 type ZipRollout implements Node {

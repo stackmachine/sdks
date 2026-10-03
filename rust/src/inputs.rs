@@ -201,6 +201,31 @@ pub struct CreateCronJobInput {
     pub timeout: Option<String>,
 }
 
+/// Predicates applied to a cronjob listing. Unset fields are not restricted.
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct CronJobFilter {
+    /// `true` returns only enabled cronjobs, `false` only disabled ones.
+    #[serde(rename = "enabled", default, skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
+    /// Restrict to platform-managed (`true`) or user-owned (`false`) cronjobs.
+    #[serde(rename = "isManaged", default, skip_serializing_if = "Option::is_none")]
+    pub is_managed: Option<bool>,
+    /// Restrict to fetch or execute cronjobs. Takes precedence over the
+    /// deprecated top-level `kind` argument.
+    #[serde(rename = "kind", default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<CronJobKind>,
+    /// Case-insensitive substring match on the cronjob name.
+    #[serde(
+        rename = "nameContains",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub name_contains: Option<String>,
+    /// Restrict by where the cronjob was defined.
+    #[serde(rename = "source", default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<CronJobSource>,
+}
+
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, Eq, PartialEq)]
 pub enum CronJobKind {
     #[default]
@@ -210,13 +235,39 @@ pub enum CronJobKind {
     Fetch,
 }
 
+/// Field a cronjob listing is ordered by. Ties are broken by insertion order so
+/// pagination cursors stay stable.
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, Eq, PartialEq)]
-pub enum CronJobsSortBy {
+pub enum CronJobOrderBy {
     #[default]
-    #[serde(rename = "NEWEST")]
-    Newest,
-    #[serde(rename = "OLDEST")]
-    Oldest,
+    #[serde(rename = "CREATED_AT")]
+    CreatedAt,
+    #[serde(rename = "ID")]
+    Id,
+    #[serde(rename = "NAME")]
+    Name,
+    #[serde(rename = "UPDATED_AT")]
+    UpdatedAt,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, Eq, PartialEq)]
+pub enum CronJobSortDirection {
+    #[default]
+    #[serde(rename = "ASC")]
+    Asc,
+    #[serde(rename = "DESC")]
+    Desc,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, Eq, PartialEq)]
+pub enum CronJobSource {
+    #[default]
+    #[serde(rename = "API")]
+    Api,
+    #[serde(rename = "CONFIG")]
+    Config,
+    #[serde(rename = "PROVISIONED")]
+    Provisioned,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -495,6 +546,9 @@ pub struct DeployViaAutobuildInput {
         skip_serializing_if = "Option::is_none"
     )]
     pub client_mutation_id: Option<String>,
+    /// Engine for the provisioned database. Defaults to MySQL.
+    #[serde(rename = "dbEngine", default, skip_serializing_if = "Option::is_none")]
+    pub db_engine: Option<DatabaseEngine>,
     /// Domains for this app
     #[serde(rename = "domains", default, skip_serializing_if = "Option::is_none")]
     pub domains: Option<Vec<Option<String>>>,
@@ -547,7 +601,7 @@ pub struct DeployViaAutobuildInput {
     pub start_cmd: Option<String>,
     #[serde(rename = "uploadUrl", default, skip_serializing_if = "Option::is_none")]
     pub upload_url: Option<String>,
-    /// If set, the screenshot is waited for.
+    /// If set, deployment completion waits for screenshot generation.
     #[serde(
         rename = "waitForScreenshotGeneration",
         default,
@@ -598,9 +652,15 @@ pub struct EditSshUserInput {
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct EnvVarInput {
+    /// Whether the environment variable is available during builds.
+    #[serde(rename = "build", default, skip_serializing_if = "Option::is_none")]
+    pub build: Option<bool>,
     /// Name of the environment variable.
     #[serde(rename = "name")]
     pub name: String,
+    /// Whether the environment variable is available at runtime.
+    #[serde(rename = "runtime", default, skip_serializing_if = "Option::is_none")]
+    pub runtime: Option<bool>,
     /// Whether the environment variable value should be hidden from GraphQL.
     #[serde(rename = "sensitive", default, skip_serializing_if = "Option::is_none")]
     pub sensitive: Option<bool>,
