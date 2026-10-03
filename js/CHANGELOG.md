@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.0](https://github.com/stackmachine/sdks/compare/stackmachine-v0.5.0...stackmachine-v0.6.0) (2026-10-03)
+
+
+### Features
+
+* **rust:** add StackMachine SDK and automated releases ([98c77bc](https://github.com/stackmachine/sdks/commit/98c77bc0ad57470e269472f64b84664739373f28))
+
+
+### Bug Fixes
+
+* align SDK queries with the current GraphQL schema ([ff8dbc0](https://github.com/stackmachine/sdks/commit/ff8dbc0b9e76f925c2813657513d3b1e2869588e))
+
 ## [0.5.0](https://github.com/stackmachine/sdks/compare/stackmachine-v0.4.0...stackmachine-v0.5.0) (2026-07-21)
 
 
