@@ -5,11 +5,11 @@ later and a Tokio runtime.
 
 ## Installation
 
-Use the crate directly from this checkout until it is published to crates.io:
+Add the [`stackmachine`](https://crates.io/crates/stackmachine) crate and a Tokio runtime:
 
 ```toml
 [dependencies]
-stackmachine = { path = "path/to/sdks/rust" }
+stackmachine = "0.1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 
@@ -262,30 +262,20 @@ identity for a short-lived publishing token, which is revoked when the job ends.
 The workflow uses the `crates-io` GitHub environment, restricted to `main`, and
 does not read a stored crates.io API token from GitHub secrets.
 
-crates.io requires a crate's first publication to use an API token. Complete this
-one-time bootstrap before enabling automated releases:
+The initial [`0.1.0`](https://crates.io/crates/stackmachine/0.1.0) publication is
+complete. Configure the crate's GitHub publisher in **Settings → Trusted Publishing**
+with these settings:
 
-1. Check out the reviewed first-release code and publish `0.1.0` locally using a
-   crates.io API token with permission to create/publish `stackmachine`:
+| Setting | Value |
+| --- | --- |
+| Repository owner | `stackmachine` |
+| Repository name | `sdks` |
+| Workflow filename | `release.yml` |
+| Environment | `crates-io` |
 
-   ```bash
-   cargo login
-   cargo publish --manifest-path rust/Cargo.toml --locked
-   cargo logout
-   ```
-
-   Revoke the bootstrap token on crates.io afterward. No GitHub secret is needed.
-2. In the crate's **Settings → Trusted Publishing**, add GitHub with:
-
-   | Setting | Value |
-   | --- | --- |
-   | Repository owner | `stackmachine` |
-   | Repository name | `sdks` |
-   | Workflow filename | `release.yml` |
-   | Environment | `crates-io` |
-
-3. Merge the SDK and Release Please release PRs. The workflow skips uploading
-   the bootstrapped `0.1.0` again; later versions publish using OIDC automatically.
+Merging the SDK and first Release Please release PRs creates the GitHub release
+for `0.1.0`. The workflow skips uploading this already-published version; later
+versions publish using OIDC automatically.
 
 The workflow checks the exact crate version before authenticating and uploading.
 Already-published versions are skipped, making a retry safe after a successful
