@@ -256,20 +256,40 @@ PR updates `Cargo.toml`, the crate's entry in `Cargo.lock`, `CHANGELOG.md` and t
 release manifest, then creates a `stackmachine-rust-v<version>` GitHub release.
 The Release workflow validates and publishes that release's commit to crates.io.
 
-Publishing uses the `crates-io` GitHub environment. Complete this one-time setup
-before the first release:
+Publishing uses [crates.io trusted publishing](https://crates.io/docs/trusted-publishing)
+through `rust-lang/crates-io-auth-action`. GitHub Actions exchanges its OIDC
+identity for a short-lived publishing token, which is revoked when the job ends.
+The workflow uses the `crates-io` GitHub environment, restricted to `main`, and
+does not read a stored crates.io API token from GitHub secrets.
 
-1. Add a crates.io API token with permission to create/publish `stackmachine`
-   as the environment secret `CARGO_REGISTRY_TOKEN`. crates.io requires an API
-   token for a crate's first publication.
-2. After the first publication, configure a
-   [crates.io trusted publisher](https://crates.io/docs/trusted-publishing) for
-   repository owner `stackmachine`, repository `sdks`, workflow filename
-   `release.yml`, and environment `crates-io`.
-3. Remove and revoke the bootstrap API token. Subsequent publications use a
-   short-lived OIDC token through `rust-lang/crates-io-auth-action` automatically.
+crates.io requires a crate's first publication to use an API token. Complete this
+one-time bootstrap before enabling automated releases:
 
-An existing `CARGO_REGISTRY_TOKEN` takes precedence over trusted publishing.
+1. Check out the reviewed first-release code and publish `0.1.0` locally using a
+   crates.io API token with permission to create/publish `stackmachine`:
+
+   ```bash
+   cargo login
+   cargo publish --manifest-path rust/Cargo.toml --locked
+   cargo logout
+   ```
+
+   Revoke the bootstrap token on crates.io afterward. No GitHub secret is needed.
+2. In the crate's **Settings → Trusted Publishing**, add GitHub with:
+
+   | Setting | Value |
+   | --- | --- |
+   | Repository owner | `stackmachine` |
+   | Repository name | `sdks` |
+   | Workflow filename | `release.yml` |
+   | Environment | `crates-io` |
+
+3. Merge the SDK and Release Please release PRs. The workflow skips uploading
+   the bootstrapped `0.1.0` again; later versions publish using OIDC automatically.
+
+The workflow checks the exact crate version before authenticating and uploading.
+Already-published versions are skipped, making a retry safe after a successful
+upload. Registry errors fail the job instead of being treated as missing versions.
 If publishing fails after a GitHub release was created, run the Release workflow
 on `main` with **publish_existing_rust_version** enabled to retry the version
 already in `Cargo.toml`. The default manual run does not publish Rust.
